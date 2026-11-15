@@ -72,7 +72,7 @@ extension FeedSuggestion {
 
     var cost: String? {
         guard let price else { return nil }
-        return price == 0 ? "free" : "$" + price.formatted(.number.precision(.fractionLength(0...2)))
+        return price == 0 ? "free" : "$" + price.formatted(.number.precision(.fractionLength(price == price.rounded() ? 0 : 2)))
     }
 
     var spot: String? {
@@ -88,19 +88,16 @@ extension FeedSuggestion {
     func starts(now: Date, calendar: Calendar = .current) -> String? {
         guard let startsAt else { return CardWords.clean(when) }
         let date = Date(timeIntervalSince1970: startsAt / 1000)
-        let parts = calendar.dateComponents([.hour, .minute], from: date)
+        let parts = calendar.dateComponents([.month, .day, .weekday, .hour, .minute], from: date)
         let hour = parts.hour ?? 0
         let minute = parts.minute ?? 0
         let clock = "\(hour % 12 == 0 ? 12 : hour % 12)\(minute == 0 ? "" : String(format: ":%02d", minute))\(hour < 12 ? "am" : "pm")"
         let day: String
-        if calendar.isDate(date, inSameDayAs: now) {
-            day = hour >= 17 ? "tonight" : "today"
-        } else if calendar.isDateInTomorrow(date) {
-            day = "tomorrow"
-        } else if date > now, date.timeIntervalSince(now) < 6 * 86_400 {
-            day = date.formatted(.dateTime.weekday(.wide)).lowercased()
-        } else {
-            day = date.formatted(.dateTime.month(.wide).day()).lowercased()
+        switch calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: date)).day ?? 0 {
+        case 0: day = hour >= 17 ? "tonight" : "today"
+        case 1: day = "tomorrow"
+        case 2...6: day = calendar.weekdaySymbols[(parts.weekday ?? 1) - 1].lowercased()
+        default: day = "\(calendar.monthSymbols[(parts.month ?? 1) - 1].lowercased()) \(parts.day ?? 1)"
         }
         return "\(day) at \(clock)"
     }
