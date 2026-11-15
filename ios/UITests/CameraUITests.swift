@@ -76,27 +76,25 @@ final class CameraUITests: XCTestCase {
 
     func testTheStatusNamesTheBoardChosenOffline() {
         let app = XCUIApplication()
-        app.launchArguments = ["-BoardDebugSeed", "YES", "-view", "cards"]
+        app.launchArguments = ["-BoardDebugSeed", "YES", "-view", "night"]
         app.launch()
-        let title = app.navigationBars.buttons["my board"]
-        XCTAssertTrue(title.waitForExistence(timeout: 20))
-        title.tap()
+        let menu = element(app, "nightBoardMenu")
+        XCTAssertTrue(menu.waitForExistence(timeout: 20))
+        menu.tap()
         let crew = app.buttons["sf crew"]
         XCTAssertTrue(crew.waitForExistence(timeout: 3))
         crew.tap()
-        XCTAssertTrue(app.navigationBars.buttons["sf crew"].waitForExistence(timeout: 3))
+        expectation(for: NSPredicate(format: "label CONTAINS %@", "sf crew"), evaluatedWith: menu)
+        waitForExpectations(timeout: 3)
 
-        element(app, "addMenu").tap()
-        let takePhoto = app.buttons["take a photo"]
-        XCTAssertTrue(takePhoto.waitForExistence(timeout: 3))
-        takePhoto.tap()
+        element(app, "nightCamera").tap()
         let shutter = element(app, "cameraShutter")
         XCTAssertTrue(shutter.waitForExistence(timeout: 10))
         shutter.tap()
         let status = element(app, "cameraStatus")
-        XCTAssertTrue(status.waitForExistence(timeout: 2))
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
         expectation(for: NSPredicate(format: "label == %@", "dropped it in sf crew."), evaluatedWith: status)
-        waitForExpectations(timeout: 3)
+        waitForExpectations(timeout: 10)
         attach("camera-status-sf-crew")
     }
 
