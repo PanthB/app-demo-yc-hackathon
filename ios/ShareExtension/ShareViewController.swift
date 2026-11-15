@@ -8,6 +8,8 @@ final class ShareViewController: UIViewController {
     private let sharedBoardName = AppGroup.defaults.bool(forKey: "currentBoardShared")
         ? AppGroup.defaults.string(forKey: "currentBoardName")
         : nil
+    private var isOnScreen = false
+    private var isClosingSoon = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -21,23 +23,42 @@ final class ShareViewController: UIViewController {
         host.didMove(toParent: self)
 
         Task { @MainActor in
-            let slow = Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(350))
-                if !Task.isCancelled { state.isTakingAWhile = true }
-            }
             let saved = await save()
-            slow.cancel()
             state.outcome = saved ? .dropped : .failed
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            closeSoon()
+        }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        Logger.share.info("the share card is on screen")
+        isOnScreen = true
+        closeSoon()
+    }
+
+    private func closeSoon() {
+        guard isOnScreen, state.outcome != nil, !isClosingSoon else { return }
+        isClosingSoon = true
+        #if DEBUG
+        if AppGroup.defaults.bool(forKey: "holdShareNote") {
+            Logger.share.info("the share note stays until it's tapped")
+            return
+        }
+        #endif
+        Task { @MainActor in
             try? await Task.sleep(for: .seconds(2))
             close()
         }
     }
 
     private func close() {
-        guard !state.isClosed else { return }
-        state.isClosed = true
-        extensionContext?.completeRequest(returningItems: nil)
+        guard !state.isLeaving else { return }
+        state.isLeaving = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(220))
+            extensionContext?.completeRequest(returningItems: nil)
+        }
     }
 
     private func save() async -> Bool {
@@ -47,12 +68,13 @@ final class ShareViewController: UIViewController {
         }
         let items = extensionContext?.inputItems as? [NSExtensionItem] ?? []
         let saved = await ShareCollector.save(items, to: inbox)
-        for id in saved {
-            if let boardId { AppGroup.defaults.set(boardId, forKey: "inboxBoard.\(id.uuidString)") }
+        for item in saved {
+            if let boardId { AppGroup.defaults.set(boardId, forKey: "inboxBoard.\(item.id.uuidString)") }
         }
         if saved.isEmpty {
             Logger.share.error("nothing in this share could be kept")
         }
+        Task { [boardId] in await ShareSend.send(saved, boardId: boardId) }
         return !saved.isEmpty
     }
 }
@@ -64,6 +86,5 @@ final class ShareState: ObservableObject {
     }
 
     @Published var outcome: Outcome?
-    @Published var isTakingAWhile = false
-    var isClosed = false
+    @Published var isLeaving = false
 }

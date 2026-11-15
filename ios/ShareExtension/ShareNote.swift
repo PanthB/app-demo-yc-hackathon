@@ -6,10 +6,6 @@ struct ShareNote: View {
     var close: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var isShowing: Bool {
-        state.outcome != nil || state.isTakingAWhile
-    }
-
     private var line: String {
         switch state.outcome {
         case .none: "hang on, i'm grabbing it."
@@ -42,9 +38,10 @@ struct ShareNote: View {
             .padding(.vertical, 18)
             .frame(maxWidth: 320)
             .glassEffect(.regular, in: .rect(cornerRadius: 26))
-            .scaleEffect(isShowing || reduceMotion ? 1 : 0.9)
-            .opacity(isShowing ? 1 : 0)
-            .animation(reduceMotion ? .easeOut(duration: 0.2) : .snappy, value: isShowing)
+            .animation(.snappy, value: state.outcome)
+            .scaleEffect(state.isLeaving && !reduceMotion ? 0.9 : 1)
+            .opacity(state.isLeaving ? 0 : 1)
+            .animation(.easeOut(duration: 0.2), value: state.isLeaving)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(line)
             .accessibilityIdentifier("shareConfirmation")

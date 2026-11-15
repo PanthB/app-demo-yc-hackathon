@@ -13,6 +13,7 @@ enum DropReader {
     @MainActor
     static func read(_ drop: Drop, in container: URL) async -> DropReading {
         let id = drop.id
+        await readPlace(of: drop)
         if let done = DropReading.load(for: id, in: container), done.finished { return done }
         readWords(of: drop)
         readLink(of: drop)
@@ -41,8 +42,40 @@ enum DropReader {
     @MainActor
     static func readLink(of drop: Drop) {
         guard drop.sourceKind == .url, let link = drop.url else { return }
-        let seen = LinkReading.read(link, caption: drop.rawText)
-        if let title = seen.title { drop.title = title }
+        keep(LinkReading.read(link, caption: drop.rawText), on: drop)
+    }
+
+    @MainActor
+    static func readPlace(of drop: Drop) async {
+        guard drop.sourceKind == .url, drop.latitude == nil, var link = drop.url else { return }
+        if LinkReading.isShortMapsLink(link) {
+            guard let long = await destination(of: link) else { return }
+            link = long
+            keep(LinkReading.read(link, caption: drop.rawText), on: drop)
+        }
+        guard drop.latitude == nil, let search = LinkReading.read(link, caption: nil).placeSearch,
+              let place = await PlaceFinder.find(search, nearLatitude: drop.anchorLatitude, nearLongitude: drop.anchorLongitude)
+        else { return }
+        drop.latitude = place.latitude
+        drop.longitude = place.longitude
+    }
+
+    private static func destination(of link: String) async -> String? {
+        guard let url = URL(string: link) else { return nil }
+        var request = URLRequest(url: url, timeoutInterval: 5)
+        request.httpMethod = "HEAD"
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            return response.url?.absoluteString
+        } catch {
+            Logger.ingest.error("couldn't follow \(url.host() ?? "a short link", privacy: .public) to the place it points at: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
+    @MainActor
+    private static func keep(_ seen: LinkReading.Seen, on drop: Drop) {
+        if let title = seen.title ?? seen.placeName { drop.title = title }
         if let artist = seen.artist { drop.artist = artist }
         if let place = seen.placeName { drop.placeName = place }
         if let latitude = seen.latitude, let longitude = seen.longitude {

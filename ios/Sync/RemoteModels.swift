@@ -229,6 +229,10 @@ enum DropKey {
             bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]
         ))
     }
+
+    static func isSample(_ id: UUID) -> Bool {
+        id.uuidString.wholeMatch(of: #/5EED[0-9A-F]{4}-0000-4000-8000-[0-9A-F]{12}/#) != nil
+    }
 }
 
 extension Date {

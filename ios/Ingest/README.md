@@ -18,13 +18,13 @@ Owner: the share and ingest thread (PAN-5). Compiled into the app target by fold
 
 ## Reading on the phone
 
-`DropReader.read(_:in:)` runs once per drop, before it is sent, and never blocks the drop from showing. What it finds is kept in `media/<drop id>/read.json`, so a relaunch doesn't read the same drop twice.
+`DropReader.read(_:in:)` runs before a drop is sent and never blocks the drop from showing. Everything but finding a place runs once per drop. What it finds is kept in `media/<drop id>/read.json`, so a relaunch doesn't read the same drop twice.
 
 - **Typed text:** `TimeWords.parse` sets the countdown or start time, the label and the zone, so "remind me in 1 hr" works with no network.
 - **Photos and screenshots:** a 1600 px JPEG for the board and the backend, and a subject cutout from Vision. When Vision finds no subject, or can't run, the drop becomes a polaroid.
 - **Video:** four frames, one of them the thumbnail, and the duration.
 - **Voice notes:** on-device speech to text. The audio never leaves the phone.
 - **PDFs:** the text of the first five pages and a picture of the first page.
-- **Links** are read by the backend. The first line of the text that came with the share is passed along as the link's title, without a trailing site name such as "| Spotify" or "- YouTube". `LinkReading` reads two kinds on the phone, from the link and that text alone, with no network:
+- **Links** are read by the backend. The first line of the text that came with the share is passed along as the link's title, without a trailing site name such as "| Spotify" or "- YouTube". `LinkReading` (in `ios/Shared`, so the share extension sends the same hints) reads two kinds on the phone, from the link and that text:
   - **Songs** (Spotify and Apple Music): a page title like "Blinding Lights - song and lyrics by The Weeknd | Spotify" becomes the title "Blinding Lights" and the artist "The Weeknd". The app never listens to anything.
-  - **Places** (Apple Maps and full Google Maps links): the place's name and coordinates from the link go in `placeName`, `latitude` and `longitude`, and are sent as `hints.placeName` and the drop's position, so the backend files it as a place in its neighborhood. A short `maps.app.goo.gl` link carries neither, so the backend reads it.
+  - **Places** (Apple Maps and Google Maps): the place's name and coordinates from the link go in `title`, `placeName`, `latitude` and `longitude`, and are sent as `hints.linkTitle`, `hints.placeName` and the drop's position, so the backend files it as a place in its neighborhood. A Google link's pin (`!3d…!4d…`) wins over the map's center (`@…`), the center only counts when the link names a place, and a route (`/maps/dir/`) isn't a place. Two cases use the network, in `DropReader.readPlace`, and are tried again on the next send while the drop has no coordinates: a short `maps.app.goo.gl` link is followed with one HEAD request to the full link, and a link with a name but no coordinates is looked up with `PlaceFinder` (MapKit). If either fails the drop is sent without them and the backend reads the link.

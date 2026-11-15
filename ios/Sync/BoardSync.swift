@@ -40,6 +40,7 @@ final class BoardSync {
     func wake(in context: ModelContext) {
         self.context = context
         InboxIngest.appGroup?.run(in: context)
+        AppGroup.defaults.set(Self.staysOffline ? nil : Bundle.main.object(forInfoDictionaryKey: "CONVEX_URL") as? String, forKey: "convexURL")
         guard !Self.staysOffline else { return }
         boards.start()
         follow()
@@ -131,7 +132,7 @@ final class BoardSync {
             predicate: #Predicate { $0.remoteId == nil && $0.statusRaw == pending },
             sortBy: [SortDescriptor(\.createdAt)]
         ))) ?? []
-        for drop in waiting where sending.insert(drop.id).inserted {
+        for drop in waiting where !DropKey.isSample(drop.id) && sending.insert(drop.id).inserted {
             Task {
                 await send(drop)
                 sending.remove(drop.id)
