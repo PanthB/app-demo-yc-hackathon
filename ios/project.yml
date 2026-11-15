@@ -12,8 +12,11 @@ settings:
     TARGETED_DEVICE_FAMILY: "1"
     EXCLUDED_ARCHS[sdk=iphonesimulator*]: x86_64
     CODE_SIGN_STYLE: Manual
+    CODE_SIGN_STYLE[sdk=iphoneos*]: Automatic
     DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM[sdk=iphoneos*]: JD9H683DWQ
     CODE_SIGN_IDENTITY[sdk=iphonesimulator*]: "-"
+    CODE_SIGN_IDENTITY[sdk=iphoneos*]: Apple Development
 packages:
   ConvexMobile:
     url: https://github.com/convex/convex-swift
