@@ -72,6 +72,9 @@ final class CameraModel {
     @ObservationIgnored private var captures: [Int64: PhotoCapture] = [:]
     @ObservationIgnored private var zoomAtPinchStart: CGFloat = 1
     @ObservationIgnored private var stillIndex = 0
+    #if DEBUG
+    @ObservationIgnored private var forcedAccess = CameraDebug.forcedAccess
+    #endif
 
     static let maxZoom: CGFloat = 8
 
@@ -79,8 +82,8 @@ final class CameraModel {
 
     func start() async {
         #if DEBUG
-        if let forced = CameraDebug.forcedAccess, access == .checking {
-            access = forced
+        if let forcedAccess {
+            access = forcedAccess
             return
         }
         if CameraDebug.usesStill {
@@ -108,7 +111,7 @@ final class CameraModel {
     func askForAccess() async {
         #if DEBUG
         if CameraDebug.usesStill {
-            access = .checking
+            forcedAccess = nil
             await start()
             return
         }
