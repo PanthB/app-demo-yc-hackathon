@@ -1,5 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 84" width="96" height="84">
-  <path d="M8 32Q48 46 88 32V76Q88 80 84 80H12Q8 80 8 76Z" fill="#FFFBF2"/>
-  <path d="M8 32Q48 46 88 32V36.5Q48 50.5 8 36.5Z" fill="#5B3A21" fill-opacity=".08"/>
-  <path d="M8 68H88V76Q88 80 84 80H12Q8 80 8 76Z" fill="#8FDDB0"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 52" width="64" height="52">
+  <path d="M0 12Q32 18 64 12V48Q64 52 60 52H4Q0 52 0 48Z" fill="#FFFBF2"/>
+  <path d="M0 12Q32 18 64 12V20Q32 26 0 20Z" fill="#8FDDB0"/>
 </svg>

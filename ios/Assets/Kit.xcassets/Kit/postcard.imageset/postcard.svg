@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 108" width="160" height="108">
-  <path fill-rule="evenodd" d="M4 0H156Q160 0 160 4V82L134 108H4Q0 108 0 104V4Q0 0 4 0ZM10 8h64a2 2 0 0 1 2 2v88a2 2 0 0 1 -2 2h-64a2 2 0 0 1 -2 -2v-88a2 2 0 0 1 2 -2Z" fill="#FFFBF2"/>
+  <path fill-rule="evenodd" d="M4 0H134L160 26V104Q160 108 156 108H4Q0 108 0 104V4Q0 0 4 0ZM10 8h64a2 2 0 0 1 2 2v88a2 2 0 0 1 -2 2h-64a2 2 0 0 1 -2 -2v-88a2 2 0 0 1 2 -2Z" fill="#FFFBF2"/>
   <path fill-rule="evenodd" d="M9.5 6.5h65a3 3 0 0 1 3 3v89a3 3 0 0 1 -3 3h-65a3 3 0 0 1 -3 -3v-89a3 3 0 0 1 3 -3ZM10 8h64a2 2 0 0 1 2 2v88a2 2 0 0 1 -2 2h-64a2 2 0 0 1 -2 -2v-88a2 2 0 0 1 2 -2Z" fill="#5B3A21" fill-opacity=".1"/>
-  <path d="M130 10h16a4 4 0 0 1 4 4v20a4 4 0 0 1 -4 4h-16a4 4 0 0 1 -4 -4v-20a4 4 0 0 1 4 -4ZM88 58H150M88 72H150M88 86H124" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="#8A7F74"/>
-  <path d="M160 82L131.5 79.5L134 108Z" fill="#5B3A21" fill-opacity=".18"/>
-  <path d="M160 82H134V108Z" fill="#8FDDB0"/>
-  <path d="M134 82H146Q144 90 134 93Z" fill="#7CC4FF"/>
-  <path d="M135.5 101L153 83.5" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="#FFFBF2"/>
-  <circle cx="143" cy="92" r="2.5" fill="#FF6B4A"/>
+  <path d="M90 60H150M90 74H150M90 88H126" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="#8A7F74"/>
+  <path d="M134 0L131.5 28.5H160V26Z" fill="#5B3A21" fill-opacity=".18"/>
+  <path d="M134 0V26H160Z" fill="#8FDDB0"/>
+  <path d="M134 26H146Q144 18 134 15Z" fill="#7CC4FF"/>
+  <path d="M135.5 7L153 24.5" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="#FFFBF2"/>
+  <circle cx="143" cy="16" r="2.5" fill="#FF6B4A"/>
 </svg>
