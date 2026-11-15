@@ -9,7 +9,7 @@ test:
     name: app-demo-yc-hackathon
   variables:
     share-target: "Moments"
-    share-url: "https://www.google.com/maps/place/Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110"
+    share-url: "https://maps.google.com/?q=Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110"
     home-location: "37.7793,-122.4193"
     near-location: "37.7627,-122.4236"
   blocks:

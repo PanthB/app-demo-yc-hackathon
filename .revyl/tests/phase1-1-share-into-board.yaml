@@ -1,27 +1,59 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 77463c1b-f779-4ee0-bcb9-df1cf67776bb
+    remote_version: 2
+    local_version: 2
+    last_synced_at: "2026-11-15T21:27:01Z"
+    checksum: 31a8d43e431af4e2bdeb7aa1f4fca0247d7b0978ca78447fbabb153d746f1bfe
 test:
-  metadata:
-    name: phase1-1-share-into-board
-    platform: ios
-    tags:
-      - phase1
-      - share
-  build:
-    name: app-demo-yc-hackathon
-  variables:
-    share-target: "Moments"
-    share-url: "https://www.google.com/maps/place/Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110"
-  blocks:
-    - type: manual
-      step_type: navigate
-      step_description: "{{share-url}}"
-    - type: instructions
-      step_description: Wait for the page to finish loading, then tap Safari's Share button. If the toolbar has no Share button, tap the More (…) button first and choose Share from its menu. In the share sheet, pick {{share-target}} from the row of apps, and if it isn't in the row, scroll the row or tap More to find it.
-    - type: validation
-      step_description: The share sheet confirms the drop in a friendly line that starts with "dropped it", such as "dropped it in sf crew." or "dropped it, i'll find it a spot."
-    - type: manual
-      step_type: open_app
-      step_description: com.apple.mobileslideshow
-    - type: instructions
-      step_description: Open any photo in the library, tap Share, and pick {{share-target}} from the row of apps. If it isn't in the row, scroll the row or tap More to find it.
-    - type: validation
-      step_description: The share sheet confirms the drop in a friendly line that starts with "dropped it".
+    metadata:
+        name: phase1-1-share-into-board
+        platform: ios
+        tags:
+            - phase1
+            - share
+    build:
+        name: app-demo-yc-hackathon
+    variables:
+        invite-code: SFCREW
+        person-name: revyl
+        share-target: Moments
+        share-url: https://maps.google.com/?q=Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://join/{{invite-code}}
+        - type: if
+          condition: Is a dialog asking whether to open this in the app visible?
+          then:
+            - type: instructions
+              step_description: Tap Open.
+        - type: instructions
+          step_description: In the join a board sheet, type {{person-name}} as your name if it asks for one, make sure the code field reads {{invite-code}} (type it if it's empty), then tap join.
+        - type: manual
+          step_type: wait
+          step_description: "3"
+        - type: validation
+          step_description: The title at the top reads sf crew.
+        - type: manual
+          step_type: navigate
+          step_description: '{{share-url}}'
+        - type: instructions
+          step_description: Wait for the page to finish loading, then tap Safari's Share button. If the toolbar has no Share button, tap the More (…) button first and choose Share from its menu. In the share sheet, pick {{share-target}} from the row of apps, and if it isn't in the row, scroll the row or tap More to find it. After tapping {{share-target}}, don't tap anything else.
+        - type: validation
+          step_description: A small card confirms the drop and names the shared board, saying "dropped it in sf crew."
+        - type: manual
+          step_type: open_app
+          step_description: com.apple.mobileslideshow
+        - type: instructions
+          step_description: Open any photo in the library, tap Share, and pick {{share-target}} from the row of apps. If it isn't in the row, scroll the row or tap More to find it. After tapping {{share-target}}, don't tap anything else.
+        - type: validation
+          step_description: A small card confirms the drop and names the shared board, saying "dropped it in sf crew."
