@@ -225,7 +225,7 @@ struct ClusterLayout {
         guard distance > 1 else { return nil }
         let middle = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 + distance * 0.12 + 4)
         let normal = CGPoint(x: -(to.y - from.y) / distance, y: (to.x - from.x) / distance)
-        for bend in [0, 0.18, -0.18, 0.35, -0.35, 0.55, -0.55] as [CGFloat] {
+        for bend in [0, 0.18, -0.18, 0.35, -0.35] as [CGFloat] {
             let control = CGPoint(x: middle.x + normal.x * bend * distance, y: middle.y + normal.y * bend * distance)
             let whole = Link(id: pair.id, first: pair.first, second: pair.second, reason: pair.reason, from: from, control: control, to: to, anchor: .zero)
             let samples = 64
