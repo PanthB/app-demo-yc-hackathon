@@ -5,16 +5,21 @@ struct NightCard: View {
     var wide = false
     @Environment(BoardClock.self) private var clock
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.displayScale) private var displayScale
+    @State private var loaded: NightPicture?
 
     var body: some View {
         let now = clock.now
         let face = drop.previewFace(now: now)
+        let path = imagePath(face)
+        let key = path.map { NightImage.cacheKey($0, pixels: pixels) }
+        let shown = key.flatMap { key in NightImage.cached(key) ?? (loaded?.key == key ? loaded : nil) }
         VStack(alignment: .leading, spacing: 0) {
-            media(face)
+            media(face, path: path, key: key, shown: shown)
             details(face: face, now: now)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(background(face))
+        .background(face.fillsItsFrame ? shown?.tone ?? NightStyle.surface : NightStyle.surface)
         .clipShape(NightStyle.card)
         .overlay { NightStyle.card.strokeBorder(NightStyle.hairline, lineWidth: 1) }
         .contentShape(NightStyle.card)
@@ -24,24 +29,57 @@ struct NightCard: View {
         .accessibilityIdentifier("nightCard")
     }
 
-    @ViewBuilder
-    private func media(_ face: PreviewFace) -> some View {
+    private var pixels: Int {
+        Int(((wide || typeSize.isAccessibilitySize) ? 400 : 200) * displayScale)
+    }
+
+    private func imagePath(_ face: PreviewFace) -> String? {
         switch face {
-        case .image(let image), .cutout(let image):
+        case .cutout: drop.cutoutPath
+        case .image: MediaStore.image(at: drop.thumbnailPath) != nil ? drop.thumbnailPath : drop.mediaPaths.first
+        default: nil
+        }
+    }
+
+    @ViewBuilder
+    private func media(_ face: PreviewFace, path: String?, key: String?, shown: NightPicture?) -> some View {
+        switch face {
+        case .image, .cutout:
             Color.clear
                 .aspectRatio(1 / ratio(face), contentMode: .fit)
                 .overlay {
-                    if case .cutout = face {
-                        Image(uiImage: image).resizable().scaledToFit().padding(NightStyle.inset)
+                    if let shown {
+                        artwork(face, shown.image).transition(.opacity)
                     } else {
-                        Image(uiImage: image).resizable().scaledToFill()
+                        NightSkeleton().transition(.opacity)
                     }
                 }
                 .clipped()
                 .overlay(alignment: .topLeading) { badges }
+                .task(id: key) { await load(path) }
         default:
             badges
         }
+    }
+
+    @ViewBuilder
+    private func artwork(_ face: PreviewFace, _ image: CGImage) -> some View {
+        if case .cutout = face {
+            Image(decorative: image, scale: displayScale).resizable().scaledToFit().padding(NightStyle.inset)
+        } else {
+            Image(decorative: image, scale: displayScale).resizable().scaledToFill()
+        }
+    }
+
+    private func load(_ path: String?) async {
+        guard let path else { return }
+        if let cached = NightImage.cached(NightImage.cacheKey(path, pixels: pixels)) {
+            loaded = cached
+            return
+        }
+        let toneKey = drop.thumbnailPath ?? drop.cutoutPath ?? drop.mediaPaths.first ?? drop.id.uuidString
+        guard let picture = await NightImage.load(path, toneKey: toneKey, pixels: pixels), !Task.isCancelled else { return }
+        withAnimation(.easeOut(duration: 0.2)) { loaded = picture }
     }
 
     private var badges: some View {
@@ -56,14 +94,14 @@ struct NightCard: View {
     private func ratio(_ face: PreviewFace) -> CGFloat {
         if wide { return 9 / 16 }
         switch drop.kind {
-        case .song: return 1
-        case .video: return 1.25
-        default: return min(max(face.ratio, 0.75), 1.25)
+        case .song: return 0.9
+        case .video: return 1.1
+        default: return min(max(face.ratio, 0.75), 1.1)
         }
     }
 
     private func details(face: PreviewFace, now: Date) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             lead(face)
             if let title = drop.cardTitle(beside: face) {
                 Text(title).font(NightStyle.itemTitle).lineLimit(typeSize.isAccessibilitySize ? nil : 2)
@@ -71,14 +109,14 @@ struct NightCard: View {
             if let meta = meta(face: face, now: now) {
                 Text(meta).font(NightStyle.body).foregroundStyle(NightStyle.secondary).monospacedDigit().lineLimit(2)
             }
-            if let suggestion = drop.liveSuggestion(now: now) {
-                SuggestionLine(suggestion: suggestion).font(NightStyle.body)
+            if drop.isArriving {
+                SuggestionLine(suggestion: .words("reading this one now.")).font(NightStyle.body)
             }
-            NightByline(drop: drop).padding(.top, 4)
+            NightByline(drop: drop).padding(.top, 2)
         }
         .padding(.horizontal, NightStyle.inset)
-        .padding(.top, face.fillsItsFrame ? NightStyle.inset : 0)
-        .padding(.bottom, NightStyle.inset)
+        .padding(.top, face.fillsItsFrame ? 10 : 0)
+        .padding(.bottom, 10)
     }
 
     private func meta(face: PreviewFace, now: Date) -> String? {
@@ -116,15 +154,6 @@ struct NightCard: View {
             .padding(.bottom, 4)
         case .image, .cutout, .plain:
             EmptyView()
-        }
-    }
-
-    private func background(_ face: PreviewFace) -> Color {
-        switch face {
-        case .image(let picture), .cutout(let picture):
-            ArtworkTone.color(of: picture, key: drop.thumbnailPath ?? drop.cutoutPath ?? drop.mediaPaths.first ?? drop.id.uuidString)
-        default:
-            NightStyle.surface
         }
     }
 }

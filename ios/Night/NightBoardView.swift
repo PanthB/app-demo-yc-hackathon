@@ -16,6 +16,10 @@ struct NightBoardView: View {
     @State private var following: UUID?
     @State private var touchedSinceFollow = false
     @State private var toast: NightToastItem?
+    @State private var sectionInView: String?
+    @State private var landed = 0
+    @State private var grouped = 0
+    @Namespace private var moves
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var namespace
 
@@ -67,7 +71,8 @@ struct NightBoardView: View {
                     )
                     NightFeed(
                         sections: sections,
-                        namespace: namespace
+                        namespace: namespace,
+                        moves: moves
                     ) { drop in
                         path.append(drop.id)
                     }
@@ -124,6 +129,17 @@ struct NightBoardView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
                 }
             }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                let jumps = sections.filter { $0.style != .done }
+                if jumps.count > 1 {
+                    NightJumpRow(sections: jumps, current: sectionInView ?? jumps.first?.id) { id in
+                        withAnimation(reduceMotion ? nil : .smooth(duration: 0.5)) { proxy.scrollTo(id, anchor: .top) }
+                    }
+                }
+            }
+            .onScrollTargetVisibilityChange(idType: String.self, threshold: 0.2) { ids in
+                sectionInView = ids.first
+            }
             .onScrollPhaseChange { _, phase in
                 if phase == .interacting { touchedSinceFollow = true }
             }
@@ -134,21 +150,27 @@ struct NightBoardView: View {
                 if drop.authorId == me {
                     following = drop.id
                     touchedSinceFollow = false
+                    landed += 1
                     reveal(drop.id, in: sections, proxy: proxy)
                 } else {
                     withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: drop.id, text: ShellToast.words(for: drop)) }
                 }
             }
             .onChange(of: following.flatMap { Self.section(of: $0, in: sections) }) { before, after in
-                guard let id = following, before != nil, after != nil else { return }
+                guard let id = following, before != nil, let after else { return }
                 following = nil
                 if !touchedSinceFollow { reveal(id, in: sections, proxy: proxy) }
+                guard after.hasPrefix("cluster-"), let section = sections.first(where: { $0.id == after }) else { return }
+                grouped += 1
+                withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: id, text: Self.settledWords(section, me: me)) }
             }
             }
         }
-        .task(id: toast?.id) {
+        .sensoryFeedback(.impact(weight: .light), trigger: landed)
+        .sensoryFeedback(.success, trigger: grouped)
+        .task(id: toast) {
             guard toast != nil else { return }
-            try? await Task.sleep(for: .seconds(4))
+            try? await Task.sleep(for: .seconds(3.5))
             guard !Task.isCancelled else { return }
             withAnimation(reduceMotion ? nil : .smooth) { toast = nil }
         }
@@ -206,6 +228,17 @@ struct NightBoardView: View {
             try? await Task.sleep(for: .milliseconds(150))
             withAnimation(motion) { proxy.scrollTo(id, anchor: .center) }
         }
+    }
+
+    static func settledWords(_ section: DropSection, me: String) -> String {
+        let others = Dictionary(grouping: section.drops.filter { $0.authorId != me && !$0.authorId.isEmpty }, by: \.authorId)
+            .sorted { $0.value.count != $1.value.count ? $0.value.count > $1.value.count : $0.key < $1.key }
+            .compactMap { $0.value.first.map(\.authorLabel) }
+            .prefix(3)
+        let names = Array(others)
+        guard let last = names.last else { return "in \(section.title) · a new vibe for the crew." }
+        let joined = names.count == 1 ? last : names.dropLast().joined(separator: ", ") + " and " + last
+        return "in \(section.title) · closest to \(joined)'s vibes."
     }
 
     static func section(of id: UUID, in sections: [DropSection]) -> String? {
