@@ -13,7 +13,6 @@ struct ClusterBoardView: View {
     @State private var known: Set<UUID>?
     @State private var held: [UUID: Hold] = [:]
     @State private var readySince: [UUID: Date] = [:]
-    @State private var scroll = ScrollPosition(edge: .top)
     @State private var aimed = false
     @State private var flights: [UUID: Flight] = [:]
     @State private var viewport: CGRect = .zero
@@ -66,26 +65,27 @@ struct ClusterBoardView: View {
             let width = proxy.size.width
             let holds = currentHolds(width: width)
             let plan = makePlan(width: width, holding: Set(holds.keys))
-            ScrollView(.vertical) {
-                board(plan, holds: holds, width: width)
-                    .background {
-                        CorkSurface()
-                            .padding(.vertical, -400)
-                            .contentShape(.rect)
-                            .onTapGesture { choose(nil) }
+            ScrollViewReader { reader in
+                ScrollView(.vertical) {
+                    board(plan, holds: holds, width: width)
+                        .background {
+                            CorkSurface()
+                                .padding(.vertical, -400)
+                                .contentShape(.rect)
+                                .onTapGesture { choose(nil) }
+                        }
+                }
+                .scrollIndicators(.hidden)
+                .defaultScrollAnchor(Self.debugAnchor)
+                .onChange(of: plan.layout.labels.count, initial: true) {
+                    guard !aimed, let target = Self.debugCluster,
+                          plan.layout.labels.contains(where: { $0.id == target })
+                    else { return }
+                    aimed = true
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(700))
+                        reader.scrollTo("aim-\(target)", anchor: .top)
                     }
-            }
-            .scrollIndicators(.hidden)
-            .scrollPosition($scroll)
-            .defaultScrollAnchor(Self.debugAnchor)
-            .onChange(of: plan.layout.labels.count, initial: true) {
-                guard !aimed, let target = Self.debugCluster,
-                      let label = plan.layout.labels.first(where: { $0.id == target })
-                else { return }
-                aimed = true
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(700))
-                    scroll.scrollTo(y: label.origin.y - 12)
                 }
             }
             .onScrollGeometryChange(for: CGRect.self, of: { $0.visibleRect }) { _, rect in
@@ -114,6 +114,14 @@ struct ClusterBoardView: View {
                     .opacity(live ? 1 : 0)
                     .allowsHitTesting(live)
                     .transition(.opacity)
+            }
+
+            ForEach(plan.layout.labels) { label in
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .id("aim-\(label.id)")
+                    .position(x: 1, y: max(label.origin.y - 12, 0))
+                    .accessibilityHidden(true)
             }
 
             ForEach(plan.layout.labels) { label in
@@ -148,6 +156,7 @@ struct ClusterBoardView: View {
     private func item(_ drop: Drop, shape: ClusterShape, point: CGPoint, plan: Plan, shown: Bool, lifted: Bool) -> some View {
         let spot = plan.layout.spots[drop.id]
         let flight = flights[drop.id]
+        let start = lifted ? CGSize.zero : (flight?.start ?? .zero)
         let identity = reduceMotion ? "\(drop.id)@\(Int(point.x)),\(Int(point.y))" : drop.id.uuidString
         return ClusterItem(
             drop: drop,
@@ -164,7 +173,7 @@ struct ClusterBoardView: View {
         .position(point)
         .transaction { if flight != nil { $0.animation = nil } }
         .animation(flight?.curve ?? .default) {
-            $0.modifier(ArcFlight(progress: flight?.progress ?? 1, start: flight?.start ?? .zero, bulge: flight?.bulge ?? .zero))
+            $0.modifier(ArcFlight(progress: flight?.progress ?? 1, start: start, bulge: flight?.bulge ?? .zero))
         }
         .opacity(shown ? 1 : 0)
         .allowsHitTesting(shown)
