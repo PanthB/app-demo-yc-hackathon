@@ -65,12 +65,11 @@ final class CameraTests: XCTestCase {
 
     @MainActor
     func testTheBoardNameMatchesTheBoardThePhotoLandsIn() {
-        let crewDrop = Drop(id: UUID(), createdAt: .now, authorId: "seed-maya", boardId: "sf-crew", sourceKind: .url)
         let personal = "seed-panth-board"
-        XCTAssertEqual(DropCamera.boardName("sf-crew", remote: [], drops: [crewDrop], personal: personal), "sf crew")
-        XCTAssertEqual(DropCamera.boardName(personal, remote: [], drops: [crewDrop], personal: personal), "my board")
+        XCTAssertEqual(DropCamera.boardName("sf-crew", remote: [], personal: personal), "sf crew")
+        XCTAssertEqual(DropCamera.boardName(personal, remote: [], personal: personal), "my board")
         let roomies = RemoteBoard(boardId: "b1", name: "roomies", shared: true, inviteCode: nil, ownerId: "p", members: [], createdAt: 0)
-        XCTAssertEqual(DropCamera.boardName("b1", remote: [roomies], drops: [], personal: personal), "roomies")
-        XCTAssertNil(DropCamera.boardName("nowhere", remote: [roomies], drops: [], personal: personal))
+        XCTAssertEqual(DropCamera.boardName("b1", remote: [roomies], personal: personal), "roomies")
+        XCTAssertNil(DropCamera.boardName(UUID().uuidString.lowercased(), remote: [roomies], personal: personal))
     }
 }
