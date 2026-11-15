@@ -15,6 +15,13 @@ enum PreviewFace {
         return nil
     }
 
+    var fillsItsFrame: Bool {
+        switch self {
+        case .image, .cutout: true
+        case .words, .date, .countdown, .waveform, .symbol: false
+        }
+    }
+
     var ratio: CGFloat {
         switch self {
         case .image(let image):
@@ -22,9 +29,7 @@ enum PreviewFace {
             return min(max(image.size.height / image.size.width, 0.75), 1.5)
         case .cutout:
             return 1
-        case .words(let words):
-            return words.count > 40 ? 1 : 0.75
-        case .date, .countdown, .waveform, .symbol:
+        case .words, .date, .countdown, .waveform, .symbol:
             return 0.75
         }
     }

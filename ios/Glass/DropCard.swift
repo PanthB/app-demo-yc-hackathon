@@ -12,18 +12,12 @@ struct DropCard: View {
         let face = drop.previewFace(now: now)
         VStack(alignment: .leading, spacing: 0) {
             DropPreview(face: face, seed: drop.id, ratio: previewRatio)
-                .overlay(alignment: .topLeading) {
-                    KindPill(kind: drop.kind).padding(8)
-                }
-                .overlay(alignment: .topTrailing) {
-                    if drop.pinned { PinBadge().padding(8) }
-                }
             VStack(alignment: .leading, spacing: 4) {
                 if let title = drop.cardTitle(beside: face) {
                     Text(title).font(.headline).lineLimit(2)
                 }
                 if let meta = drop.cardMeta(now: now, beside: face) {
-                    Text(meta).font(.subheadline).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
+                    Text(meta).font(.footnote).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
                 }
                 HStack(alignment: .top, spacing: 6) {
                     PersonAvatar(name: drop.cardAuthorName, personId: drop.cardAuthorId)
@@ -36,10 +30,18 @@ struct DropCard: View {
                 .padding(.top, 4)
             }
             .multilineTextAlignment(.leading)
-            .padding(12)
+            .padding(.horizontal, 12)
+            .padding(.top, face.fillsItsFrame || previewRatio != nil ? 12 : 8)
+            .padding(.bottom, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxHeight: .infinity, alignment: .top)
+        .overlay(alignment: .topLeading) {
+            KindPill(kind: drop.kind).padding(12)
+        }
+        .overlay(alignment: .topTrailing) {
+            if drop.pinned { PinBadge().padding(12) }
+        }
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(Self.shape)
         .contentShape(Self.shape)
