@@ -14,16 +14,19 @@ struct NightFeed: View {
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(sections) { section in
-                switch section.style {
-                case .pinned, .zone:
-                    header(section)
-                    grid(section.drops)
-                case .done:
-                    doneHeader(section)
-                    if showsDone {
-                        grid(section.drops).saturation(0.2).opacity(0.75)
+                VStack(alignment: .leading, spacing: 0) {
+                    switch section.style {
+                    case .pinned, .zone:
+                        header(section)
+                        grid(section.drops)
+                    case .done:
+                        doneHeader(section)
+                        if showsDone {
+                            grid(section.drops).saturation(0.2).opacity(0.75)
+                        }
                     }
                 }
+                .id(section.id)
             }
         }
     }
@@ -81,6 +84,7 @@ struct NightFeed: View {
             label()
         }
         .buttonStyle(NightPressStyle())
+        .id(drop.id)
         .contextMenu { NightDropMenu(drop: drop) }
         .matchedTransitionSource(id: drop.id, in: namespace) { source in
             source.clipShape(NightStyle.card)

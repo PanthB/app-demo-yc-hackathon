@@ -13,7 +13,16 @@ struct NightBoardView: View {
     @State private var showsSuggestions = false
     @State private var moment = 0
     @State private var holdsDemoStreak = Self.asksForStreakDemo
+    @State private var following: UUID?
+    @State private var touchedSinceFollow = false
+    @State private var toast: NightToastItem?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var namespace
+
+    private struct Arrivals: Equatable {
+        let board: String
+        let ids: [UUID]
+    }
 
     private struct StreakMark: Equatable {
         let board: String
@@ -33,7 +42,10 @@ struct NightBoardView: View {
         let streaks = shownStreaks(drops, me: me)
         let mine = streaks.mine
 
+        let sections = DropSection.build(drops, grouping: isShared ? .vibe : .when, filter: filter, me: me, now: clock.now)
+
         NavigationStack(path: $path) {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     NightHeader(
@@ -54,7 +66,7 @@ struct NightBoardView: View {
                         openSuggestions: { showsSuggestions = true }
                     )
                     NightFeed(
-                        sections: DropSection.build(drops, grouping: isShared ? .vibe : .when, filter: filter, me: me, now: clock.now),
+                        sections: sections,
                         namespace: namespace
                     ) { drop in
                         path.append(drop.id)
@@ -102,6 +114,49 @@ struct NightBoardView: View {
                         .navigationTransition(.zoom(sourceID: id, in: namespace))
                 }
             }
+            .overlay(alignment: .top) {
+                if let toast {
+                    NightToast(text: toast.text) {
+                        reveal(toast.id, in: sections, proxy: proxy)
+                        withAnimation(reduceMotion ? nil : .smooth) { self.toast = nil }
+                    }
+                    .padding(.top, 8)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                }
+            }
+            .onScrollPhaseChange { _, phase in
+                if phase == .interacting { touchedSinceFollow = true }
+            }
+            .onChange(of: Arrivals(board: current, ids: drops.map(\.id))) { before, after in
+                guard before.board == after.board else { return }
+                let added = Set(after.ids).subtracting(before.ids)
+                guard let drop = drops.first(where: { added.contains($0.id) && $0.createdAt > .now.addingTimeInterval(-120) }) else { return }
+                if drop.authorId == me {
+                    following = drop.id
+                    touchedSinceFollow = false
+                    reveal(drop.id, in: sections, proxy: proxy)
+                } else {
+                    withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: drop.id, text: ShellToast.words(for: drop)) }
+                }
+            }
+            .onChange(of: following.flatMap { Self.section(of: $0, in: sections) }) { before, after in
+                guard let id = following, before != nil, after != nil else { return }
+                following = nil
+                if !touchedSinceFollow { reveal(id, in: sections, proxy: proxy) }
+            }
+            }
+        }
+        .task(id: toast?.id) {
+            guard toast != nil else { return }
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : .smooth) { toast = nil }
+        }
+        .task(id: following) {
+            guard following != nil else { return }
+            try? await Task.sleep(for: .seconds(20))
+            guard !Task.isCancelled else { return }
+            following = nil
         }
         .sheet(isPresented: $showsSuggestions) {
             NavigationStack {
@@ -141,6 +196,20 @@ struct NightBoardView: View {
         .tint(palette.ember)
         .preferredColorScheme(.dark)
         .accessibilityIdentifier("nightBoard")
+    }
+
+    private func reveal(_ id: UUID, in sections: [DropSection], proxy: ScrollViewProxy) {
+        guard let section = Self.section(of: id, in: sections) else { return }
+        let motion: Animation? = reduceMotion ? nil : .smooth(duration: 0.5)
+        withAnimation(motion) { proxy.scrollTo(section, anchor: .top) }
+        Task {
+            try? await Task.sleep(for: .milliseconds(150))
+            withAnimation(motion) { proxy.scrollTo(id, anchor: .center) }
+        }
+    }
+
+    static func section(of id: UUID, in sections: [DropSection]) -> String? {
+        sections.first { $0.drops.contains { $0.id == id } }?.id
     }
 
     static func board(of drop: Drop, personal: String) -> String {
