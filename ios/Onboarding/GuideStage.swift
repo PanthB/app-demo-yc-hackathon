@@ -441,13 +441,16 @@ struct GuideLayout {
     }
 }
 
+/// A cluster label on a paper slip, handwritten while the board's Handwriting flag is on, upright when it's off.
 struct GuideSlip: View {
     let text: String
     let tilt: Double
 
+    @AppStorage(Mood.handwritingKey) private var handwriting = true
+
     var body: some View {
         Text(text)
-            .font(.custom(UIFont.fontNames(forFamilyName: "Caveat").first ?? "Caveat", size: 18))
+            .font(handwriting ? .custom(Mood.handFontName, size: 18) : .system(size: 14, weight: .semibold, design: .rounded))
             .foregroundStyle(Color(red: 0.953, green: 0.914, blue: 0.855))
             .padding(.horizontal, 10)
             .padding(.vertical, 3)
