@@ -81,4 +81,20 @@ final class NightStreakTests: XCTestCase {
             XCTAssertEqual(words, words.lowercased())
         }
     }
+
+    func testADropThatArrivesWhileTheAppIsOpenCountsRightAway() {
+        let clock = at(15, 9)
+        let arrived = at(15, 9, 5)
+        let now = BoardStreaks.now(clock: clock, drops: [at(14, 20), arrived], realNow: at(15, 9, 6))
+        XCTAssertEqual(now, arrived)
+        let entries = [at(14, 20), arrived].map { BoardStreaks.Entry(authorId: "me", createdAt: $0) }
+        XCTAssertEqual(BoardStreaks(entries, me: "me", now: now, calendar: calendar).mine, DailyStreak(days: 2, droppedToday: true))
+        XCTAssertEqual(BoardStreaks(entries, me: "me", now: clock, calendar: calendar).mine, DailyStreak(days: 1, droppedToday: false))
+    }
+
+    func testADropDatedInTheFutureDoesNotMoveTheStreakClock() {
+        let clock = at(15, 9)
+        XCTAssertEqual(BoardStreaks.now(clock: clock, drops: [at(16, 10)], realNow: at(15, 9, 6)), clock)
+        XCTAssertEqual(BoardStreaks.now(clock: clock, drops: [], realNow: at(15, 9, 6)), clock)
+    }
 }
