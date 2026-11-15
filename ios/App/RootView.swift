@@ -25,8 +25,8 @@ struct RootView: View {
                     .transition(.opacity)
             }
             if onboarding {
-                OnboardingFlow { result in
-                    storedView = (result.start == .demo ? ViewMode.board : ViewMode.cards).rawValue
+                OnboardingFlow { _ in
+                    storedView = ViewMode.night.rawValue
                     withAnimation(.smooth(duration: 0.45)) { onboarding = false }
                 }
                 .transition(.onboardingExit)

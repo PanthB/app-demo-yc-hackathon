@@ -37,11 +37,11 @@ Simulator builds are ad-hoc signed ("Sign to Run Locally", identity `-`, no team
 
 ## Views
 
-The app shows the same `Drop` records three ways: list, cards (the default) and board (the corkboard in `ios/Board`, or `ios/Clusters` when the board is arranged by mood). A fourth, night (`ios/Night`, APPD-20), is a dark-only variant that RootView shows full screen with its own header and menu, and none of the shell.
+The app shows the same `Drop` records four ways. Night (`ios/Night`, APPD-20) is the flagship and the default for new installs: a dark-only view that RootView shows full screen with its own header and views menu, and none of the shell. The views menu leads to the other three: list, cards and board (the corkboard in `ios/Board`, or `ios/Clusters` when the board is arranged by mood).
 
 `App/BoardShell.swift` hosts the other three in one NavigationStack for the current board from `BoardsStore`. The inline title is the board menu (switch boards, invite friends to a shared board with its link and code, start a shared board, join with a code). The arrange menu picks "by when" or "by mood" per board (personal boards start by when, shared boards by mood) and, in the board view, turns the handwriting and the lines between related drops on or off (lines start off). Shared boards add the everyone and mine control under the title and the members' avatars, which open the invite sheet. The lightbulb, "ideas", opens APPD-12's `SuggestionsFeed` for the board in a sheet. The bottom glass bar switches views and holds `AddMenu`. A tapped drop opens `DropDetailView` with the zoom transition, using the one namespace every view gets. When a friend's drop arrives on the current board, a glass toast at the top says who added what ("maya added a song.") for 2 seconds.
 
-On first launch `RootView` lays APPD-17's `OnboardingFlow` over the shell and removes it with `.onboardingExit`. Demo ends on sf crew by mood in the board view, and start fresh ends on the person's own board in cards.
+On first launch `RootView` lays APPD-17's `OnboardingFlow` over the shell and removes it with `.onboardingExit`. Both paths end in night: demo on sf crew, and start fresh on the person's own board.
 
 The stored view lives in `UserDefaults` key `viewMode`. The launch argument `-view list`, `-view cards`, `-view board` or `-view night` sets it once at launch, so the bar still switches views in a test run. Cloud phones can't pass launch arguments, so the app also handles the `appdemo` URL scheme: open `appdemo://view/list`, `appdemo://view/cards`, `appdemo://view/board` or `appdemo://view/night` (with `tools.capy.phone` `action: "open_url"`) to store the setting and switch right away.
 

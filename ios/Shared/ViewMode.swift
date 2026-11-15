@@ -19,7 +19,7 @@ enum ViewMode: String, CaseIterable, Sendable {
     }
 
     init(stored: String?) {
-        self = stored.flatMap(ViewMode.init(rawValue:)) ?? .cards
+        self = stored.flatMap(ViewMode.init(rawValue:)) ?? .night
     }
 
     init?(url: URL) {

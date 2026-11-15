@@ -8,19 +8,19 @@ final class ViewModeTests: XCTestCase {
         XCTAssertEqual(ViewMode.resolve(arguments: ["AppDemo", "-view", "night"], stored: "cards"), .night)
     }
 
-    func testStoredSettingThenCardsByDefault() {
+    func testStoredSettingThenNightByDefault() {
         XCTAssertEqual(ViewMode.resolve(arguments: ["AppDemo"], stored: "board"), .board)
-        XCTAssertEqual(ViewMode.resolve(arguments: ["AppDemo"], stored: nil), .cards)
-        XCTAssertEqual(ViewMode.resolve(arguments: ["AppDemo"], stored: "glass"), .cards)
+        XCTAssertEqual(ViewMode.resolve(arguments: ["AppDemo"], stored: nil), .night)
+        XCTAssertEqual(ViewMode.resolve(arguments: ["AppDemo"], stored: "glass"), .night)
         XCTAssertEqual(ViewMode.resolve(arguments: ["AppDemo", "-view"], stored: "list"), .list)
-        XCTAssertEqual(ViewMode.resolve(arguments: ["AppDemo", "-view", "grid"], stored: nil), .cards)
+        XCTAssertEqual(ViewMode.resolve(arguments: ["AppDemo", "-view", "grid"], stored: nil), .night)
     }
 
     func testTheStoredModeIsReadWithoutTheLaunchArgument() {
         XCTAssertNotEqual(ViewMode.storageKey, "view")
         XCTAssertEqual(ViewMode(stored: "night"), .night)
-        XCTAssertEqual(ViewMode(stored: "glass"), .cards)
-        XCTAssertEqual(ViewMode(stored: nil), .cards)
+        XCTAssertEqual(ViewMode(stored: "glass"), .night)
+        XCTAssertEqual(ViewMode(stored: nil), .night)
     }
 
     func testDeepLinks() {
