@@ -13,7 +13,6 @@ struct ClusterBoardView: View {
     @State private var known: Set<UUID>?
     @State private var held: [UUID: Hold] = [:]
     @State private var readySince: [UUID: Date] = [:]
-    @State private var aimed = false
     @State private var flights: [UUID: Flight] = [:]
     @State private var viewport: CGRect = .zero
     @State private var boardWidth: CGFloat = 0
@@ -77,15 +76,10 @@ struct ClusterBoardView: View {
                 }
                 .scrollIndicators(.hidden)
                 .defaultScrollAnchor(Self.debugAnchor)
-                .onChange(of: plan.layout.labels.count, initial: true) {
-                    guard !aimed, let target = Self.debugCluster,
-                          plan.layout.labels.contains(where: { $0.id == target })
-                    else { return }
-                    aimed = true
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(700))
-                        reader.scrollTo("aim-\(target)", anchor: .top)
-                    }
+                .task {
+                    guard let target = Self.debugCluster else { return }
+                    try? await Task.sleep(for: .milliseconds(1500))
+                    reader.scrollTo("aim-\(target)", anchor: .top)
                 }
             }
             .onScrollGeometryChange(for: CGRect.self, of: { $0.visibleRect }) { _, rect in
