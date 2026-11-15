@@ -143,7 +143,7 @@ export function orderVibes(values: string[]) {
       const facet = FACET_OF.get(v)!;
       const count = perFacet.get(facet) ?? 0;
       perFacet.set(facet, count + 1);
-      return count < 2;
+      return count < (facet === "neighborhood" ? 1 : 2);
     })
     .slice(0, MAX_VIBES);
 }
