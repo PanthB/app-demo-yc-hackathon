@@ -108,17 +108,21 @@ extension PersonAvatar {
     }
 }
 
-struct ShellSuggestions: View {
+struct ShellToast: View {
+    let text: String
+
     var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                "there's nothing to suggest yet.",
-                systemImage: "lightbulb",
-                description: Text("ideas for this board will show up here.")
-            )
-            .navigationTitle("for y'all")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-        .presentationDetents([.medium, .large])
+        Text(text)
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .glassEffect(.regular, in: .capsule)
+            .accessibilityIdentifier("arrivalToast")
+    }
+
+    static func words(for drop: Drop) -> String {
+        let word = drop.kind.word
+        let article = word.first.map { "aeiou".contains($0) } == true ? "an" : "a"
+        return "\(CardWords.clean(drop.authorName) ?? "someone") added \(article) \(word)."
     }
 }

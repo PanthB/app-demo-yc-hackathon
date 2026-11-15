@@ -78,6 +78,10 @@ struct RootView: View {
                 Logger.app.info("clearing the board")
                 SeedBoard.clear(context)
                 return
+            case "arrive" where UserDefaults.standard.bool(forKey: "BoardDebugSeed"):
+                Logger.app.info("a friend's drop arrives")
+                SeedBoard.arrive(on: boards.currentBoardId, in: context)
+                return
             default:
                 break
             }

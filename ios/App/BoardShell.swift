@@ -5,6 +5,7 @@ struct BoardShell: View {
     @Query(sort: \Drop.createdAt, order: .reverse) private var drops: [Drop]
     @AppStorage(ViewMode.storageKey) private var storedView: String?
     @AppStorage(Mood.handwritingKey) private var handwriting = true
+    @AppStorage(Mood.linesKey) private var lines = false
     @Environment(BoardsStore.self) private var boards
     @Environment(BoardClock.self) private var clock
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -13,7 +14,8 @@ struct BoardShell: View {
     @State private var filter: DropFilter = .everyone
     @State private var groupings: [String: DropGrouping] = [:]
     @State private var showsMembers = false
-    @State private var showsSuggestions = false
+    @State private var showsIdeas = false
+    @State private var toast: String?
 
     var body: some View {
         let mode = ViewMode(stored: storedView)
@@ -26,18 +28,26 @@ struct BoardShell: View {
         let me = boards.personId
         let onBoard = drops.filter { $0.boardId == boardId || (!shared && $0.boardId.isEmpty) }
         let sections = DropSection.build(onBoard, grouping: grouping, filter: filter, me: me, now: clock.now)
+        let arrival = onBoard.first { $0.authorId != me && $0.createdAt > .now.addingTimeInterval(-120) }
 
         NavigationStack(path: $path) {
             content(mode: mode, grouping: grouping, sections: sections, drops: onBoard, me: me)
                 .id(mode)
                 .transition(.opacity)
+                .overlay(alignment: .top) {
+                    if let toast {
+                        ShellToast(text: toast)
+                            .padding(.top, 8)
+                            .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    }
+                }
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarTitleMenu { boardMenu(known, current: boardId) }
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button("for y'all", systemImage: "lightbulb") { showsSuggestions = true }
-                            .accessibilityIdentifier("suggestionsButton")
+                        Button("ideas", systemImage: "lightbulb") { showsIdeas = true }
+                            .accessibilityIdentifier("ideasButton")
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
@@ -49,8 +59,9 @@ struct BoardShell: View {
                                     Text(choice.menuName).tag(choice)
                                 }
                             }
-                            if mode == .board, grouping == .when {
-                                Toggle("handwritten notes", isOn: $handwriting)
+                            if mode == .board {
+                                Toggle("handwriting", isOn: $handwriting)
+                                Toggle("lines", isOn: $lines)
                             }
                         } label: {
                             Label("arrange", systemImage: "rectangle.3.group")
@@ -92,6 +103,18 @@ struct BoardShell: View {
                         .navigationTransition(.zoom(sourceID: drop.id, in: namespace))
                 }
         }
+        .onChange(of: arrival?.id) { _, id in
+            guard id != nil, let arrival else { return }
+            let words = ShellToast.words(for: arrival)
+            AccessibilityNotification.Announcement(words).post()
+            withAnimation(reduceMotion ? nil : .snappy) { toast = words }
+        }
+        .task(id: toast) {
+            guard toast != nil else { return }
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : .smooth) { toast = nil }
+        }
         .animation(reduceMotion ? nil : .smooth, value: filter)
         .animation(reduceMotion ? nil : .smooth, value: grouping)
         .sheet(isPresented: $showsMembers) {
@@ -99,8 +122,9 @@ struct BoardShell: View {
                 ShellMembersSheet(board: board)
             }
         }
-        .sheet(isPresented: $showsSuggestions) {
-            ShellSuggestions()
+        .sheet(isPresented: $showsIdeas) {
+            NavigationStack { SuggestionsFeed(boardId: boardId) }
+                .environment(boards)
         }
     }
 
@@ -136,6 +160,11 @@ struct BoardShell: View {
             }
         }
         Divider()
+        if let board = known.first(where: { $0.boardId == current }), let link = board.inviteLink, let code = board.inviteCode {
+            ShareLink(item: link, subject: Text(board.name), message: Text("come join \(board.name) with me. the code is \(code).")) {
+                Label("invite friends", systemImage: "person.badge.plus")
+            }
+        }
         Button("start a shared board", systemImage: "person.2") { boards.entry = .create }
         Button("join with a code", systemImage: "number") { boards.entry = .join(code: nil) }
     }
