@@ -108,6 +108,7 @@ extension View {
 struct ZoneLabel: View {
     @Environment(\.mood) private var mood
     let zone: Zone
+    var highlighted = false
 
     var body: some View {
         Text(zone.displayName)
@@ -116,13 +117,14 @@ struct ZoneLabel: View {
             .foregroundStyle(mood.ink)
             .fixedSize()
             .background(alignment: .bottom) {
-                if zone == .now {
+                if zone == .now || highlighted {
                     MarkerStroke()
-                        .stroke(mood.person, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                        .stroke(zone == .now ? mood.person : mood.ink, style: StrokeStyle(lineWidth: zone == .now ? (highlighted ? 5 : 3) : 2, lineCap: .round))
                         .frame(height: 6)
                         .offset(y: -2)
                 }
             }
+            .animation(.snappy(duration: 0.2), value: highlighted)
             .accessibilityAddTraits(.isHeader)
     }
 

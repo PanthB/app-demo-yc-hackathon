@@ -17,6 +17,7 @@ struct Mood {
     let tilt: ClosedRange<Double>
     let land: Animation
     let move: Animation
+    let lift: Animation
 
     var quietInk: Color { ink.opacity(0.7) }
 
@@ -49,7 +50,8 @@ struct Mood {
         speckle: 0.06,
         tilt: -4...4,
         land: .spring(response: 0.45, dampingFraction: 0.65),
-        move: .spring(response: 0.55, dampingFraction: 0.8)
+        move: .spring(response: 0.55, dampingFraction: 0.8),
+        lift: .spring(response: 0.3, dampingFraction: 0.75)
     )
 }
 

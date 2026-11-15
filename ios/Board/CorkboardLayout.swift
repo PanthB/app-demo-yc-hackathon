@@ -43,6 +43,12 @@ struct CorkboardLayout {
         var id: Zone { zone }
     }
 
+    struct Band {
+        let zone: Zone
+        let top: CGFloat
+        let objectsTop: CGFloat
+    }
+
     struct Thread: Identifiable {
         let id: String
         let from: CGPoint
@@ -61,6 +67,7 @@ struct CorkboardLayout {
     private(set) var items: [Item] = []
     private(set) var vibes: [Item] = []
     private(set) var labels: [Label] = []
+    private(set) var bands: [Band] = []
     private(set) var threads: [Thread] = []
     private(set) var height: CGFloat = 0
     private(set) var envelope: CGRect = .zero
@@ -77,6 +84,7 @@ struct CorkboardLayout {
             let labelTop = y + (zone == .now ? 24 : 6)
             labels.append(Label(zone: zone, origin: CGPoint(x: Self.labelLeading, y: labelTop), order: nextOrder()))
             let objectsTop = labelTop + (zone == .now ? 50 : 36) + 14
+            bands.append(Band(zone: zone, top: labelTop - 6, objectsTop: objectsTop))
             let drops = contents.drops(in: zone)
             if zone == .now, contents.isEmpty {
                 emptyNoteCenter = CGPoint(x: (Self.objectLeading + width - Self.trailing) / 2, y: objectsTop + 70)
@@ -167,8 +175,30 @@ struct CorkboardLayout {
         let right = width - Self.trailing
         var bottoms: [CGFloat] = [top, top + 22]
         var previous: (top: CGFloat, height: CGFloat)?
+        let held = drops.filter { $0.zoneSetByUser && $0.manualX != nil && $0.manualY != nil }
+        let flowing = drops.filter { !($0.zoneSetByUser && $0.manualX != nil && $0.manualY != nil) }
+        var heldBottom = top
 
-        for (index, drop) in drops.enumerated() {
+        for drop in held {
+            var random = StableRandom(drop.id)
+            let size = Self.size(for: drop)
+            let x = min(max(CGFloat(drop.manualX ?? 0.5) * width, size.width / 2 + 8), width - size.width / 2 - 8)
+            let y = top + max(CGFloat(drop.manualY ?? 0), size.height / 2 - 6)
+            items.append(Item(
+                drop: drop,
+                zone: zone,
+                center: CGPoint(x: x, y: y),
+                size: size,
+                tilt: random.value(in: Mood.sunny.tilt),
+                scale: 1,
+                tag: Self.tag(for: drop, zone: zone, now: now),
+                fastener: .ringedPin,
+                order: nextOrder()
+            ))
+            heldBottom = max(heldBottom, y + size.height / 2 + 28)
+        }
+
+        for (index, drop) in flowing.enumerated() {
             var random = StableRandom(drop.id)
             let size = Self.size(for: drop)
             let column = index % 2
@@ -195,7 +225,18 @@ struct CorkboardLayout {
             bottoms[column] = itemTop + size.height + 28
             previous = (itemTop, size.height)
         }
-        return bottoms.max() ?? top
+        return max(bottoms.max() ?? top, heldBottom)
+    }
+
+    func zone(at point: CGPoint) -> Zone {
+        if envelope.insetBy(dx: -28, dy: -44).contains(point) { return .vibes }
+        if pocket.insetBy(dx: -28, dy: -36).contains(point) { return .done }
+        return bands.last { point.y >= $0.top }?.zone ?? .now
+    }
+
+    func manualPlacement(center: CGPoint, zone: Zone, width: CGFloat) -> (x: Double, y: Double)? {
+        guard let band = bands.first(where: { $0.zone == zone }) else { return nil }
+        return (Double(center.x / width), Double(center.y - band.objectsTop))
     }
 
     private mutating func placeVibes(_ drops: [Drop]) {

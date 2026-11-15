@@ -48,6 +48,7 @@ final class Drop {
     var previousZoneRaw: String?
     var previousManualX: Double?
     var previousManualY: Double?
+    var previousZoneSetByUser: Bool = false
 
     init(
         id: UUID = UUID(),
@@ -117,6 +118,7 @@ final class Drop {
         previousZoneRaw = zoneRaw
         previousManualX = manualX
         previousManualY = manualY
+        previousZoneSetByUser = zoneSetByUser
         zoneRaw = newZone.rawValue
         manualX = x
         manualY = y
@@ -130,9 +132,20 @@ final class Drop {
         zoneRaw = previousZoneRaw
         manualX = previousManualX
         manualY = previousManualY
+        zoneSetByUser = previousZoneSetByUser
         self.previousZoneRaw = nil
         previousManualX = nil
         previousManualY = nil
+        previousZoneSetByUser = false
+        updatedAt = .now
+    }
+
+    func letAppPlace() {
+        zoneSetByUser = false
+        pinned = false
+        manualX = nil
+        manualY = nil
+        previousZoneRaw = nil
         updatedAt = .now
     }
 }

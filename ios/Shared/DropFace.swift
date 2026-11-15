@@ -9,7 +9,9 @@ enum DropFace {
 
     static func shortTitle(_ title: String?, maxWords: Int = 3) -> String? {
         guard let title else { return nil }
-        var words = Array(title.lowercased().split(whereSeparator: \.isWhitespace).prefix(maxWords)).map(String.init)
+        var words = title.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
+        if let first = words.first, ["the", "a", "an"].contains(first), words.count > 1 { words.removeFirst() }
+        words = Array(words.prefix(maxWords))
         while let last = words.last, stopWords.contains(last) { words.removeLast() }
         return words.isEmpty ? nil : words.joined(separator: " ")
     }

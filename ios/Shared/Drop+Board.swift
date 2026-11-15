@@ -47,14 +47,17 @@ extension Drop {
 
 struct BoardContents {
     private(set) var arriving: [Drop] = []
+    private(set) var zones: [UUID: Zone] = [:]
     private var byZone: [Zone: [Drop]] = [:]
 
-    init(_ drops: [Drop], now: Date, calendar: Calendar = .current) {
+    init(_ drops: [Drop], now: Date, seen: [UUID: Zone] = [:], calendar: Calendar = .current) {
         for drop in drops {
             if drop.isArriving {
                 arriving.append(drop)
             } else {
-                byZone[drop.boardZone(now: now, calendar: calendar), default: []].append(drop)
+                let zone = drop.boardZone(now: now, calendar: calendar)
+                zones[drop.id] = zone
+                byZone[seen[drop.id] ?? zone, default: []].append(drop)
             }
         }
         arriving.sort { $0.createdAt > $1.createdAt }
