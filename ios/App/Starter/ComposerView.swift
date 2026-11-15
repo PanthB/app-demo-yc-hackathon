@@ -1,4 +1,5 @@
 import ConvexMobile
+import os
 import SwiftUI
 
 struct ComposerView: View {
@@ -17,15 +18,15 @@ struct ComposerView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Name") {
-                    TextField("Your name", text: $author)
+                Section("name") {
+                    TextField("your name", text: $author)
                         .textContentType(.name)
                         .autocorrectionDisabled()
                         .focused($focus, equals: .author)
                         .accessibilityIdentifier("authorField")
                 }
-                Section("Moment") {
-                    TextField("What's happening?", text: $text, axis: .vertical)
+                Section("moment") {
+                    TextField("what's happening?", text: $text, axis: .vertical)
                         .lineLimit(3...8)
                         .focused($focus, equals: .text)
                         .accessibilityIdentifier("momentField")
@@ -37,18 +38,18 @@ struct ComposerView: View {
                     }
                 }
             }
-            .navigationTitle("New moment")
+            .navigationTitle("new moment")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("cancel") { dismiss() }
                         .disabled(isPosting)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isPosting {
                         ProgressView()
                     } else {
-                        Button("Post") {
+                        Button("post") {
                             Task { await post() }
                         }
                         .disabled(trimmedAuthor.isEmpty || trimmedText.isEmpty)
@@ -70,8 +71,8 @@ struct ComposerView: View {
             try await convex.mutation("moments:add", with: ["text": trimmedText, "author": trimmedAuthor])
             dismiss()
         } catch {
-            logger.error("moments:add failed: \(String(describing: error), privacy: .public)")
-            errorMessage = "Couldn't post your moment. Try again."
+            Logger.app.error("moments:add failed: \(String(describing: error), privacy: .public)")
+            errorMessage = "that didn't go through, so give it another try."
         }
         isPosting = false
     }
