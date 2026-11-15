@@ -12,7 +12,8 @@ Compiled into the app target by folder (see `ios/project.yml`), so a new file he
 ## What's here
 
 - `NightBoardView`: the screen. Shared boards group by vibe, the personal board by when, pinned first and done last. A drop opens into `NightDetail` with the zoom transition.
-- `NightCard`: one card per drop. Songs sit on their artwork's own color, clips and photos are posters with the title on the picture, places are a framed photo with the name under it, and everything else sits on a grainy gradient plate.
+- `NightCard(drop:wide:)`: one card per drop, public to the app so other layouts can reuse it. Every card is the same dark surface with a 24pt continuous corner: the picture on top when there is one, then the title, one meta line, the suggestion and who saved it. The only colour on a card comes from its content (a song's surface takes a dark tone sampled from its artwork).
+- `NightStyle`: the one type scale (large title, title3, headline, subheadline, caption), spacing, avatar and button sizes. `NightPrimaryButtonStyle` is the solid white primary button; secondary controls are 44pt Liquid Glass.
 - `NightHeader`: the board title as a menu that switches boards, a one-line summary, and the everyone or mine switch. Members and the view menu sit in the toolbar.
 
 In DEBUG, `-NightBoard <boardId>` opens on that board, for example `-NightBoard sf-crew` with `-BoardDebugSeed YES`.

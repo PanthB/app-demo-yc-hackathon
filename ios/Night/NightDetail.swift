@@ -12,38 +12,36 @@ struct NightDetail: View {
         let now = clock.now
         let face = drop.previewFace(now: now)
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 16) {
                 preview(face)
                 VStack(alignment: .leading, spacing: 8) {
-                    NightKindTag(kind: drop.kind, length: drop.mediaDuration.map(DropFace.duration))
-                    Text(drop.cardTitle(beside: .plain) ?? face.words ?? drop.kind.word)
-                        .font(NightStyle.title(34))
-                        .tracking(-0.6)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let artist = CardWords.clean(drop.artist), drop.kind == .song {
-                        Text(artist).font(.title3.weight(.medium)).foregroundStyle(NightStyle.secondary)
+                    HStack(spacing: 6) {
+                        NightKindTag(kind: drop.kind, length: drop.mediaDuration.map(DropFace.duration))
+                        if drop.isPinned { NightPinBadge() }
                     }
-                    if let meta = drop.cardMeta(now: now, beside: .plain) {
-                        Text(meta).font(.body).foregroundStyle(NightStyle.secondary).monospacedDigit()
+                    Text(drop.cardTitle(beside: .plain) ?? face.words ?? drop.kind.word)
+                        .font(NightStyle.pageTitle)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let meta = drop.kind == .song ? CardWords.clean(drop.artist) : drop.cardMeta(now: now, beside: .plain) {
+                        Text(meta).font(NightStyle.itemTitle.weight(.regular)).foregroundStyle(NightStyle.secondary).monospacedDigit()
                     }
                     if let suggestion = drop.liveSuggestion(now: now) {
-                        SuggestionLine(suggestion: suggestion).font(.body)
+                        SuggestionLine(suggestion: suggestion).font(NightStyle.body)
                     }
                 }
                 HStack(spacing: 8) {
-                    NightAvatar(name: drop.authorLabel, colorName: drop.authorColor, personId: drop.authorId, size: 26)
+                    NightAvatar(name: drop.authorLabel, colorName: drop.authorColor, personId: drop.authorId)
                     Text("\(drop.authorLabel) saved this \(drop.createdAt.formatted(.relative(presentation: .named)).lowercased()).")
-                        .font(.subheadline)
+                        .font(NightStyle.body)
                         .foregroundStyle(NightStyle.secondary)
                 }
-                actionsRow
-                    .padding(.top, 6)
+                actionsRow.padding(.top, 8)
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, NightStyle.margin)
             .padding(.bottom, 40)
         }
         .scrollIndicators(.hidden)
-        .background { NightBackdrop(palette: palette, isLiving: false).overlay(Color.black.opacity(0.35)) }
+        .background { NightBackdrop(palette: palette, isLiving: false).overlay(Color.black.opacity(0.4)) }
         .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -55,8 +53,8 @@ struct NightDetail: View {
             Color.clear
                 .aspectRatio(1 / min(max(face.ratio, 0.6), 1.1), contentMode: .fit)
                 .overlay { Image(uiImage: image).resizable().scaledToFill() }
-                .clipShape(.rect(cornerRadius: 28, style: .continuous))
-                .shadow(color: .black.opacity(0.45), radius: 24, y: 14)
+                .clipShape(NightStyle.card)
+                .overlay { NightStyle.card.strokeBorder(NightStyle.hairline, lineWidth: 1) }
         default:
             NightCard(drop: drop, wide: true)
                 .allowsHitTesting(false)
@@ -64,65 +62,58 @@ struct NightDetail: View {
     }
 
     private var actionsRow: some View {
-        GlassEffectContainer(spacing: 10) {
-            HStack(spacing: 10) {
-                NightActionTile(title: drop.isPinned ? "unpin" : "pin", symbol: drop.isPinned ? "pin.slash.fill" : "pin.fill") {
-                    withAnimation(NightStyle.motion(reduceMotion)) { actions.pin(drop, !drop.isPinned) }
-                }
-                if drop.zone != .done {
-                    NightActionTile(title: "done", symbol: "checkmark") {
-                        withAnimation(NightStyle.motion(reduceMotion)) { actions.done(drop) }
+        HStack(spacing: 8) {
+            GlassEffectContainer(spacing: 8) {
+                HStack(spacing: 8) {
+                    iconButton(drop.isPinned ? "unpin" : "pin", symbol: drop.isPinned ? "pin.slash" : "pin") {
+                        actions.pin(drop, !drop.isPinned)
                     }
-                } else if drop.canUndoMove {
-                    NightActionTile(title: "put back", symbol: "arrow.uturn.backward") {
-                        withAnimation(NightStyle.motion(reduceMotion)) { actions.undo(drop) }
+                    if drop.zone != .done {
+                        iconButton("mark done", symbol: "checkmark") { actions.done(drop) }
+                    } else if drop.canUndoMove {
+                        iconButton("put it back", symbol: "arrow.uturn.backward") { actions.undo(drop) }
                     }
-                }
-                Menu {
-                    let current = drop.boardZone(now: clock.now)
-                    ForEach(Zone.allCases.filter { $0 != .done && $0 != current }, id: \.self) { zone in
-                        Button(zone.displayName) {
-                            withAnimation(NightStyle.motion(reduceMotion)) { actions.move(drop, zone) }
+                    Menu {
+                        let current = drop.boardZone(now: clock.now)
+                        ForEach(Zone.allCases.filter { $0 != .done && $0 != current }, id: \.self) { zone in
+                            Button(zone.displayName) {
+                                withAnimation(NightStyle.motion(reduceMotion)) { actions.move(drop, zone) }
+                            }
                         }
+                    } label: {
+                        Label("move to", systemImage: "arrow.right")
+                            .labelStyle(.iconOnly)
+                            .frame(width: NightStyle.target, height: NightStyle.target)
+                            .glassEffect(.regular.interactive(), in: .circle)
                     }
-                } label: {
-                    NightActionTile.label(title: "move", symbol: "arrow.right")
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.roundedRectangle(radius: 22))
-                if drop.url != nil {
-                    NightActionTile(title: "open", symbol: "arrow.up.right", prominent: true) { actions.open(drop) }
+                    .buttonStyle(.plain)
                 }
             }
+            Spacer(minLength: 0)
+            if drop.url != nil {
+                Button {
+                    actions.open(drop)
+                } label: {
+                    Label("open", systemImage: "arrow.up.right")
+                }
+                .buttonStyle(NightPrimaryButtonStyle())
+            }
         }
+        .font(NightStyle.body.weight(NightStyle.symbolWeight))
+        .foregroundStyle(.white)
         .sensoryFeedback(.impact(weight: .light), trigger: drop.isPinned)
         .sensoryFeedback(.success, trigger: drop.zone == .done)
     }
-}
 
-private struct NightActionTile: View {
-    let title: String
-    let symbol: String
-    var prominent = false
-    let action: () -> Void
-
-    var body: some View {
-        if prominent {
-            Button(action: action) { Self.label(title: title, symbol: symbol) }
-                .buttonStyle(.glassProminent)
-                .buttonBorderShape(.roundedRectangle(radius: 22))
-        } else {
-            Button(action: action) { Self.label(title: title, symbol: symbol) }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.roundedRectangle(radius: 22))
+    private func iconButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button {
+            withAnimation(NightStyle.motion(reduceMotion)) { action() }
+        } label: {
+            Label(title, systemImage: symbol)
+                .labelStyle(.iconOnly)
+                .frame(width: NightStyle.target, height: NightStyle.target)
+                .glassEffect(.regular.interactive(), in: .circle)
         }
-    }
-
-    static func label(title: String, symbol: String) -> some View {
-        VStack(spacing: 6) {
-            Image(systemName: symbol).font(.body.weight(.semibold))
-            Text(title).font(.caption.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
-        }
-        .frame(maxWidth: .infinity, minHeight: 52)
+        .buttonStyle(.plain)
     }
 }

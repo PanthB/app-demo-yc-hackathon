@@ -14,12 +14,9 @@ struct NightFeed: View {
         LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(sections) { section in
                 switch section.style {
-                case .pinned:
+                case .pinned, .zone:
                     header(section)
-                    pinnedRow(section.drops)
-                case .zone:
-                    header(section)
-                    zone(section.drops)
+                    grid(section.drops)
                 case .done:
                     doneHeader(section)
                     if showsDone {
@@ -32,17 +29,14 @@ struct NightFeed: View {
 
     private func header(_ section: DropSection) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(section.title).font(NightStyle.sectionTitle)
-            Text("\(section.drops.count)")
-                .font(.subheadline.weight(.semibold))
-                .monospacedDigit()
-                .foregroundStyle(NightStyle.tertiary)
+            Text(section.title).font(NightStyle.heading)
+            Text("\(section.drops.count)").font(NightStyle.heading).monospacedDigit().foregroundStyle(NightStyle.tertiary)
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
         .accessibilityIdentifier("section-\(section.id)")
-        .padding(.horizontal, 20)
-        .padding(.top, 36)
+        .padding(.horizontal, NightStyle.margin)
+        .padding(.top, 32)
         .padding(.bottom, 12)
     }
 
@@ -51,11 +45,11 @@ struct NightFeed: View {
             withAnimation(NightStyle.motion(reduceMotion)) { showsDone.toggle() }
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(section.title).font(NightStyle.sectionTitle)
-                Text("\(section.drops.count)").font(.subheadline.weight(.semibold)).monospacedDigit().foregroundStyle(NightStyle.tertiary)
+                Text(section.title).font(NightStyle.heading)
+                Text("\(section.drops.count)").font(NightStyle.heading).monospacedDigit().foregroundStyle(NightStyle.tertiary)
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.bold))
+                    .font(NightStyle.body.weight(NightStyle.symbolWeight))
                     .foregroundStyle(NightStyle.secondary)
                     .rotationEffect(.degrees(showsDone ? 90 : 0))
             }
@@ -65,50 +59,18 @@ struct NightFeed: View {
         .accessibilityAddTraits(.isHeader)
         .accessibilityValue(showsDone ? "open" : "closed")
         .accessibilityIdentifier("section-\(section.id)")
-        .padding(.horizontal, 20)
-        .padding(.top, 36)
+        .padding(.horizontal, NightStyle.margin)
+        .padding(.top, 32)
         .padding(.bottom, 12)
     }
 
-    @ViewBuilder
-    private func zone(_ drops: [Drop]) -> some View {
-        let leadsWide = drops.count % 2 == 1
-        VStack(spacing: 12) {
-            if leadsWide, let first = drops.first {
-                item(first) { NightCard(drop: first, wide: true) }
-            }
-            if drops.count > 1 || !leadsWide {
-                grid(Array(drops.dropFirst(leadsWide ? 1 : 0)))
-            }
-        }
-        .padding(.horizontal, 16)
-    }
-
     private func grid(_ drops: [Drop]) -> some View {
-        MasonryLayout(columns: 2, spacing: 12) {
+        MasonryLayout(columns: 2, spacing: NightStyle.gutter) {
             ForEach(drops) { drop in
                 item(drop) { NightCard(drop: drop) }
             }
         }
-    }
-
-    private func pinnedRow(_ drops: [Drop]) -> some View {
-        ScrollView(.horizontal) {
-            HStack(alignment: .top, spacing: 12) {
-                ForEach(drops) { drop in
-                    item(drop) { NightCard(drop: drop, wide: true) }
-                        .containerRelativeFrame(.horizontal, count: drops.count == 1 ? 1 : 7, span: drops.count == 1 ? 1 : 6, spacing: 12)
-                        .scrollTransition(.interactive, axis: .horizontal) { card, phase in
-                            card.scaleEffect(phase.isIdentity || reduceMotion ? 1 : 0.94)
-                        }
-                }
-            }
-            .scrollTargetLayout()
-        }
-        .contentMargins(.horizontal, 16, for: .scrollContent)
-        .scrollTargetBehavior(.viewAligned)
-        .scrollIndicators(.hidden)
-        .scrollClipDisabled()
+        .padding(.horizontal, NightStyle.margin)
     }
 
     private func item(_ drop: Drop, @ViewBuilder label: () -> some View) -> some View {

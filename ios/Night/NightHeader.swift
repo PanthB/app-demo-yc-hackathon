@@ -37,13 +37,12 @@ struct NightHeader: View {
             } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(boardName)
-                        .font(NightStyle.title(46))
-                        .tracking(-1.2)
+                        .font(NightStyle.pageTitle)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                         .contentTransition(.opacity)
                     Image(systemName: "chevron.down")
-                        .font(.title3.weight(.bold))
+                        .font(NightStyle.heading)
                         .foregroundStyle(NightStyle.secondary)
                 }
                 .foregroundStyle(.white)
@@ -54,17 +53,17 @@ struct NightHeader: View {
             .accessibilityIdentifier("nightBoardMenu")
 
             Text(line)
-                .font(.subheadline.weight(.medium))
+                .font(NightStyle.body)
                 .foregroundStyle(NightStyle.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("nightHeaderLine")
 
             if isShared {
-                NightFilterPicker(filter: $filter).padding(.top, 6)
+                NightFilterPicker(filter: $filter).padding(.top, 8)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 4)
+        .padding(.horizontal, NightStyle.margin)
+        .padding(.top, 8)
     }
 }
 
@@ -81,9 +80,9 @@ struct NightFilterPicker: View {
                     withAnimation(NightStyle.motion(reduceMotion, .snappy(duration: 0.3))) { filter = option }
                 } label: {
                     Text(option.rawValue)
-                        .font(.subheadline.weight(.semibold))
+                        .font(NightStyle.body.weight(.semibold))
                         .foregroundStyle(isOn ? Color.black : Color.white.opacity(0.8))
-                        .padding(.horizontal, 18)
+                        .padding(.horizontal, 16)
                         .frame(height: 36)
                         .background {
                             if isOn {
@@ -107,13 +106,14 @@ struct NightMembers: View {
     let members: [NightMember]
 
     var body: some View {
-        HStack(spacing: -9) {
+        HStack(spacing: -6) {
             ForEach(members.prefix(4)) { member in
-                NightAvatar(name: member.name, colorName: member.color, personId: member.id, size: 30)
-                    .overlay { Circle().strokeBorder(NightStyle.ink.opacity(0.8), lineWidth: 2) }
+                NightAvatar(name: member.name, colorName: member.color, personId: member.id)
+                    .padding(1.5)
+                    .background(NightStyle.ink, in: .circle)
             }
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 8)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(members.count) people: \(members.map(\.name).joined(separator: ", "))")
     }
