@@ -80,7 +80,7 @@ These changes live in `ios/`, so they go through the Captain to their owners:
 
 Checked on a live session against the skeleton build (session `290dfc26-f50e-49b5-8417-00b324e6aa35`):
 
-- **Share sheet: works.** `revyl device navigate <url>` opened the link in Safari. One plain-English step then tapped Share and picked Moments from the share sheet, and the app's inbox showed the link waiting. No share command is needed.
+- **Share sheet: works.** `revyl device navigate <url>` opened the link in Safari. One plain-English step then tapped Share and picked Moments from the share sheet, and the app's inbox showed the link waiting. No share command is needed. In Safari on iOS 26, some pages show Share in the toolbar and others put it behind the More (…) menu once the page has loaded (APPD-18 found this), so the share steps cover both. The tests share Tartine Bakery's Google Maps link, a place, because places are one of the three kinds the demo leans on.
 - **Location: works.** `revyl device set-location --lat 37.7614 --lon -122.4241` put the blue dot at Guerrero and 18th in Maps. In test YAML, use a `manual` step with `step_type: set_location` and value `"lat,lng"`, or pass `revyl test run --location lat,lng`. There's no route playback, so a walk is a series of set_location steps.
 - **Photos: the library has 6 built-in sample photos**, so share-from-Photos tests can use those. `revyl device download-file` failed on a Wikimedia image URL, so it's still unknown whether a downloaded image lands in Photos.
 - **Remote push: not working yet.** `revyl device push --bundle-id com.panthb.appdemo` returned "simctl push failed". The skeleton never asks for notification permission, which is the likely cause. Try again once the app requests it.

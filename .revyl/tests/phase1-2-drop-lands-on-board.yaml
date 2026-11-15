@@ -9,13 +9,13 @@ test:
     name: app-demo-yc-hackathon
   variables:
     share-target: "Moments"
-    share-url: "https://en.wikipedia.org/wiki/Tartine_Bakery"
+    share-url: "https://www.google.com/maps/place/Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110"
   blocks:
     - type: manual
       step_type: navigate
       step_description: "{{share-url}}"
     - type: instructions
-      step_description: Tap the Share button in Safari and pick {{share-target}} from the row of apps in the share sheet. If it isn't in the row, scroll the row or tap More to find it.
+      step_description: Wait for the page to finish loading, then tap Safari's Share button. If the toolbar has no Share button, tap the More (…) button first and choose Share from its menu. In the share sheet, pick {{share-target}} from the row of apps, and if it isn't in the row, scroll the row or tap More to find it.
     - type: manual
       step_type: open_app
     - type: if
