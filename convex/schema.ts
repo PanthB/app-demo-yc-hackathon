@@ -34,11 +34,12 @@ export default defineSchema({
     .index("by_personId_and_boardId", ["personId", "boardId"]),
   openaiCalls: defineTable({
     model: v.string(),
-    route: v.union(v.literal("reader"), v.literal("decisions")),
+    route: v.union(v.literal("reader"), v.literal("decisions"), v.literal("events")),
     inputTokens: v.number(),
     cachedTokens: v.number(),
     cacheWriteTokens: v.number(),
     outputTokens: v.number(),
+    webSearchCalls: v.optional(v.number()),
     usd: v.number(),
   }),
   openaiTotals: defineTable({
@@ -46,6 +47,15 @@ export default defineSchema({
     usd: v.number(),
     calls: v.number(),
   }).index("by_model", ["model"]),
+  eventSearches: defineTable({
+    boardId: v.string(),
+    startedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+    status: v.union(v.literal("searching"), v.literal("done"), v.literal("failed")),
+    added: v.optional(v.number()),
+    usd: v.optional(v.number()),
+    note: v.optional(v.string()),
+  }).index("by_boardId", ["boardId"]),
   drops: defineTable(dropFields)
     .index("by_clientId", ["clientId"])
     .index("by_boardId", ["boardId"])

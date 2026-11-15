@@ -168,6 +168,7 @@ export const dropFields = {
   clusterLabel: v.optional(v.string()),
   neighbors: v.optional(v.array(neighbor)),
   jevClusterId: v.optional(v.string()),
+  found: v.optional(v.object({ inspiredBy: v.array(v.string()), foundAt: v.number(), dismissedAt: v.optional(v.number()) })),
   relatedClientIds: v.array(v.string()),
   pipeline: pipeline,
   searchText: v.optional(v.string()),

@@ -183,7 +183,7 @@ export const reasonFor = (a: string[], b: string[]) => {
   return shared.length ? `both ${shared.map(phrase).join(", ")}.` : undefined;
 };
 
-export type ClusterItem = { clientId: string; vibes: string[]; capturedAt: number; previousClusterId?: string; jevClusterId?: string };
+export type ClusterItem = { clientId: string; vibes: string[]; capturedAt: number; previousClusterId?: string; jevClusterId?: string; found?: boolean };
 export type Placement = { clusterId: string; clusterLabel: string; neighbors: { clientId: string; reason: string }[] };
 
 export function clusterBoard(items: ClusterItem[]): Map<string, Placement> {
@@ -196,7 +196,7 @@ export function clusterBoard(items: ClusterItem[]): Map<string, Placement> {
       .filter((i) => i >= 0),
   );
   const groups: number[][] = sorted.map((_, i) => i).filter((i) => !pinned.has(i)).map((i) => [i]);
-  const target = Math.max(1, Math.ceil(n / DROPS_PER_CLUSTER));
+  const target = Math.max(1, Math.ceil(groups.length / DROPS_PER_CLUSTER));
   const linkage = (a: number[], b: number[]) => a.reduce((s, i) => s + b.reduce((t, j) => t + sim[i][j], 0), 0) / (a.length * b.length);
   for (;;) {
     let pair: [number, number] | undefined;
@@ -238,7 +238,9 @@ export function clusterBoard(items: ClusterItem[]): Map<string, Placement> {
       ids.set(k, id);
     });
 
-  const labels = groups.map((g) => {
+  const labels = groups.map((all) => {
+    const saved = all.filter((i) => !sorted[i].found);
+    const g = saved.length > 0 ? saved : all;
     const counts = new Map<string, number>();
     for (const i of g) for (const v of sorted[i].vibes) counts.set(v, (counts.get(v) ?? 0) + 1);
     const common = [...counts.entries()].filter(([, c]) => c * 2 >= g.length || g.length === 1);

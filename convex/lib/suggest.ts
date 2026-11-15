@@ -6,7 +6,7 @@ type Saved = {
   enrichment?: { title?: string };
 };
 
-const linkKey = (url?: string) => {
+export const linkKey = (url?: string) => {
   if (!url) return undefined;
   try {
     const u = new URL(url);

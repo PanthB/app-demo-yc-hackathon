@@ -24,6 +24,8 @@ import {
   type Pipeline,
 } from "./model";
 
+export const FOUND_NAME = "found for you";
+
 const freshPipeline = (): Pipeline => ({
   enrich: { ran: "pending" },
   extract: { ran: "pending" },
@@ -82,7 +84,7 @@ async function toView(
     title: d.extraction?.title ?? d.hints?.linkTitle ?? d.enrichment?.title,
     thumbnailUrl: imageUrls[0] ?? d.enrichment?.thumbnailUrl,
     imageUrls,
-    authorName: names.get(d.authorId),
+    authorName: d.found ? FOUND_NAME : names.get(d.authorId),
     authorColor: colors.get(d.authorId),
     suggestion: d.suggestion ?? social ?? sitsWith,
     vibes: d.vibes ?? [],
@@ -160,7 +162,8 @@ export const list = query({
     const people = await Promise.all(authorIds.slice(0, 100).map((id) => personById(ctx, id)));
     const names = new Map(people.filter((p) => p !== null).map((p) => [p.personId, p.name]));
     const dropsByClientId = new Map(drops.map((d) => [d.clientId, d]));
-    return await Promise.all(drops.map((d) => toView(ctx, d, dropsByClientId, names, colors)));
+    const shown = drops.filter((d) => !d.found?.dismissedAt);
+    return await Promise.all(shown.map((d) => toView(ctx, d, dropsByClientId, names, colors)));
   },
 });
 

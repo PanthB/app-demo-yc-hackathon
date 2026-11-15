@@ -135,6 +135,14 @@ async function setMembers(ctx: MutationCtx, boardId: string, people: readonly Pe
   return removed;
 }
 
+async function clearEventSearches(ctx: MutationCtx, boardId: string) {
+  const searches = await ctx.db
+    .query("eventSearches")
+    .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
+    .take(200);
+  for (const s of searches) await ctx.db.delete("eventSearches", s._id);
+}
+
 async function removeOtherDrops(ctx: MutationCtx, boardId: string, keep: string[]) {
   const drops = await ctx.db
     .query("drops")
@@ -265,6 +273,7 @@ export const sfCrew = internalMutation({
     await ensureBoard(ctx, CREW_BOARD, { name: "sf crew", shared: true, inviteCode: INVITE_CODE });
     const removedMembers = await setMembers(ctx, CREW_BOARD, PEOPLE);
     const removedDrops = await removeOtherDrops(ctx, CREW_BOARD, CREW.map((s) => seedClientId(2, s.n)));
+    await clearEventSearches(ctx, CREW_BOARD);
     const { created, reset } = await writeSeeds(ctx, { id: CREW_BOARD, prefix: 2, pairs: CREW_PAIRS }, CREW, {}, enrichments);
     return { created, reset, images: 0, removedDrops, removedMembers };
   },
@@ -280,6 +289,7 @@ export const myBoard = internalMutation({
     const removedMembers = await setMembers(ctx, MY_BOARD, ["panth"]);
     const seeds = myDrops(Date.now());
     const removedDrops = await removeOtherDrops(ctx, MY_BOARD, seeds.map((s) => seedClientId(1, s.n)));
+    await clearEventSearches(ctx, MY_BOARD);
     const { created, reset, used } = await writeSeeds(ctx, { id: MY_BOARD, prefix: 1, pairs: [] }, seeds, images, enrichments);
     const unused = Object.values(images).filter((id) => !used.has(id));
     for (const id of unused) await ctx.storage.delete(id);

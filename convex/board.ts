@@ -17,7 +17,7 @@ export const upcoming = internalQuery({
       .order("desc")
       .take(150);
     return drops
-      .filter((d) => d.zone === "tonight" || d.zone === "thisWeekend")
+      .filter((d) => (d.zone === "tonight" || d.zone === "thisWeekend") && !d.found?.dismissedAt)
       .map((d) => ({ clientId: d.clientId, title: d.extraction?.title ?? d.enrichment?.title, zone: d.zone as string }));
   },
 });
