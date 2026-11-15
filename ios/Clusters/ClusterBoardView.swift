@@ -331,17 +331,6 @@ struct ClusterBoardView: View {
             committed = Committed(snapshot: plan.snapshot, labels: labels)
             return
         }
-        let focus = plan.changes.reversed().lazy.compactMap { change -> String? in
-            switch change {
-            case .moved(_, _, let to): to
-            case .merged(_, let into): into
-            case .split(_, let into): into
-            default: nil
-            }
-        }.first
-        if let focus, let frame = plan.layout.frames[focus] {
-            follow(frame, height: plan.layout.height, animation: ClusterMotion.drift)
-        }
         try? await Task.sleep(for: .milliseconds(1200))
         guard !Task.isCancelled else { return }
         committed = Committed(snapshot: plan.snapshot, labels: labels)
@@ -485,7 +474,7 @@ struct ClusterBoardView: View {
         }
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(30))
-            if let spot {
+            if let spot, drops.first(where: { $0.id == id })?.authorId == me {
                 follow(spot.frame, height: plan.layout.height, animation: .spring(duration: seconds, bounce: 0.12))
             }
             withAnimation(ClusterMotion.makeRoom) {

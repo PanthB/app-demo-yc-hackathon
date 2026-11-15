@@ -64,6 +64,7 @@ struct ClusterLayout {
     static let stagger: CGFloat = 6
     static let groupGap: CGFloat = 56
     static let maxTilt = 1.4
+    static let stringRoom: CGFloat = 12
 
     private(set) var spots: [UUID: Spot] = [:]
     private(set) var labels: [Label] = []
@@ -122,7 +123,7 @@ struct ClusterLayout {
             y += Self.groupGap
         }
         height = max(y - Self.groupGap + 32, 0)
-        links = makeLinks(pairs)
+        links = makeLinks(pairs, width: width)
     }
 
     static func packRows(_ members: [Member], width: CGFloat) -> [[Member]] {
@@ -199,7 +200,7 @@ struct ClusterLayout {
         return result
     }
 
-    private func makeLinks(_ pairs: [Pair]) -> [Link] {
+    private func makeLinks(_ pairs: [Pair], width: CGFloat) -> [Link] {
         let footprints = spots.mapValues(Self.footprint)
         let labelFrames = labels.map(Self.frame)
         return pairs.compactMap { pair in
@@ -207,7 +208,7 @@ struct ClusterLayout {
                   let start = footprints[pair.first], let end = footprints[pair.second]
             else { return nil }
             let obstacles = labelFrames + footprints.compactMap { $0.key == pair.first || $0.key == pair.second ? nil : $0.value }
-            return Self.link(pair, from: spot.faceCenter, to: partner.faceCenter, leaving: start, reaching: end, avoiding: obstacles)
+            return Self.link(pair, from: spot.faceCenter, to: partner.faceCenter, leaving: start, reaching: end, avoiding: obstacles, width: width)
         }
     }
 
@@ -220,7 +221,7 @@ struct ClusterLayout {
         CGRect(x: label.origin.x - 4, y: label.origin.y - 4, width: 36 + CGFloat(label.text.count) * 11, height: labelHeight + 8)
     }
 
-    private static func link(_ pair: Pair, from: CGPoint, to: CGPoint, leaving start: CGRect, reaching end: CGRect, avoiding obstacles: [CGRect]) -> Link? {
+    private static func link(_ pair: Pair, from: CGPoint, to: CGPoint, leaving start: CGRect, reaching end: CGRect, avoiding obstacles: [CGRect], width: CGFloat) -> Link? {
         let distance = hypot(to.x - from.x, to.y - from.y)
         guard distance > 1 else { return nil }
         let middle = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 + distance * 0.12 + 4)
@@ -234,7 +235,10 @@ struct ClusterLayout {
                   let entry = points.lastIndex(where: { !end.contains($0) }),
                   exit < entry
             else { continue }
-            let open = points[exit...entry].allSatisfy { point in !obstacles.contains { $0.contains(point) } && !end.contains(point) && !start.contains(point) }
+            let open = points[exit...entry].allSatisfy { point in
+                point.x >= stringRoom && point.x <= width - stringRoom
+                    && !obstacles.contains { $0.contains(point) } && !end.contains(point) && !start.contains(point)
+            }
             guard open else { continue }
             let t0 = CGFloat(max(exit - 1, 0)) / CGFloat(samples)
             let t1 = CGFloat(min(entry + 1, samples)) / CGFloat(samples)
