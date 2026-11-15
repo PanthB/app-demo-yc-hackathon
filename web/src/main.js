@@ -3,7 +3,11 @@ import { anyApi } from "convex/server";
 import { icon } from "./icons.js";
 
 const DEPLOYMENT = "https://adorable-coyote-696.convex.cloud";
-const BOARD_ID = import.meta.env.VITE_BOARD_ID ?? "sf-crew";
+const SF_CREW = { id: "sf-crew" };
+const SF_CREW_LEDE = "a board some friends keep in moments. when one of them saves something on their phone, it shows up here.";
+const GUEST_LEDE = "paste a link from tiktok, instagram, spotify, youtube or maps, and watch it get read and placed.";
+const GUEST_KEY = "moments-guest";
+const GUEST_LIMIT = 8;
 
 const PALETTE = {
   orange: "#ff9f0a",
@@ -27,39 +31,158 @@ const CLIP_SITES = [
 ];
 
 const board = document.getElementById("board");
+const titleEl = document.getElementById("title");
+const ledeEl = document.getElementById("lede");
+const otherBoardEl = document.getElementById("other-board");
+const addForm = document.getElementById("add");
+const addInput = addForm.querySelector("input");
+const addButton = addForm.querySelector("button");
+const addNote = document.getElementById("add-note");
 const membersEl = document.getElementById("members");
 const liveEl = document.getElementById("live");
 const toastEl = document.getElementById("toast");
 const switchButtons = [...document.querySelectorAll(".switch button")];
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-const state = { drops: null, ideas: [], view: "mood" };
+const state = { board: null, drops: null, ideas: [], view: "mood" };
 const cards = new Map();
 const ideaRows = new Map();
 const arrivals = new Set();
 let known = null;
 let toastTimer = 0;
+let subscriptions = [];
+let guest = loadGuest();
 
 const client = new ConvexClient(DEPLOYMENT);
-client.onUpdate(
-  anyApi.drops.list,
-  { boardId: BOARD_ID },
-  (drops) => {
-    announceNew(drops);
-    state.drops = drops;
-    update();
-  },
-  () => showStatus("the board didn't load. it'll try again in a moment."),
-);
-client.onUpdate(
-  anyApi.suggestions.list,
-  { boardId: BOARD_ID },
-  (ideas) => {
-    state.ideas = ideas;
-    update();
-  },
-  () => {},
-);
+window.addEventListener("hashchange", route);
+route();
+
+async function route() {
+  if (location.hash !== "#try") {
+    openBoard(SF_CREW);
+    return;
+  }
+  if (!guest) {
+    openBoard(null);
+    showStatus("making your board…");
+    try {
+      guest = await makeGuest();
+    } catch {
+      showStatus("your board didn't get made. reload to try again.");
+      return;
+    }
+    if (location.hash !== "#try") return;
+  }
+  openBoard({ id: guest.boardId, personId: guest.personId });
+}
+
+function openBoard(next) {
+  for (const unsubscribe of subscriptions) unsubscribe();
+  subscriptions = [];
+  Object.assign(state, { board: next, drops: null, ideas: [] });
+  cards.clear();
+  ideaRows.clear();
+  arrivals.clear();
+  known = null;
+  delete board.dataset.ready;
+  liveEl.hidden = true;
+  membersEl.replaceChildren();
+  hideToast();
+  const own = next !== SF_CREW;
+  titleEl.textContent = own ? "your board" : "sf crew";
+  ledeEl.textContent = own ? GUEST_LEDE : SF_CREW_LEDE;
+  document.title = titleEl.textContent + " on moments";
+  otherBoardEl.textContent = own ? "sf crew" : "try it";
+  otherBoardEl.href = own ? "#" : "#try";
+  addForm.hidden = !next?.personId;
+  addNote.hidden = true;
+  board.replaceChildren(text("p", "opening the board…", "quiet"));
+  board.firstChild.id = "status";
+  if (!next) return;
+  subscriptions = [
+    client.onUpdate(
+      anyApi.drops.list,
+      { boardId: next.id },
+      (drops) => {
+        announceNew(drops);
+        state.drops = drops;
+        update();
+      },
+      () => showStatus("the board didn't load. it'll try again in a moment."),
+    ),
+    client.onUpdate(
+      anyApi.suggestions.list,
+      { boardId: next.id },
+      (ideas) => {
+        state.ideas = ideas;
+        update();
+      },
+      () => {},
+    ),
+  ];
+}
+
+addForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const value = addInput.value.trim();
+  const personId = state.board?.personId;
+  if (!value || !personId) return;
+  if (ownCount() >= GUEST_LIMIT) {
+    showNote("that's plenty for a test board.");
+    return;
+  }
+  const link = value.match(/https?:\/\/\S+/)?.[0] ?? null;
+  const note = (link ? value.replace(link, "") : value).trim() || null;
+  addButton.disabled = true;
+  try {
+    await client.mutation(anyApi.drops.submit, {
+      boardId: state.board.id,
+      personId,
+      clientId: crypto.randomUUID(),
+      kind: link ? "url" : "text",
+      url: link,
+      text: note,
+      capturedAt: Date.now(),
+      utcOffsetMinutes: -new Date().getTimezoneOffset(),
+    });
+    addInput.value = "";
+    addNote.hidden = true;
+  } catch {
+    showNote("that didn't save. try again.");
+  } finally {
+    addButton.disabled = false;
+  }
+});
+
+async function makeGuest() {
+  const personId = crypto.randomUUID();
+  const person = await client.mutation(anyApi.people.upsert, { personId, personalBoardId: crypto.randomUUID(), name: "you" });
+  const made = { personId, boardId: person.personalBoardId };
+  try {
+    localStorage.setItem(GUEST_KEY, JSON.stringify(made));
+  } catch {
+    return made;
+  }
+  return made;
+}
+
+function loadGuest() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(GUEST_KEY) ?? "null");
+    return saved?.personId && saved?.boardId ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function ownCount() {
+  return (state.drops ?? []).filter((drop) => drop.authorId === state.board?.personId).length;
+}
+
+function showNote(message) {
+  addNote.textContent = message;
+  addNote.hidden = false;
+}
 
 for (const button of switchButtons) {
   button.addEventListener("click", () => {
@@ -92,7 +215,7 @@ function render() {
   const sections = state.view === "mood" ? moodSections() : whenSections();
   const used = new Set();
   const nodes = sections.map((section) => sectionNode(section, used));
-  if (nodes.length === 0) nodes.push(text("p", "nothing's on this board yet.", "quiet"));
+  if (nodes.length === 0) nodes.push(text("p", state.board?.personId ? "your board is empty for now." : "nothing's on this board yet.", "quiet"));
   board.replaceChildren(...nodes);
   for (const id of cards.keys()) if (!used.has(id)) cards.delete(id);
   renderMembers();
@@ -331,7 +454,8 @@ function announceNew(drops) {
   if (known) {
     const added = drops.filter((drop) => !known.has(drop.clientId));
     for (const drop of added) arrivals.add(drop.clientId);
-    if (added.length > 0) showToast(added[0]);
+    const fromSomeoneElse = added.find((drop) => drop.authorId !== state.board?.personId);
+    if (fromSomeoneElse) showToast(fromSomeoneElse);
   }
   known = new Set(drops.map((drop) => drop.clientId));
 }

@@ -15,8 +15,11 @@
   <body>
     <div class="backdrop" aria-hidden="true"></div>
     <header class="top">
-      <span class="brand">moments</span>
-      <a class="glass pill" href="https://github.com/PanthB/app-demo-yc-hackathon" target="_blank" rel="noopener">code and video</a>
+      <a class="brand" href="#">moments</a>
+      <nav class="top-links">
+        <a class="pill primary" id="other-board" href="#try">try it</a>
+        <a class="glass pill" href="https://github.com/PanthB/app-demo-yc-hackathon" target="_blank" rel="noopener">code and video</a>
+      </nav>
     </header>
     <main>
       <section class="intro">
@@ -24,8 +27,15 @@
           <div class="members" id="members"></div>
           <span class="live" id="live" hidden><span class="dot"></span>live</span>
         </div>
-        <h1>sf crew</h1>
-        <p class="lede">a board some friends keep in moments. when one of them saves something on their phone, it shows up here.</p>
+        <h1 id="title">sf crew</h1>
+        <p class="lede" id="lede">a board some friends keep in moments. when one of them saves something on their phone, it shows up here.</p>
+        <form class="add" id="add" autocomplete="off" hidden>
+          <div class="glass add-row">
+            <input type="text" inputmode="url" name="link" placeholder="paste a link" aria-label="paste a link" enterkeyhint="send" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <button type="submit">add</button>
+          </div>
+          <p class="add-note" id="add-note" role="status" hidden></p>
+        </form>
       </section>
       <div class="switch-row">
         <div class="glass switch" role="tablist" aria-label="arrange the board">
@@ -38,7 +48,7 @@
       </div>
     </main>
     <footer class="foot">
-      <p>moments is a native ios app. this page reads the same live board the phones do.</p>
+      <p>moments is a native ios app. this page reads the same live boards the phones do.</p>
       <a href="https://github.com/PanthB/app-demo-yc-hackathon" target="_blank" rel="noopener">see the code and the demo video on github</a>
     </footer>
     <button type="button" class="glass toast" id="toast" hidden></button>
