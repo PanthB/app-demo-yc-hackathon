@@ -46,6 +46,22 @@ const str = (x: unknown) => (typeof x === "string" && x.trim() ? x.trim() : unde
 
 const unquote = (s: string) => s.trim().replace(/^"([\s\S]*)"\.?$/, "$1").trim();
 
+async function songFacts(title?: string, artist?: string) {
+  if (!title) return { found: false };
+  try {
+    const found = await getJson(`https://api.deezer.com/search?limit=1&q=${encodeURIComponent([title, artist].filter(Boolean).join(" "))}`);
+    const hit = (found.data as { id?: number; album?: { id?: number } }[] | undefined)?.[0];
+    if (!hit?.id || !hit.album?.id) return { found: false };
+    const [track, album] = await Promise.all([getJson(`https://api.deezer.com/track/${hit.id}`), getJson(`https://api.deezer.com/album/${hit.album.id}`)]);
+    const bpm = typeof track.bpm === "number" && track.bpm > 0 ? Math.round(track.bpm * 10) / 10 : undefined;
+    const genre = str((album.genres as { data?: { name?: string }[] } | undefined)?.data?.[0]?.name);
+    const durationSec = typeof track.duration === "number" && track.duration > 0 ? track.duration : undefined;
+    return { found: true, genre: genre?.toLowerCase(), bpm, durationSec };
+  } catch {
+    return { found: false };
+  }
+}
+
 export function instagramPost(meta: Record<string, string>) {
   const titled = meta["og:title"]?.match(/^([\s\S]*?) on Instagram:\s*([\s\S]*)$/);
   const described = (meta["og:description"] ?? meta["description"])?.match(
@@ -89,13 +105,32 @@ export async function enrichLink(url: string): Promise<Enrichment> {
       pageMeta(url).catch((): Record<string, string> => ({})),
     ]);
     const description = meta["og:description"];
+    const title = str(o.title) ?? meta["og:title"];
     const artist = meta["music:musician_description"] ?? description?.split(" · ")[0];
-    return { provider: "spotify oembed + og tags", title: str(o.title) ?? meta["og:title"], author: artist, description, siteName: "Spotify", thumbnailUrl: str(o.thumbnail_url) ?? meta["og:image"] };
+    const song = await songFacts(title, artist);
+    return { provider: `spotify oembed + og tags${song.found ? " + deezer" : ""}`, title, author: artist, description, siteName: "Spotify", thumbnailUrl: str(o.thumbnail_url) ?? meta["og:image"], genre: song.genre, bpm: song.bpm, durationSec: song.durationSec };
   }
   const meta = await pageMeta(url);
   if (meta.contentType) return { provider: `direct file (${meta.contentType.split(";")[0]})`, siteName: host };
+  if (/(^|\.)music\.apple\.com$/.test(host)) {
+    const named = meta["og:title"]?.match(/^(.+) by (.+) on Apple\s+Music$/);
+    const title = named?.[1] ?? meta["og:title"];
+    const artist = named?.[2] ?? meta["music:musician_description"];
+    const song = await songFacts(title, artist);
+    return {
+      provider: `apple music og tags${song.found ? " + deezer" : ""}`,
+      title,
+      description: meta["og:description"],
+      author: artist,
+      siteName: "Apple Music",
+      thumbnailUrl: meta["og:image"],
+      genre: song.genre,
+      bpm: song.bpm,
+      durationSec: song.durationSec,
+    };
+  }
   return {
-    provider: /(^|\.)music\.apple\.com$/.test(host) ? "apple music og tags" : "og tags",
+    provider: "og tags",
     title: meta["og:title"] ?? meta["twitter:title"] ?? meta["html:title"],
     description: meta["og:description"] ?? meta["twitter:description"] ?? meta["description"],
     author: meta["music:musician_description"] ?? meta["author"],

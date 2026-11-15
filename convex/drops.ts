@@ -10,7 +10,7 @@ import {
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { membersOf, personById } from "./boards";
-import { nameLabel, sameThing, socialLine } from "./lib/suggest";
+import { nameLabel, nounFor, sameThing, sitsWithLine, socialLine } from "./lib/suggest";
 import {
   decision,
   dropDoc,
@@ -72,6 +72,11 @@ async function toView(
         fromOthers.some((o) => sameThing(o, d)),
       )
     : undefined;
+  const neighbors = d.neighbors ?? [];
+  const near = neighbors
+    .map((n) => ({ n, drop: dropsByClientId.get(n.clientId) }))
+    .find((x) => x.drop !== undefined && x.drop.authorId !== d.authorId);
+  const sitsWith = near?.drop ? sitsWithLine(nameLabel(names.get(near.drop.authorId)), nounFor(near.drop), near.n.reason) : undefined;
   return {
     ...d,
     title: d.extraction?.title ?? d.hints?.linkTitle ?? d.enrichment?.title,
@@ -79,12 +84,18 @@ async function toView(
     imageUrls,
     authorName: names.get(d.authorId),
     authorColor: colors.get(d.authorId),
-    suggestion: d.suggestion ?? social,
+    suggestion: d.suggestion ?? social ?? sitsWith,
+    vibes: d.vibes ?? [],
+    neighbors,
   };
 }
 
 async function schedule(ctx: MutationCtx, dropId: Doc<"drops">["_id"]) {
   await ctx.scheduler.runAfter(0, internal.pipeline.run, { dropId });
+}
+
+async function recluster(ctx: MutationCtx, boardId: string) {
+  await ctx.scheduler.runAfter(0, internal.clusters.recompute, { boardId });
 }
 
 export const submit = mutation({
@@ -185,6 +196,7 @@ export const setZone = mutation({
       zoneSetByUser: true,
       updatedAt: Date.now(),
     });
+    if (zone === "done" || drop.zone === "done") await recluster(ctx, boardId);
     return null;
   },
 });
@@ -242,6 +254,8 @@ export const applyResult = internalMutation({
     extraction: v.optional(extraction),
     decision: v.optional(decision),
     suggestion: v.optional(v.string()),
+    vibes: v.array(v.string()),
+    jevClusterId: v.optional(v.string()),
     relatedClientIds: v.array(v.string()),
     searchText: v.string(),
     pipeline,
@@ -257,6 +271,8 @@ export const applyResult = internalMutation({
       extraction: args.extraction,
       decision: args.decision,
       suggestion: args.suggestion,
+      vibes: args.vibes,
+      jevClusterId: args.jevClusterId,
       zone: drop.zoneSetByUser ? drop.zone : (args.decision?.zone ?? drop.zone),
       relatedClientIds: related,
       searchText: args.searchText,
@@ -271,6 +287,7 @@ export const applyResult = internalMutation({
         updatedAt: Date.now(),
       });
     }
+    await recluster(ctx, drop.boardId);
     return null;
   },
 });
@@ -282,6 +299,7 @@ export const markFailed = internalMutation({
     const drop = await ctx.db.get("drops", dropId);
     if (!drop) return null;
     await ctx.db.patch("drops", dropId, { status: "failed", pipeline, updatedAt: Date.now() });
+    if (drop.clusterId) await recluster(ctx, drop.boardId);
     return null;
   },
 });
