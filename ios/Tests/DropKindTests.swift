@@ -19,16 +19,26 @@ final class DropKindTests: XCTestCase {
         XCTAssertEqual(DropKind.derive(type: .place, source: .url, hasDueTime: false, link: "https://www.youtube.com/watch?v=zmIgc0SkVgE"), .video)
         XCTAssertEqual(DropKind.derive(type: nil, source: .url, hasDueTime: false, link: "https://youtu.be/zmIgc0SkVgE"), .video)
         XCTAssertEqual(DropKind.derive(type: .mood, source: .url, hasDueTime: false, link: "https://www.instagram.com/reel/DbySW82ILGn/"), .video)
+        XCTAssertEqual(DropKind.derive(type: .mood, source: .url, hasDueTime: false, link: "https://www.instagram.com/p/DWCN6pbgn3F/", hasLength: true), .video)
         XCTAssertEqual(DropKind.video.word, "clip")
+    }
+
+    func testAClipNamesTheSiteItCameFrom() {
+        XCTAssertEqual(DropKind.clipSite(link: "https://www.tiktok.com/@graacciiee/video/7617551860244745503"), "tiktok")
+        XCTAssertEqual(DropKind.clipSite(link: "https://youtu.be/zmIgc0SkVgE"), "youtube")
+        XCTAssertEqual(DropKind.clipSite(link: "https://m.youtube.com/watch?v=zmIgc0SkVgE"), "youtube")
+        XCTAssertEqual(DropKind.clipSite(link: "https://www.instagram.com/reel/DbySW82ILGn/"), "instagram")
+        XCTAssertNil(DropKind.clipSite(link: "https://www.instagram.com/p/DWCN6pbgn3F/"))
+        XCTAssertNil(DropKind.clipSite(link: "https://open.spotify.com/track/3xKsf9qdS1CyvXSMEid6g8"))
     }
 
     func testAPostOrAnOrdinaryLinkIsNotAClip() {
         XCTAssertEqual(DropKind.derive(type: nil, source: .url, hasDueTime: false, link: "https://www.instagram.com/p/DWCN6pbgn3F/"), .link)
         XCTAssertEqual(DropKind.derive(type: .place, source: .url, hasDueTime: false, link: "https://www.stonemillmatcha.com"), .place)
         XCTAssertEqual(DropKind.derive(type: .song, source: .url, hasDueTime: false, link: "https://open.spotify.com/track/3xKsf9qdS1CyvXSMEid6g8"), .song)
-        XCTAssertFalse(DropKind.isClip(link: "https://nottiktok.com/video/1"))
-        XCTAssertFalse(DropKind.isClip(link: nil))
-        XCTAssertFalse(DropKind.isClip(link: "not a link"))
+        XCTAssertNil(DropKind.clipSite(link: "https://nottiktok.com/video/1"))
+        XCTAssertNil(DropKind.clipSite(link: nil))
+        XCTAssertNil(DropKind.clipSite(link: "not a link"))
     }
 
     func testAnUnreadDropFallsBackToItsSource() {

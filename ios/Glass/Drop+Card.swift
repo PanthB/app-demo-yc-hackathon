@@ -38,7 +38,7 @@ enum PreviewFace {
 
 extension Drop {
     var kind: DropKind {
-        DropKind.derive(type: type, source: sourceKind, hasDueTime: dueAt != nil, link: url)
+        DropKind.derive(type: type, source: sourceKind, hasDueTime: dueAt != nil, link: url, hasLength: mediaDuration != nil)
     }
 
     var authorLabel: String {
@@ -79,8 +79,13 @@ extension Drop {
 
     func cardMeta(now: Date, beside face: PreviewFace, calendar: Calendar = .current) -> String? {
         let when = dueAt.map { DropFace.dateTag($0, now: now, calendar: calendar) } ?? tag(now: now, calendar: calendar)
-        let place = kind == .song ? artist : placeName ?? (kind == .link ? linkHost : nil)
-        return CardWords.meta([when, place], hiding: [face.words, cardTitle(beside: face)])
+        let from: [String?] = switch kind {
+        case .song: [artist]
+        case .video: [artist ?? placeName, DropKind.clipSite(link: url, hasLength: mediaDuration != nil)]
+        case .link: [placeName ?? linkHost]
+        default: [placeName]
+        }
+        return CardWords.meta([when] + from, hiding: [face.words, cardTitle(beside: face)])
     }
 
     func liveSuggestion(now: Date) -> DropSuggestion? {
