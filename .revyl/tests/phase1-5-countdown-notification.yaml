@@ -17,18 +17,18 @@ test:
         - type: instructions
           step_description: Tap the button that allows it (Allow While Using App, or Allow).
     - type: instructions
-      step_description: Add a typed note to the board that says "remind me in 1 hr to call mom".
+      step_description: Tap the plus button at the bottom right, choose note, and add a note that says "remind me in 1 hr to call mom".
     - type: if
       condition: Is a system permission prompt (location or notifications) visible?
       then:
         - type: instructions
           step_description: Tap the button that allows it (Allow While Using App, or Allow).
     - type: validation
-      step_description: A sticky note about calling mom is on the board with a countdown showing about an hour (59 or 60 minutes) left.
+      step_description: An item about calling mom has a reminder pill and a live countdown showing about an hour (59 or 60 minutes) left.
     - type: instructions
-      step_description: Add a typed note to the board that says "remind me in 1 minute to stretch".
+      step_description: Tap the plus button at the bottom right, choose note, and add a note that says "remind me in 1 minute to stretch".
     - type: validation
-      step_description: A sticky note about stretching is on the board with a countdown showing less than a minute left.
+      step_description: An item about stretching has a reminder pill and a countdown showing less than a minute left.
     - type: manual
       step_type: go_home
     - type: manual

@@ -17,11 +17,11 @@ test:
     - type: instructions
       step_description: Tap the Share button in Safari and pick {{share-target}} from the row of apps in the share sheet. If it isn't in the row, scroll the row or tap More to find it.
     - type: validation
-      step_description: The share sheet shows "dropped it, i'll find it a spot." right away.
+      step_description: The share sheet confirms the drop in a friendly line that starts with "dropped it", such as "dropped it in sf crew." or "dropped it, i'll find it a spot."
     - type: manual
       step_type: open_app
       step_description: com.apple.mobileslideshow
     - type: instructions
       step_description: Open any photo in the library, tap Share, and pick {{share-target}} from the row of apps. If it isn't in the row, scroll the row or tap More to find it.
     - type: validation
-      step_description: The share sheet shows "dropped it, i'll find it a spot." right away.
+      step_description: The share sheet confirms the drop in a friendly line that starts with "dropped it".

@@ -1,0 +1,26 @@
+test:
+  metadata:
+    name: phase1-6b-time-sections
+    platform: ios
+    tags:
+      - phase1
+      - time
+  build:
+    name: app-demo-yc-hackathon
+  blocks:
+    - type: manual
+      step_type: open_app
+    - type: if
+      condition: Is a system permission prompt (location or notifications) visible?
+      then:
+        - type: instructions
+          step_description: Tap the button that allows it (Allow While Using App, or Allow).
+    - type: instructions
+      step_description: Tap the plus button at the bottom right, choose note, and add a note that says "farmers market this saturday morning".
+    - type: instructions
+      step_description: Tap the plus button at the bottom right, choose note, and add a note that says "movie at 10pm".
+    - type: manual
+      step_type: wait
+      step_description: "10"
+    - type: validation
+      step_description: The farmers market note is under the this weekend section, and the movie note is under the tonight section.

@@ -1,11 +1,10 @@
 test:
   metadata:
-    name: phase1-6a-wandering-mode
+    name: phase1-6a-nearby-suggestion
     platform: ios
     tags:
       - phase1
       - location
-      - modes
   build:
     name: app-demo-yc-hackathon
   variables:
@@ -33,7 +32,7 @@ test:
       step_type: wait
       step_description: "20"
     - type: validation
-      step_description: The Tartine Bakery object is on the board and no compass or "min away" line points at it yet.
+      step_description: The Tartine Bakery item is showing.
     - type: manual
       step_type: set_location
       step_description: "{{near-location}}"
@@ -41,12 +40,12 @@ test:
       step_type: wait
       step_description: "5"
     - type: validation
-      step_description: The board has switched to wandering mode. A compass line points toward Tartine Bakery and says how many minutes away it is, and the Tartine Bakery object has grown or moved forward.
+      step_description: The Tartine Bakery item now shows one short suggestion line saying it's only a few minutes from you, such as "3 min from you."
     - type: extraction
-      step_description: Describe where each object on the board is right now, in one short line.
-      variable_name: wandering-layout
+      step_description: List the section headers and the titles under each, top to bottom, in one line.
+      variable_name: layout-now
     - type: manual
       step_type: wait
       step_description: "30"
     - type: validation
-      step_description: Nothing changed without a reason. The board is still in wandering mode and the objects are still laid out like this, "{{wandering-layout}}".
+      step_description: Nothing moved without a reason. The sections and the titles under them still read "{{layout-now}}".

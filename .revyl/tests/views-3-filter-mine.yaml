@@ -1,0 +1,38 @@
+test:
+  metadata:
+    name: views-3-filter-mine
+    platform: ios
+    tags:
+      - views
+      - shared
+  build:
+    name: app-demo-yc-hackathon
+  blocks:
+    - type: manual
+      step_type: open_app
+    - type: if
+      condition: Is a system permission prompt (location or notifications) visible?
+      then:
+        - type: instructions
+          step_description: Tap the button that allows it (Allow While Using App, or Allow).
+    - type: manual
+      step_type: navigate
+      step_description: "appdemo://seed"
+    - type: if
+      condition: Is a dialog asking whether to open this in the app visible?
+      then:
+        - type: instructions
+          step_description: Tap Open.
+    - type: manual
+      step_type: wait
+      step_description: "2"
+    - type: validation
+      step_description: Under the title, a segmented control has everyone selected, and the drops carry the avatars of several different people.
+    - type: instructions
+      step_description: Tap mine in the segmented control under the title.
+    - type: validation
+      step_description: Only the current person's drops are showing. Every visible drop carries the same avatar, and drops by maya, sam and alex are gone. If the person has no drops, a friendly full-sentence line says so instead of a blank screen.
+    - type: instructions
+      step_description: Tap everyone in the segmented control under the title.
+    - type: validation
+      step_description: Drops from several different people are showing again.
