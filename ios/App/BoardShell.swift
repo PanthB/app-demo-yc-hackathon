@@ -13,6 +13,7 @@ struct BoardShell: View {
     @State private var filter: DropFilter = .everyone
     @State private var groupings: [String: DropGrouping] = [:]
     @State private var showsMembers = false
+    @State private var showsSuggestions = false
 
     var body: some View {
         let mode = ViewMode(stored: storedView)
@@ -34,6 +35,10 @@ struct BoardShell: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarTitleMenu { boardMenu(known, current: boardId) }
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("for y'all", systemImage: "lightbulb") { showsSuggestions = true }
+                            .accessibilityIdentifier("suggestionsButton")
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
                             Picker("arrange", selection: Binding(
@@ -93,6 +98,9 @@ struct BoardShell: View {
             if let board {
                 ShellMembersSheet(board: board)
             }
+        }
+        .sheet(isPresented: $showsSuggestions) {
+            ShellSuggestions()
         }
     }
 
