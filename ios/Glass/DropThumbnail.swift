@@ -16,7 +16,7 @@ struct DropThumbnail: View {
                 case .cutout(let image):
                     Image(uiImage: image).resizable().scaledToFit().padding(4)
                 case .words, .date, .countdown, .waveform, .plain:
-                    Image(systemName: kind.symbol).font(.title3.weight(.semibold)).foregroundStyle(.tint)
+                    Image(systemName: kind.symbol).font(.title3.weight(.semibold)).foregroundStyle(.secondary)
                 }
             }
             .clipShape(.rect(cornerRadius: radius, style: .continuous))

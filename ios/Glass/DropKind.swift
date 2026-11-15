@@ -7,6 +7,15 @@ enum DropKind: String, CaseIterable, Sendable {
         self == .video ? "clip" : rawValue
     }
 
+    var openWord: String {
+        switch self {
+        case .song: "listen"
+        case .video: "watch"
+        case .place: "visit"
+        case .photo, .event, .link, .note, .voice, .reminder: "open"
+        }
+    }
+
     var symbol: String {
         switch self {
         case .photo: "photo"
@@ -66,6 +75,10 @@ enum CardWords {
         return seen.count == hidden ? nil : seen.dropFirst(hidden).joined(separator: " · ")
     }
 
+    static func saver(_ name: String?, isMe: Bool) -> String {
+        isMe ? "you" : clean(name) ?? "someone"
+    }
+
     static func clean(_ words: String?) -> String? {
         guard let words else { return nil }
         let trimmed = words.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -85,5 +98,11 @@ enum PersonMark {
             hash = (hash ^ UInt64(byte)) &* 0x0000_0100_0000_01B3
         }
         return Int(hash % UInt64(count))
+    }
+}
+
+extension Zone {
+    static func moveTargets(from current: Zone) -> [Zone] {
+        allCases.filter { $0 != .done && $0 != current }
     }
 }
