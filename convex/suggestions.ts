@@ -376,6 +376,7 @@ const instructions = (label: string, from: string, to: string, kinds: Kind[]) =>
         })[k],
     ),
     "They already saved every drop listed, so never suggest one of those again, not the same song, movie, place or title from another page: each suggestion is something new to them.",
+    "Lean small, specific and a little off the map: a tiny independent shop, a hole-in-the-wall spot or a neighborhood bar over a famous landmark or a chain, and a lesser-known, moody song, show or film over a chart hit or a blockbuster.",
     "Each one needs its own page that you found in this search, such as the event's venue or ticketing page, the song's Spotify or Apple Music page, the movie's IMDb or streaming page, or the place's own site. Copy the URL exactly.",
     "Never invent anything, a date, a price or a URL. When fewer fit, return fewer, or none. At most one per venue or place.",
     "inspired_by names the one or two drops each fits best, by ref (like d3).",
