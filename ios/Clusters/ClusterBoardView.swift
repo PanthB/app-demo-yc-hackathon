@@ -23,7 +23,7 @@ struct ClusterBoardView: View {
 
     private let mood = Mood.sunny
     private static let dwell: Duration = .milliseconds(1100)
-    private static let flight: Animation = .spring(response: 0.55, dampingFraction: 0.86)
+    private static let makeRoom: Animation = .spring(response: 0.5, dampingFraction: 0.86)
 
     private struct Hold {
         let point: CGPoint
@@ -31,7 +31,10 @@ struct ClusterBoardView: View {
     }
 
     private struct Flight {
+        let start: CGSize
         let bulge: CGSize
+        let curve: Animation
+        let seconds: Double
         var progress: Double
     }
 
@@ -80,7 +83,10 @@ struct ClusterBoardView: View {
                       let label = plan.layout.labels.first(where: { $0.id == target })
                 else { return }
                 aimed = true
-                scroll.scrollTo(y: label.origin.y - 12)
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(700))
+                    scroll.scrollTo(y: label.origin.y - 12)
+                }
             }
             .onScrollGeometryChange(for: CGRect.self, of: { $0.visibleRect }) { _, rect in
                 viewport = rect
@@ -156,7 +162,10 @@ struct ClusterBoardView: View {
         .shadow(color: mood.shade.opacity(lifted ? 0.22 : 0), radius: 18, y: 14)
         .rotationEffect(.degrees(spot?.tilt ?? 0))
         .position(point)
-        .modifier(ArcFlight(progress: flight?.progress ?? 1, bulge: flight?.bulge ?? .zero))
+        .transaction { if flight != nil { $0.animation = nil } }
+        .animation(flight?.curve ?? .default) {
+            $0.modifier(ArcFlight(progress: flight?.progress ?? 1, start: flight?.start ?? .zero, bulge: flight?.bulge ?? .zero))
+        }
         .opacity(shown ? 1 : 0)
         .allowsHitTesting(shown)
         .accessibilityHidden(!shown)
@@ -270,7 +279,7 @@ struct ClusterBoardView: View {
     private func landingPoint(_ index: Int, width: CGFloat) -> CGPoint {
         let area = viewport.height > 0 ? viewport : CGRect(x: 0, y: 0, width: width, height: 700)
         let spread = CGFloat(index)
-        return CGPoint(x: area.midX + spread * 28 - 14 * min(spread, 1), y: area.minY + area.height * 0.42 + spread * 32)
+        return CGPoint(x: area.midX + spread * 28 - 14 * min(spread, 1), y: area.minY + area.height * 0.5 + spread * 32)
     }
 
     private func currentHolds(width: CGFloat) -> [UUID: CGPoint] {
@@ -374,16 +383,25 @@ struct ClusterBoardView: View {
         let swing = min(90, distance * 0.2)
         let side: CGFloat = travel.height >= 0 ? 1 : -1
         let bulge = CGSize(width: -travel.height / distance * swing * 4 * side, height: travel.width / distance * swing * 4 * side)
+        let seconds = 0.55 + min(0.45, Double(distance) / 2500)
         var still = Transaction()
         still.disablesAnimations = true
-        withTransaction(still) { flights[id] = Flight(bulge: bulge, progress: 0) }
+        withTransaction(still) {
+            flights[id] = Flight(
+                start: CGSize(width: -travel.width, height: -travel.height),
+                bulge: bulge,
+                curve: .spring(duration: seconds, bounce: 0.12),
+                seconds: seconds,
+                progress: 0
+            )
+        }
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(40))
-            withAnimation(Self.flight) {
+            try? await Task.sleep(for: .milliseconds(30))
+            withAnimation(Self.makeRoom) {
                 held[id] = nil
                 flights[id]?.progress = 1
             }
-            try? await Task.sleep(for: .milliseconds(900))
+            try? await Task.sleep(for: .seconds(seconds + 0.15))
             withAnimation(.easeOut(duration: 0.3)) { flights[id] = nil }
             settles += 1
         }

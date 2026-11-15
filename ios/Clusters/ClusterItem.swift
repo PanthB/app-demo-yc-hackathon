@@ -267,6 +267,7 @@ struct ClusterStringHitArea: Shape {
 
 struct ArcFlight: ViewModifier, Animatable {
     var progress: Double
+    let start: CGSize
     let bulge: CGSize
 
     var animatableData: Double {
@@ -275,7 +276,8 @@ struct ArcFlight: ViewModifier, Animatable {
     }
 
     func body(content: Content) -> some View {
-        let lift = progress * (1 - progress)
-        content.offset(x: bulge.width * lift, y: bulge.height * lift)
+        let rest = 1 - progress
+        let lift = progress * rest
+        content.offset(x: start.width * rest + bulge.width * lift, y: start.height * rest + bulge.height * lift)
     }
 }
