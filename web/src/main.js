@@ -395,7 +395,7 @@ function meta(drop, kind, title) {
 function ideasNode(group) {
   const wrap = document.createElement("div");
   wrap.className = "ideas";
-  wrap.append(text("h3", "ideas for this group"));
+  wrap.append(text("h3", "suggestions for this group"));
   if (group.suggestions.length === 0) {
     wrap.append(text("p", "looking for some…", "quiet small"));
     return wrap;
@@ -424,7 +424,7 @@ function ideaFor(idea) {
   }
   const body = document.createElement("div");
   body.className = "idea-body";
-  body.append(text("p", idea.kind === "watch" ? "to watch" : idea.kind, "idea-kind"), text("h4", clean(idea.title) ?? "an idea"));
+  body.append(text("p", idea.kind === "watch" ? "to watch" : idea.kind, "idea-kind"), text("h4", clean(idea.title) ?? "a suggestion"));
   const details = ideaMeta(idea);
   if (details) body.append(text("p", details, "meta"));
   if (idea.reason) body.append(text("p", clean(idea.reason), "line"));
