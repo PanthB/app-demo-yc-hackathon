@@ -22,7 +22,7 @@ struct PinnedCard: View {
                 Spacer(minLength: 4)
                 HStack(spacing: 6) {
                     KindPill(kind: drop.kind)
-                    PersonAvatar(name: drop.cardAuthorName, personId: drop.cardAuthorId)
+                    PersonAvatar(drop: drop)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

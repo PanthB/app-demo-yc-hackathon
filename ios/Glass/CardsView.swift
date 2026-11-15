@@ -1,12 +1,14 @@
 import SwiftUI
 
 struct CardsView: View {
-    let sections: [GlassSection]
+    let sections: [DropSection]
     let namespace: Namespace.ID
     let select: (Drop) -> Void
 
     @State private var showsDone = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dropActions) private var actions
+    @Environment(BoardClock.self) private var clock
 
     var body: some View {
         ScrollView {
@@ -33,7 +35,7 @@ struct CardsView: View {
         .accessibilityIdentifier("cardsView")
     }
 
-    private func header(_ section: GlassSection) -> some View {
+    private func header(_ section: DropSection) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(section.title).font(.title3.weight(.semibold))
             Text("\(section.drops.count)").font(.title3).foregroundStyle(.secondary).monospacedDigit()
@@ -46,9 +48,9 @@ struct CardsView: View {
         .padding(.bottom, 8)
     }
 
-    private func doneHeader(_ section: GlassSection) -> some View {
+    private func doneHeader(_ section: DropSection) -> some View {
         Button {
-            withAnimation(reduceMotion ? nil : .smooth) { showsDone.toggle() }
+            withAnimation(motion) { showsDone.toggle() }
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(section.title).font(.title3.weight(.semibold))
@@ -73,7 +75,7 @@ struct CardsView: View {
     private func grid(_ drops: [Drop]) -> some View {
         MasonryLayout(columns: 2, spacing: 12) {
             ForEach(drops) { drop in
-                card(drop)
+                item(drop) { DropCard(drop: drop) }
             }
         }
         .padding(.horizontal, 16)
@@ -83,14 +85,8 @@ struct CardsView: View {
         ScrollView(.horizontal) {
             HStack(alignment: .top, spacing: 12) {
                 ForEach(drops) { drop in
-                    Button {
-                        select(drop)
-                    } label: {
-                        PinnedCard(drop: drop)
-                    }
-                    .buttonStyle(CardPressStyle())
-                    .matchedTransitionSource(id: drop.id, in: namespace)
-                    .containerRelativeFrame(.horizontal, count: 4, span: 3, spacing: 12)
+                    item(drop) { PinnedCard(drop: drop) }
+                        .containerRelativeFrame(.horizontal, count: 4, span: 3, spacing: 12)
                 }
             }
             .scrollTargetLayout()
@@ -100,14 +96,50 @@ struct CardsView: View {
         .scrollIndicators(.hidden)
     }
 
-    private func card(_ drop: Drop) -> some View {
+    private func item(_ drop: Drop, @ViewBuilder label: () -> some View) -> some View {
         Button {
             select(drop)
         } label: {
-            DropCard(drop: drop)
+            label()
         }
         .buttonStyle(CardPressStyle())
+        .contextMenu { menu(drop) }
         .matchedTransitionSource(id: drop.id, in: namespace)
+        .matchedGeometryEffect(id: drop.id, in: namespace)
+    }
+
+    @ViewBuilder
+    private func menu(_ drop: Drop) -> some View {
+        Button(drop.isPinned ? "unpin" : "pin", systemImage: drop.isPinned ? "pin.slash" : "pin") {
+            withAnimation(motion) { actions.pin(drop, !drop.isPinned) }
+        }
+        if drop.zone != .done {
+            Button("mark done", systemImage: "checkmark.circle") {
+                withAnimation(motion) { actions.done(drop) }
+            }
+        }
+        if drop.canUndoMove {
+            Button("put it back", systemImage: "arrow.uturn.backward") {
+                withAnimation(motion) { actions.undo(drop) }
+            }
+        }
+        Menu("move to", systemImage: "arrow.right") {
+            let current = drop.boardZone(now: clock.now)
+            ForEach(Zone.allCases.filter { $0 != .done && $0 != current }, id: \.self) { zone in
+                Button(zone.displayName) {
+                    withAnimation(motion) { actions.move(drop, zone) }
+                }
+            }
+        }
+        if drop.url != nil {
+            Button("open link", systemImage: "arrow.up.right") {
+                actions.open(drop)
+            }
+        }
+    }
+
+    private var motion: Animation? {
+        reduceMotion ? nil : .smooth
     }
 }
 

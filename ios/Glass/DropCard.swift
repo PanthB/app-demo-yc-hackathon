@@ -19,11 +19,11 @@ struct DropCard: View {
                     Text(meta).font(.footnote).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
                 }
                 HStack(alignment: .top, spacing: 6) {
-                    PersonAvatar(name: drop.cardAuthorName, personId: drop.cardAuthorId)
-                    if let suggestion = drop.suggestion(now: now) {
+                    PersonAvatar(drop: drop)
+                    if let suggestion = drop.liveSuggestion(now: now) {
                         SuggestionLine(suggestion: suggestion)
                     } else {
-                        Text(drop.cardAuthorName).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+                        Text(drop.authorLabel).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
                     }
                 }
                 .padding(.top, 4)
@@ -38,7 +38,7 @@ struct DropCard: View {
             KindPill(kind: drop.kind).padding(12)
         }
         .overlay(alignment: .topTrailing) {
-            if drop.pinned { PinBadge().padding(12) }
+            if drop.isPinned { PinBadge().padding(12) }
         }
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(Self.shape)

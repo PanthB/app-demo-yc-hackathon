@@ -41,9 +41,9 @@ extension Drop {
         DropKind.derive(type: type, source: sourceKind, hasDueTime: dueAt != nil)
     }
 
-    var cardAuthorId: String { dropperId }
-
-    var cardAuthorName: String { "me" }
+    var authorLabel: String {
+        CardWords.clean(authorName) ?? "me"
+    }
 
     func previewFace(now: Date, calendar: Calendar = .current) -> PreviewFace {
         if let image = MediaStore.image(at: thumbnailPath) { return .image(image) }
@@ -83,15 +83,18 @@ extension Drop {
         return CardWords.meta([when, place], hiding: face.words)
     }
 
-    func suggestion(now: Date) -> DropSuggestion? {
+    func liveSuggestion(now: Date) -> DropSuggestion? {
         if isArriving { return .words("reading this one now.") }
-        guard zone != .done, dueAt == nil, let startsAt else { return nil }
-        let wait = startsAt.timeIntervalSince(now)
-        return wait > 60 && wait <= ZoneClock.soonWindow ? .startsSoon(startsAt) : nil
+        guard zone != .done else { return nil }
+        if dueAt == nil, let startsAt {
+            let wait = startsAt.timeIntervalSince(now)
+            if wait > 60 && wait <= ZoneClock.soonWindow { return .startsSoon(startsAt) }
+        }
+        return CardWords.clean(suggestion).map(DropSuggestion.words)
     }
 
     func spokenLabel(now: Date, beside face: PreviewFace) -> String {
-        [kind.word, cardTitle(beside: face) ?? face.words, cardMeta(now: now, beside: face), "saved by \(cardAuthorName)", pinned ? "pinned" : nil]
+        [kind.word, cardTitle(beside: face) ?? face.words, cardMeta(now: now, beside: face), "saved by \(authorLabel)", isPinned ? "pinned" : nil]
             .compactMap { $0 }
             .joined(separator: ", ")
     }
