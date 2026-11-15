@@ -12,11 +12,12 @@ export const FACETS = {
 
 type Facet = keyof typeof FACETS;
 const FACET_ORDER: Facet[] = ["mood", "time", "neighborhood", "setting", "genre", "energy"];
-const WEIGHT: Record<Facet, number> = { mood: 1, neighborhood: 1, time: 0.8, setting: 0.8, genre: 0.6, energy: 0.4 };
+const WEIGHT: Record<Facet, number> = { time: 1.5, mood: 1, setting: 0.8, neighborhood: 0.5, genre: 0.1, energy: 0.1 };
 const FACET_OF = new Map<string, Facet>(FACET_ORDER.flatMap((f) => FACETS[f].map((value): [string, Facet] => [value, f])));
 const weightOf = (value: string) => WEIGHT[FACET_OF.get(value) ?? "energy"];
 
 export const JOIN = 0.3;
+const DROPS_PER_CLUSTER = 6;
 const MAX_VIBES = 5;
 
 const words = (list: string) => new RegExp(`(?:^|[^a-z])(?:${list})(?=$|[^a-z])`, "i");
@@ -151,9 +152,13 @@ export function orderVibes(values: string[]) {
 export const facetValues = (facet: "mood" | "time" | "setting") => [...FACETS[facet]];
 export const facetOf = (value: string) => FACET_OF.get(value);
 
+const timesOf = (vibes: string[]) => vibes.filter((v) => FACET_OF.get(v) === "time");
+
 export function similarity(a: string[], b: string[]) {
   const all = new Set([...a, ...b]);
   if (all.size === 0) return 0;
+  const [ta, tb] = [timesOf(a), timesOf(b)];
+  if (ta.length > 0 && tb.length > 0 && !ta.some((t) => tb.includes(t))) return 0;
   let shared = 0;
   let total = 0;
   for (const v of all) {
@@ -172,7 +177,9 @@ const phrase = (v: string) => (FACET_OF.get(v) === "neighborhood" ? (PLACE_PHRAS
 const byWeight = (values: string[]) => [...values].sort((a, b) => weightOf(b) - weightOf(a) || FACET_ORDER.indexOf(FACET_OF.get(a)!) - FACET_ORDER.indexOf(FACET_OF.get(b)!));
 
 export const reasonFor = (a: string[], b: string[]) => {
-  const shared = byWeight(a.filter((v) => b.includes(v))).slice(0, 2);
+  const shared = byWeight(a.filter((v) => b.includes(v)))
+    .slice(0, 2)
+    .sort((x, y) => FACET_ORDER.indexOf(FACET_OF.get(x)!) - FACET_ORDER.indexOf(FACET_OF.get(y)!));
   return shared.length ? `both ${shared.map(phrase).join(", ")}.` : undefined;
 };
 
@@ -183,43 +190,26 @@ export function clusterBoard(items: ClusterItem[]): Map<string, Placement> {
   const sorted = [...items].sort((a, b) => a.capturedAt - b.capturedAt || a.clientId.localeCompare(b.clientId));
   const n = sorted.length;
   const sim = sorted.map((a) => sorted.map((b) => similarity(a.vibes, b.vibes)));
-  const groups: number[][] = [];
-  const meanTo = (i: number, group: number[]) => {
-    const others = group.filter((j) => j !== i);
-    return others.length ? others.reduce((s, j) => s + sim[i][j], 0) / others.length : -1;
-  };
-  const best = (i: number) => {
-    let at = -1;
-    let score = JOIN;
-    groups.forEach((g, k) => {
-      const s = meanTo(i, g);
-      if (s >= score) [at, score] = [k, s];
-    });
-    return at;
-  };
   const pinned = new Set(
     sorted
       .map((x, i) => (x.jevClusterId && sorted.some((y, j) => j !== i && !y.jevClusterId && y.previousClusterId === x.jevClusterId) ? i : -1))
       .filter((i) => i >= 0),
   );
-  for (let i = 0; i < n; i++) {
-    if (pinned.has(i)) continue;
-    const k = best(i);
-    if (k >= 0) groups[k].push(i);
-    else groups.push([i]);
-  }
-  for (let pass = 0; pass < 2; pass++) {
-    for (let i = 0; i < n; i++) {
-      if (pinned.has(i)) continue;
-      const from = groups.findIndex((g) => g.includes(i));
-      const stay = meanTo(i, groups[from]);
-      const k = best(i);
-      if (k === from || (k >= 0 && meanTo(i, groups[k]) <= stay)) continue;
-      groups[from] = groups[from].filter((j) => j !== i);
-      if (k >= 0) groups[k].push(i);
-      else groups.push([i]);
+  const groups: number[][] = sorted.map((_, i) => i).filter((i) => !pinned.has(i)).map((i) => [i]);
+  const target = Math.max(1, Math.ceil(n / DROPS_PER_CLUSTER));
+  const linkage = (a: number[], b: number[]) => a.reduce((s, i) => s + b.reduce((t, j) => t + sim[i][j], 0), 0) / (a.length * b.length);
+  for (;;) {
+    let pair: [number, number] | undefined;
+    let score = 0;
+    for (let a = 0; a < groups.length; a++) {
+      for (let b = a + 1; b < groups.length; b++) {
+        const s = linkage(groups[a], groups[b]);
+        if (s > score) [pair, score] = [[a, b], s];
+      }
     }
-    for (let k = groups.length - 1; k >= 0; k--) if (groups[k].length === 0) groups.splice(k, 1);
+    if (!pair || (groups.length <= target && score < JOIN)) break;
+    groups[pair[0]].push(...groups[pair[1]]);
+    groups.splice(pair[1], 1);
   }
   for (const i of pinned) {
     const want = sorted[i].jevClusterId;

@@ -4,7 +4,6 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { enrichment, PALETTE, type DropType, type Enrichment, type ObjectKind, type SourceKind, type Stage, type Zone } from "./model";
 import { boardById, ensurePerson, membersOf } from "./boards";
-import { freshPipeline } from "./drops";
 import { enrichLink } from "./lib/enrich";
 import { DROP_TYPES, ruleExtraction, spread, TIME_ZONES, whenLabelFor } from "./lib/rules";
 
@@ -15,38 +14,17 @@ const OFFSET = -480;
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
-const PIPELINE_STEP = 8_000;
 const PEOPLE = ["panth", "maya", "sam", "alex"] as const;
 type Person = (typeof PEOPLE)[number];
 
 const seedClientId = (board: 1 | 2, n: number) => `5EED000${board}-0000-4000-8000-${n.toString(16).toUpperCase().padStart(12, "0")}`;
 const personId = (name: Person) => `seed-${name}`;
 
-const crewResult = v.object({ created: v.number(), reset: v.number(), kept: v.number(), removedDrops: v.number(), removedMembers: v.number() });
-const myBoardResult = v.object({ created: v.number(), reset: v.number(), images: v.number(), removedDrops: v.number(), removedMembers: v.number() });
+const boardResult = v.object({ created: v.number(), reset: v.number(), images: v.number(), removedDrops: v.number(), removedMembers: v.number() });
 
-type CrewDrop = { n: number; author: Person; url: string; minutesAgo: number; place?: string; latitude?: number; longitude?: number; pinnedHoursAgo?: number };
-
-const CREW: CrewDrop[] = [
-  { n: 1, author: "maya", url: "https://www.tiktok.com/@graacciiee/video/7617551860244745503", minutesAgo: 300, place: "dolores park", latitude: 37.75972, longitude: -122.42713, pinnedHoursAgo: 2 },
-  { n: 2, author: "sam", url: "https://www.instagram.com/p/DHY65llvDPK/", minutesAgo: 1500, place: "tartine bakery", latitude: 37.76146, longitude: -122.42395 },
-  { n: 3, author: "alex", url: "https://www.stonemillmatcha-us.com/", minutesAgo: 2600, place: "stonemill matcha", latitude: 37.76402, longitude: -122.42153 },
-  { n: 4, author: "panth", url: "https://open.spotify.com/track/6UsdldEfcEXSID2G3nA89J", minutesAgo: 900 },
-  { n: 5, author: "maya", url: "https://www.tiktok.com/@marissadaily_/video/7541446036347309343", minutesAgo: 4000 },
-  { n: 6, author: "alex", url: "https://www.tiktok.com/@thesnacksensei/video/7561602082596343095", minutesAgo: 700 },
-  { n: 7, author: "sam", url: "https://www.youtube.com/watch?v=zmIgc0SkVgE", minutesAgo: 2000, place: "marufuku ramen", latitude: 37.7853, longitude: -122.4301 },
-  { n: 8, author: "panth", url: "https://open.spotify.com/track/0ofHAoxe9vBkTCp2UQIavz", minutesAgo: 3100 },
-  { n: 9, author: "maya", url: "https://open.spotify.com/track/6ZRuF2n1CQxyxxAAWsKJOy", minutesAgo: 1200 },
-  { n: 10, author: "alex", url: "https://thechapelsf.com", minutesAgo: 5200, place: "the chapel", latitude: 37.76049, longitude: -122.4212 },
-  { n: 11, author: "panth", url: "https://www.instagram.com/p/DWCN6pbgn3F/", minutesAgo: 450, place: "fort point", latitude: 37.8106, longitude: -122.4771 },
-  { n: 12, author: "sam", url: "https://www.instagram.com/reel/DbySW82ILGn/", minutesAgo: 3600 },
-  { n: 13, author: "maya", url: "https://open.spotify.com/track/3zBhihYUHBmGd2bcQIobrF", minutesAgo: 6100 },
-  { n: 14, author: "alex", url: "https://open.spotify.com/track/3xKsf9qdS1CyvXSMEid6g8", minutesAgo: 2300 },
-  { n: 15, author: "panth", url: "https://www.nps.gov/goga/planyourvisit/landsend.htm", minutesAgo: 8000, place: "lands end", latitude: 37.7802, longitude: -122.5115, pinnedHoursAgo: 20 },
-];
-
-type MyDrop = {
+type SeedDrop = {
   n: number;
+  author?: Person;
   kind: SourceKind;
   minutesAgo: number;
   type: DropType;
@@ -68,9 +46,42 @@ type MyDrop = {
   pinnedHoursAgo?: number;
   unsure?: boolean;
   doneFrom?: Zone;
+  vibes?: string[];
+  clusterId?: string;
 };
 
-function myDrops(now: number): MyDrop[] {
+const clip = (s: Omit<SeedDrop, "kind" | "type" | "objectKind" | "zone">): SeedDrop => ({ ...s, kind: "url", type: "mood", objectKind: "polaroid", zone: "vibes" });
+const song = (s: Omit<SeedDrop, "kind" | "type" | "objectKind" | "zone">): SeedDrop => ({ ...s, kind: "url", type: "song", objectKind: "record", zone: "vibes" });
+const place = (s: Omit<SeedDrop, "kind" | "type" | "objectKind" | "zone">): SeedDrop => ({ ...s, kind: "url", type: "place", objectKind: "postcard", zone: "someday" });
+
+const SUNNY = "sunny-afternoons";
+const LATE = "late-night";
+const GOLDEN = "golden-hour";
+
+const CREW: SeedDrop[] = [
+  clip({ n: 1, author: "maya", minutesAgo: 300, title: "dolores park on a sunny day", url: "https://www.tiktok.com/@graacciiee/video/7617551860244745503", place: "dolores park", latitude: 37.75972, longitude: -122.42713, pinnedHoursAgo: 2, vibes: ["upbeat", "outdoors", "mission"], clusterId: SUNNY }),
+  place({ n: 2, author: "sam", minutesAgo: 1500, title: "tartine morning bun", url: "https://www.instagram.com/p/DHY65llvDPK/", place: "tartine bakery", latitude: 37.76146, longitude: -122.42395, vibes: ["cozy", "morning", "food", "mission"], clusterId: SUNNY }),
+  place({ n: 3, author: "alex", minutesAgo: 2600, title: "stonemill matcha", url: "https://www.stonemillmatcha-us.com/", place: "stonemill matcha", latitude: 37.76402, longitude: -122.42153, vibes: ["calm", "morning", "mission"], clusterId: SUNNY }),
+  song({ n: 4, author: "panth", minutesAgo: 900, title: "san francisco (be sure to wear flowers in your hair)", artist: "scott mckenzie", url: "https://open.spotify.com/track/6UsdldEfcEXSID2G3nA89J", vibes: ["upbeat", "folk", "steady"], clusterId: SUNNY }),
+  clip({ n: 5, author: "maya", minutesAgo: 4000, title: "15 things to do in sf", url: "https://www.tiktok.com/@marissadaily_/video/7541446036347309343", vibes: ["upbeat", "outdoors"], clusterId: SUNNY }),
+  clip({ n: 6, author: "alex", minutesAgo: 700, title: "mission district food tour", url: "https://www.tiktok.com/@thesnacksensei/video/7561602082596343095", vibes: ["late night", "food", "mission"], clusterId: LATE }),
+  clip({ n: 7, author: "sam", minutesAgo: 2000, title: "marufuku ramen", url: "https://www.youtube.com/watch?v=zmIgc0SkVgE", place: "marufuku ramen", latitude: 37.7853, longitude: -122.4301, vibes: ["cozy", "late night", "food", "japantown"], clusterId: LATE }),
+  song({ n: 8, author: "panth", minutesAgo: 3100, title: "dreams", artist: "fleetwood mac", url: "https://open.spotify.com/track/0ofHAoxe9vBkTCp2UQIavz", vibes: ["dreamy", "late night", "rock", "steady"], clusterId: LATE }),
+  song({ n: 9, author: "maya", minutesAgo: 1200, title: "nights like this", artist: "kehlani", url: "https://open.spotify.com/track/6ZRuF2n1CQxyxxAAWsKJOy", vibes: ["moody", "late night", "r&b", "slow"], clusterId: LATE }),
+  place({ n: 10, author: "alex", minutesAgo: 5200, title: "the chapel", url: "https://thechapelsf.com", place: "the chapel", latitude: 37.76049, longitude: -122.4212, vibes: ["late night", "live music", "mission"], clusterId: LATE }),
+  clip({ n: 11, author: "panth", minutesAgo: 450, title: "golden gate from fort point", url: "https://www.instagram.com/p/DWCN6pbgn3F/", place: "fort point", latitude: 37.8106, longitude: -122.4771, vibes: ["golden hour", "by the water", "calm", "presidio"], clusterId: GOLDEN }),
+  clip({ n: 12, author: "sam", minutesAgo: 3600, title: "the golden gate still feels unreal", url: "https://www.instagram.com/reel/DbySW82ILGn/", vibes: ["golden hour", "by the water", "dreamy"], clusterId: GOLDEN }),
+  song({ n: 13, author: "maya", minutesAgo: 6100, title: "(sittin' on) the dock of the bay", artist: "otis redding", url: "https://open.spotify.com/track/3zBhihYUHBmGd2bcQIobrF", vibes: ["calm", "by the water", "soul", "slow"], clusterId: GOLDEN }),
+  song({ n: 14, author: "alex", minutesAgo: 2300, title: "pink + white", artist: "frank ocean", url: "https://open.spotify.com/track/3xKsf9qdS1CyvXSMEid6g8", vibes: ["dreamy", "golden hour", "r&b", "steady"], clusterId: GOLDEN }),
+  place({ n: 15, author: "panth", minutesAgo: 8000, title: "lands end trail", url: "https://www.nps.gov/goga/planyourvisit/landsend.htm", place: "lands end", latitude: 37.7802, longitude: -122.5115, pinnedHoursAgo: 20, vibes: ["golden hour", "by the water", "outdoors", "lands end"], clusterId: GOLDEN }),
+];
+
+const CREW_PAIRS: [number, number][] = [
+  [1, 2],
+  [6, 7],
+];
+
+function myDrops(now: number): SeedDrop[] {
   const local = (t: number) => new Date(t + OFFSET * MINUTE);
   const today = Date.UTC(local(now).getUTCFullYear(), local(now).getUTCMonth(), local(now).getUTCDate()) - OFFSET * MINUTE;
   const saturday = today + ((6 - local(now).getUTCDay() + 7) % 7) * DAY;
@@ -148,163 +159,128 @@ async function seededDrop(ctx: MutationCtx, boardId: string, clientId: string) {
   return existing;
 }
 
+async function writeSeeds(
+  ctx: MutationCtx,
+  board: { id: string; prefix: 1 | 2; pairs: [number, number][] },
+  seeds: SeedDrop[],
+  images: Record<string, Id<"_storage">>,
+  enrichments: Record<string, Enrichment>,
+) {
+  const now = Date.now();
+  const used = new Set<Id<"_storage">>();
+  let created = 0;
+  let reset = 0;
+  for (const s of seeds) {
+    const clientId = seedClientId(board.prefix, s.n);
+    const capturedAt = now - s.minutesAgo * MINUTE;
+    const imageIds = s.image && images[s.image] ? [images[s.image]] : [];
+    imageIds.forEach((id) => used.add(id));
+    const hints = s.transcript || s.artist || s.place ? { transcript: s.transcript, artist: s.artist, placeName: s.place } : undefined;
+    const words = ruleExtraction({ text: [s.title, s.text, s.transcript].filter(Boolean).join("\n"), url: s.url, capturedAt, utcOffsetMinutes: OFFSET });
+    const anchor = s.dueAt ?? s.startsAt;
+    const whenLabel = s.whenLabel ?? (anchor ? whenLabelFor(anchor, now, OFFSET) : undefined);
+    const pickedZone = s.doneFrom ?? s.zone;
+    const stage: Stage = { ran: "skipped", reason: "seeded for the demo" };
+    const linked: Enrichment | undefined = enrichments[clientId];
+    const related = board.pairs.flatMap(([a, b]) => (a === s.n ? [b] : b === s.n ? [a] : [])).map((n) => seedClientId(board.prefix, n));
+    const searchText = [
+      s.title && `title: ${s.title}`,
+      s.place && `place: ${s.place}`,
+      whenLabel && `when: ${whenLabel}`,
+      words.kindWords.length > 0 && `kind: ${words.kindWords.join(", ")}`,
+      s.vibes && s.vibes.length > 0 && `vibe: ${s.vibes.join(", ")}`,
+      s.text && `note: ${s.text}`,
+      s.artist && `by: ${s.artist}`,
+      s.transcript && `voice note: ${s.transcript}`,
+      s.url && `link: ${s.url}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const drop = {
+      boardId: board.id,
+      authorId: personId(s.author ?? "panth"),
+      clientId,
+      kind: s.kind,
+      text: s.text,
+      url: s.url,
+      imageIds,
+      capturedAt,
+      utcOffsetMinutes: OFFSET,
+      latitude: s.latitude,
+      longitude: s.longitude,
+      hints,
+      status: "processed" as const,
+      enrichment: s.url ? { ...linked, provider: linked?.provider ?? "seed", title: s.title, author: s.artist ?? linked?.author } : undefined,
+      extraction: {
+        title: s.title,
+        placeName: s.place,
+        startsAt: s.startsAt,
+        dueAt: s.dueAt,
+        whenLabel,
+        price: s.price,
+        kindWords: words.kindWords,
+        vibeWords: words.vibeWords,
+        confidence: s.unsure ? 0.3 : 0.9,
+      },
+      decision: {
+        type: s.type,
+        zone: pickedZone,
+        objectKind: s.objectKind,
+        emphasis: "normal" as const,
+        unsure: Boolean(s.unsure),
+        typeProbabilities: spread(DROP_TYPES, s.type, 0.8),
+        zoneProbabilities: spread(TIME_ZONES, pickedZone, s.unsure ? 0.4 : 0.8),
+      },
+      zone: s.zone,
+      zoneSetByUser: Boolean(s.doneFrom),
+      previousZone: s.doneFrom,
+      pinned: s.pinnedHoursAgo !== undefined,
+      pinnedAt: s.pinnedHoursAgo === undefined ? undefined : now - s.pinnedHoursAgo * HOUR,
+      vibes: s.vibes,
+      clusterId: s.clusterId,
+      relatedClientIds: related,
+      pipeline: { enrich: stage, extract: stage, remember: stage, decide: stage, connect: stage, startedAt: capturedAt, finishedAt: capturedAt },
+      searchText,
+      updatedAt: now,
+    };
+    const existing = await seededDrop(ctx, board.id, clientId);
+    if (!existing) {
+      await ctx.db.insert("drops", drop);
+      created++;
+      continue;
+    }
+    for (const old of existing.imageIds) if (!imageIds.includes(old)) await ctx.storage.delete(old);
+    await ctx.db.replace("drops", existing._id, drop);
+    reset++;
+  }
+  await ctx.scheduler.runAfter(0, internal.clusters.recompute, { boardId: board.id });
+  return { created, reset, used };
+}
+
 export const sfCrew = internalMutation({
-  args: { reprocess: v.boolean() },
-  returns: crewResult,
-  handler: async (ctx, { reprocess }) => {
-    const now = Date.now();
+  args: { enrichments: v.record(v.string(), enrichment) },
+  returns: boardResult,
+  handler: async (ctx, { enrichments }) => {
     for (const name of PEOPLE) await ensurePerson(ctx, personId(name), name);
     await ensureBoard(ctx, CREW_BOARD, { name: "sf crew", shared: true, inviteCode: INVITE_CODE });
     const removedMembers = await setMembers(ctx, CREW_BOARD, PEOPLE);
     const removedDrops = await removeOtherDrops(ctx, CREW_BOARD, CREW.map((s) => seedClientId(2, s.n)));
-
-    let created = 0;
-    let reset = 0;
-    let kept = 0;
-    const oldestFirst = [...CREW].sort((a, b) => b.minutesAgo - a.minutesAgo);
-    for (const s of oldestFirst) {
-      const clientId = seedClientId(2, s.n);
-      const owned = {
-        authorId: personId(s.author),
-        capturedAt: now - s.minutesAgo * MINUTE,
-        pinned: s.pinnedHoursAgo !== undefined,
-        pinnedAt: s.pinnedHoursAgo === undefined ? undefined : now - s.pinnedHoursAgo * HOUR,
-        zoneSetByUser: false,
-        previousZone: undefined,
-        updatedAt: now,
-      };
-      const existing = await seededDrop(ctx, CREW_BOARD, clientId);
-      if (existing && existing.status === "processed" && !reprocess) {
-        await ctx.db.patch("drops", existing._id, { ...owned, zone: existing.decision?.zone ?? existing.zone });
-        kept++;
-        continue;
-      }
-      const drop = {
-        ...owned,
-        boardId: CREW_BOARD,
-        clientId,
-        kind: "url" as const,
-        url: s.url,
-        imageIds: [],
-        utcOffsetMinutes: OFFSET,
-        latitude: s.latitude,
-        longitude: s.longitude,
-        hints: s.place ? { placeName: s.place } : undefined,
-        status: "pending" as const,
-        relatedClientIds: [],
-        pipeline: freshPipeline(),
-      };
-      let dropId: Id<"drops">;
-      if (existing) {
-        await ctx.db.replace("drops", existing._id, drop);
-        dropId = existing._id;
-        reset++;
-      } else {
-        dropId = await ctx.db.insert("drops", drop);
-        created++;
-      }
-      await ctx.scheduler.runAfter((created + reset - 1) * PIPELINE_STEP, internal.pipeline.run, { dropId });
-    }
-    await ctx.scheduler.runAfter(0, internal.clusters.recompute, { boardId: CREW_BOARD });
-    return { created, reset, kept, removedDrops, removedMembers };
+    const { created, reset } = await writeSeeds(ctx, { id: CREW_BOARD, prefix: 2, pairs: CREW_PAIRS }, CREW, {}, enrichments);
+    return { created, reset, images: 0, removedDrops, removedMembers };
   },
 });
 
 export const myBoard = internalMutation({
   args: { images: v.record(v.string(), v.id("_storage")), enrichments: v.record(v.string(), enrichment) },
-  returns: myBoardResult,
+  returns: boardResult,
   handler: async (ctx, { images, enrichments }) => {
-    const now = Date.now();
     const panth = await ensurePerson(ctx, personId("panth"), "panth");
     await ensureBoard(ctx, MY_BOARD, { name: "my board", shared: false });
     if (panth.personalBoardId !== MY_BOARD) await ctx.db.patch("people", panth._id, { personalBoardId: MY_BOARD });
     const removedMembers = await setMembers(ctx, MY_BOARD, ["panth"]);
-    const seeds = myDrops(now);
+    const seeds = myDrops(Date.now());
     const removedDrops = await removeOtherDrops(ctx, MY_BOARD, seeds.map((s) => seedClientId(1, s.n)));
-
-    const used = new Set<Id<"_storage">>();
-    let created = 0;
-    let reset = 0;
-    for (const s of seeds) {
-      const clientId = seedClientId(1, s.n);
-      const capturedAt = now - s.minutesAgo * MINUTE;
-      const imageIds = s.image && images[s.image] ? [images[s.image]] : [];
-      imageIds.forEach((id) => used.add(id));
-      const hints = s.transcript || s.artist || s.place ? { transcript: s.transcript, artist: s.artist, placeName: s.place } : undefined;
-      const words = ruleExtraction({ text: [s.title, s.text, s.transcript].filter(Boolean).join("\n"), url: s.url, capturedAt, utcOffsetMinutes: OFFSET });
-      const anchor = s.dueAt ?? s.startsAt;
-      const whenLabel = s.whenLabel ?? (anchor ? whenLabelFor(anchor, now, OFFSET) : undefined);
-      const pickedZone = s.doneFrom ?? s.zone;
-      const stage: Stage = { ran: "skipped", reason: "seeded for the demo" };
-      const linked: Enrichment | undefined = enrichments[String(s.n)];
-      const searchText = [
-        s.title && `title: ${s.title}`,
-        s.place && `place: ${s.place}`,
-        whenLabel && `when: ${whenLabel}`,
-        words.kindWords.length > 0 && `kind: ${words.kindWords.join(", ")}`,
-        words.vibeWords.length > 0 && `vibe: ${words.vibeWords.join(", ")}`,
-        s.text && `note: ${s.text}`,
-        s.artist && `by: ${s.artist}`,
-        s.transcript && `voice note: ${s.transcript}`,
-        s.url && `link: ${s.url}`,
-      ]
-        .filter(Boolean)
-        .join("\n");
-      const drop = {
-        boardId: MY_BOARD,
-        authorId: personId("panth"),
-        clientId,
-        kind: s.kind,
-        text: s.text,
-        url: s.url,
-        imageIds,
-        capturedAt,
-        utcOffsetMinutes: OFFSET,
-        latitude: s.latitude,
-        longitude: s.longitude,
-        hints,
-        status: "processed" as const,
-        enrichment: s.url ? { ...linked, provider: linked?.provider ?? "seed", title: s.title, author: s.artist ?? linked?.author } : undefined,
-        extraction: {
-          title: s.title,
-          placeName: s.place,
-          startsAt: s.startsAt,
-          dueAt: s.dueAt,
-          whenLabel,
-          price: s.price,
-          kindWords: words.kindWords,
-          vibeWords: words.vibeWords,
-          confidence: s.unsure ? 0.3 : 0.9,
-        },
-        decision: {
-          type: s.type,
-          zone: pickedZone,
-          objectKind: s.objectKind,
-          emphasis: "normal" as const,
-          unsure: Boolean(s.unsure),
-          typeProbabilities: spread(DROP_TYPES, s.type, 0.8),
-          zoneProbabilities: spread(TIME_ZONES, pickedZone, s.unsure ? 0.4 : 0.8),
-        },
-        zone: s.zone,
-        zoneSetByUser: Boolean(s.doneFrom),
-        previousZone: s.doneFrom,
-        pinned: s.pinnedHoursAgo !== undefined,
-        pinnedAt: s.pinnedHoursAgo === undefined ? undefined : now - s.pinnedHoursAgo * HOUR,
-        relatedClientIds: [],
-        pipeline: { enrich: stage, extract: stage, remember: stage, decide: stage, connect: stage, startedAt: capturedAt, finishedAt: capturedAt },
-        searchText,
-        updatedAt: now,
-      };
-      const existing = await seededDrop(ctx, MY_BOARD, clientId);
-      if (!existing) {
-        await ctx.db.insert("drops", drop);
-        created++;
-        continue;
-      }
-      for (const old of existing.imageIds) if (!imageIds.includes(old)) await ctx.storage.delete(old);
-      await ctx.db.replace("drops", existing._id, drop);
-      reset++;
-    }
+    const { created, reset, used } = await writeSeeds(ctx, { id: MY_BOARD, prefix: 1, pairs: [] }, seeds, images, enrichments);
     const unused = Object.values(images).filter((id) => !used.has(id));
     for (const id of unused) await ctx.storage.delete(id);
     return { created, reset, images: used.size, removedDrops, removedMembers };
@@ -312,21 +288,25 @@ export const myBoard = internalMutation({
 });
 
 export const run = internalAction({
-  args: { images: v.optional(v.record(v.string(), v.id("_storage"))), reprocess: v.optional(v.boolean()) },
-  returns: v.object({ myBoard: myBoardResult, sfCrew: crewResult, linkFetchFailures: v.array(v.string()) }),
-  handler: async (ctx, { images = {}, reprocess = false }) => {
+  args: { images: v.optional(v.record(v.string(), v.id("_storage"))) },
+  returns: v.object({ myBoard: boardResult, sfCrew: boardResult, linkFetchFailures: v.array(v.string()) }),
+  handler: async (ctx, { images = {} }) => {
     const enrichments: Record<string, Enrichment> = {};
     const linkFetchFailures: string[] = [];
-    for (const s of myDrops(Date.now())) {
-      if (!s.url) continue;
+    const links = [
+      ...myDrops(Date.now()).map((s) => ({ clientId: seedClientId(1, s.n), url: s.url })),
+      ...CREW.map((s) => ({ clientId: seedClientId(2, s.n), url: s.url })),
+    ];
+    for (const { clientId, url } of links) {
+      if (!url) continue;
       try {
-        enrichments[String(s.n)] = await enrichLink(s.url);
+        enrichments[clientId] = await enrichLink(url);
       } catch (e) {
-        linkFetchFailures.push(`${s.url}: ${e instanceof Error ? e.message : String(e)}`);
+        linkFetchFailures.push(`${url}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
-    const myBoard: Infer<typeof myBoardResult> = await ctx.runMutation(internal.seed.myBoard, { images, enrichments });
-    const sfCrew: Infer<typeof crewResult> = await ctx.runMutation(internal.seed.sfCrew, { reprocess });
+    const myBoard: Infer<typeof boardResult> = await ctx.runMutation(internal.seed.myBoard, { images, enrichments });
+    const sfCrew: Infer<typeof boardResult> = await ctx.runMutation(internal.seed.sfCrew, { enrichments });
     return { myBoard, sfCrew, linkFetchFailures };
   },
 });

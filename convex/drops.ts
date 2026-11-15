@@ -24,7 +24,7 @@ import {
   type Pipeline,
 } from "./model";
 
-export const freshPipeline = (): Pipeline => ({
+const freshPipeline = (): Pipeline => ({
   enrich: { ran: "pending" },
   extract: { ran: "pending" },
   remember: { ran: "pending" },

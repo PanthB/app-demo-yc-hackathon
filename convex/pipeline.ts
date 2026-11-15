@@ -26,6 +26,7 @@ import {
 import {
   corpus,
   fromLocalIso,
+  isClipLink,
   isMusicLink,
   keywords,
   localDate,
@@ -397,6 +398,11 @@ export const run = internalAction({
           pipeline.decide = rules(fellBack("decider", e));
           pipeline.connect = { ran: "rules", by: "keyword overlap on convex search", reason: fellBack("decider", e) };
         }
+      }
+
+      if (isClipLink(drop.url, enrichment?.durationSec)) {
+        const timedClip = extraction.dueAt !== undefined || extraction.startsAt !== undefined;
+        decision = { ...decision, type: "mood", objectKind: "polaroid", ...(timedClip ? {} : { zone: "vibes" as const, unsure: false }) };
       }
 
       if (!memory) pipeline.remember = skipped("no SUPERMEMORY_API_KEY in the convex env");

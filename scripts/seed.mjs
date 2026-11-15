@@ -2,9 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 
-const args = process.argv.slice(2);
-const reprocess = args.includes("--reprocess");
-const dir = args.find((a) => !a.startsWith("--")) ?? "ios/Seed/SeedImages.xcassets";
+const dir = process.argv[2] ?? "ios/Seed/SeedImages.xcassets";
 const run = (fn, fnArgs = {}) => JSON.parse(execFileSync("npx", ["convex", "run", fn, JSON.stringify(fnArgs)], { encoding: "utf8" }));
 const types = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png" };
 
@@ -21,4 +19,4 @@ for (const set of existsSync(dir) ? readdirSync(dir).filter((d) => d.endsWith(".
     images[basename(file, extname(file))] = (await response.json()).storageId;
   }
 }
-console.log(JSON.stringify(run("seed:run", { images, reprocess }), null, 2));
+console.log(JSON.stringify(run("seed:run", { images }), null, 2));
