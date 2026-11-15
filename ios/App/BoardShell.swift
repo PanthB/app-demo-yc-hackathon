@@ -5,6 +5,7 @@ struct BoardShell: View {
     @Query(sort: \Drop.createdAt, order: .reverse) private var drops: [Drop]
     @AppStorage(ViewMode.storageKey) private var storedView: String?
     @AppStorage(Mood.handwritingKey) private var handwriting = true
+    @AppStorage(Mood.linesKey) private var lines = false
     @Environment(BoardsStore.self) private var boards
     @Environment(BoardClock.self) private var clock
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -13,7 +14,6 @@ struct BoardShell: View {
     @State private var filter: DropFilter = .everyone
     @State private var groupings: [String: DropGrouping] = [:]
     @State private var showsMembers = false
-    @State private var showsSuggestions = false
     @State private var toast: String?
 
     var body: some View {
@@ -44,10 +44,6 @@ struct BoardShell: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarTitleMenu { boardMenu(known, current: boardId) }
                 .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("for y'all", systemImage: "lightbulb") { showsSuggestions = true }
-                            .accessibilityIdentifier("suggestionsButton")
-                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
                             Picker("arrange", selection: Binding(
@@ -58,8 +54,9 @@ struct BoardShell: View {
                                     Text(choice.menuName).tag(choice)
                                 }
                             }
-                            if mode == .board, grouping == .when {
-                                Toggle("handwritten notes", isOn: $handwriting)
+                            if mode == .board {
+                                Toggle("handwriting", isOn: $handwriting)
+                                Toggle("lines", isOn: $lines)
                             }
                         } label: {
                             Label("arrange", systemImage: "rectangle.3.group")
@@ -119,9 +116,6 @@ struct BoardShell: View {
             if let board {
                 ShellMembersSheet(board: board)
             }
-        }
-        .sheet(isPresented: $showsSuggestions) {
-            ShellSuggestions()
         }
     }
 

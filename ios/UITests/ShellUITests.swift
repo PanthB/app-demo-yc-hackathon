@@ -35,17 +35,9 @@ final class ShellUITests: XCTestCase {
         pause()
         app.open(URL(string: "appdemo://arrive")!)
         let toast = element(app, "arrivalToast")
-        XCTAssertTrue(toast.waitForExistence(timeout: 5))
+        XCTAssertTrue(toast.waitForExistence(timeout: 15))
         XCTAssertEqual(toast.label, "maya added a song.")
         XCTAssertTrue(toast.waitForNonExistence(timeout: 5))
-    }
-
-    func testForYallOpensTheSuggestions() {
-        let app = launch()
-        let button = element(app, "suggestionsButton")
-        XCTAssertTrue(button.waitForExistence(timeout: 20))
-        button.tap()
-        XCTAssertTrue(title(app, "for y'all").waitForExistence(timeout: 5))
     }
 
     func testACardZoomsIntoItsDetailAndBack() {

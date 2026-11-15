@@ -36,6 +36,7 @@ struct PaperBoardRoot: View {
 
 private struct Corkboard: View {
     @Environment(\.mood) private var mood
+    @AppStorage(Mood.linesKey) private var lines = false
     let layout: CorkboardLayout
     let width: CGFloat
     let namespace: Namespace.ID
@@ -50,16 +51,18 @@ private struct Corkboard: View {
                     .offset(x: CorkboardLayout.margin, y: header.top)
             }
 
-            ForEach(layout.threads) { thread in
-                ZStack {
-                    StringLine(from: thread.from, to: thread.to)
-                        .stroke(mood.person, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                    StringLine(from: thread.from, to: thread.to)
-                        .stroke(mood.personDeep, style: StrokeStyle(lineWidth: 2.5, lineCap: .butt, dash: [1.5, 9]))
+            if lines {
+                ForEach(layout.threads) { thread in
+                    ZStack {
+                        StringLine(from: thread.from, to: thread.to)
+                            .stroke(mood.person, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                        StringLine(from: thread.from, to: thread.to)
+                            .stroke(mood.personDeep, style: StrokeStyle(lineWidth: 2.5, lineCap: .butt, dash: [1.5, 9]))
+                    }
+                    .contactShadow(mood)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
                 }
-                .contactShadow(mood)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
             }
 
             ForEach(layout.items) { item in

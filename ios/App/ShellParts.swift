@@ -108,21 +108,6 @@ extension PersonAvatar {
     }
 }
 
-struct ShellSuggestions: View {
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                "there's nothing to suggest yet.",
-                systemImage: "lightbulb",
-                description: Text("ideas for this board will show up here.")
-            )
-            .navigationTitle("for y'all")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-        .presentationDetents([.medium, .large])
-    }
-}
-
 struct ShellToast: View {
     let text: String
 

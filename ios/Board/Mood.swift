@@ -41,6 +41,7 @@ struct Mood {
 
     static let handFontName = UIFont.fontNames(forFamilyName: "Caveat").first ?? "Caveat"
     static let handwritingKey = "Handwriting"
+    static let linesKey = "BoardLines"
 
     static let sunny = Mood(
         board: Color(hex: 0xEAD9BE),
