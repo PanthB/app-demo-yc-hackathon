@@ -124,7 +124,8 @@ private struct Polaroid: View {
                 .foregroundStyle(mood.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, minHeight: 36, maxHeight: 36, alignment: .leading)
+                .padding(.top, 6)
+                .frame(maxWidth: .infinity, minHeight: 40, maxHeight: 40, alignment: .topLeading)
         }
         .padding(EdgeInsets(top: 10, leading: 10, bottom: 0, trailing: 10))
         .background(mood.paper)

@@ -53,9 +53,9 @@ struct CorkboardLayout {
     static let objectLeading: CGFloat = 44
     static let trailing: CGFloat = 14
     static let cornerInset: CGFloat = 12
-    static let envelopeSize = CGSize(width: 84, height: 60)
+    static let envelopeSize = CGSize(width: 96, height: 64)
     static let pocketSize = CGSize(width: 64, height: 52)
-    static let vibeScale: CGFloat = 0.7
+    static let vibeScale: CGFloat = 0.62
     static let shownVibes = 3
 
     private(set) var items: [Item] = []
@@ -136,7 +136,7 @@ struct CorkboardLayout {
         }
         switch drop.objectKind {
         case .sticky: return CGSize(width: 120, height: 120)
-        case .polaroid: return CGSize(width: 136, height: 162)
+        case .polaroid: return CGSize(width: 136, height: 166)
         case .record: return CGSize(width: 120, height: 120)
         case .slip: return CGSize(width: 160, height: 64)
         case .stub: return CGSize(width: 160, height: 76)
@@ -199,9 +199,9 @@ struct CorkboardLayout {
     }
 
     private mutating func placeVibes(_ drops: [Drop]) {
-        let spread: [CGFloat] = drops.count == 1 ? [0] : (drops.count == 2 ? [-12, 12] : [-16, 0, 16])
-        let fan: [Double] = drops.count == 1 ? [-3] : (drops.count == 2 ? [-7, 6] : [-9, 2, 10])
-        for (index, drop) in drops.enumerated() {
+        let spread: [CGFloat] = drops.count == 1 ? [0] : (drops.count == 2 ? [-14, 10] : [-20, -2, 14])
+        let fan: [Double] = drops.count == 1 ? [-3] : (drops.count == 2 ? [-8, 5] : [-10, -1, 9])
+        for (index, drop) in drops.reversed().enumerated() {
             let size = Self.size(for: drop)
             vibes.append(Item(
                 drop: drop,
