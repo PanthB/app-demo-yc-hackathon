@@ -220,7 +220,6 @@ struct ClusterLabelSlip: View {
     var body: some View {
         Text(text)
             .font(mood.handwriting ? mood.hand(26) : mood.ui(19, weight: .bold))
-            .fontWeight(.bold)
             .foregroundStyle(mood.ink)
             .lineLimit(1)
             .padding(.trailing, mood.handwriting ? 4 : 0)
