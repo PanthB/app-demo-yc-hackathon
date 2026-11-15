@@ -5,6 +5,7 @@ test:
     tags:
       - phase1
       - board
+      - deferred
   build:
     name: app-demo-yc-hackathon
   variables:

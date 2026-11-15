@@ -1,0 +1,45 @@
+test:
+  metadata:
+    name: views-2-pin
+    platform: ios
+    tags:
+      - views
+      - shared
+  build:
+    name: app-demo-yc-hackathon
+  blocks:
+    - type: manual
+      step_type: open_app
+    - type: if
+      condition: Is a system permission prompt (location or notifications) visible?
+      then:
+        - type: instructions
+          step_description: Tap the button that allows it (Allow While Using App, or Allow).
+    - type: manual
+      step_type: navigate
+      step_description: "appdemo://seed"
+    - type: if
+      condition: Is a dialog asking whether to open this in the app visible?
+      then:
+        - type: instructions
+          step_description: Tap Open.
+    - type: manual
+      step_type: wait
+      step_description: "2"
+    - type: extraction
+      step_description: What is the title of the first drop that is not in the pinned section? Answer with just the title.
+      variable_name: drop-title
+    - type: instructions
+      step_description: Long-press the {{drop-title}} card and choose pin from the menu.
+    - type: validation
+      step_description: "{{drop-title}} is now in the pinned section at the top, and its card shows a pin glyph."
+    - type: instructions
+      step_description: In the floating bar at the bottom, tap the list view icon in the view switch.
+    - type: validation
+      step_description: In the list view, {{drop-title}} is in the pinned section at the top.
+    - type: instructions
+      step_description: Unpin {{drop-title}}, either by swiping its row from the leading edge or by long-pressing it and choosing unpin.
+    - type: validation
+      step_description: "{{drop-title}} is no longer in the pinned section."
+    - type: instructions
+      step_description: In the floating bar at the bottom, tap the cards view icon in the view switch.
