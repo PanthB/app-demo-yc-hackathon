@@ -38,7 +38,17 @@ struct DropCamera: View {
         return justDropped ? .dropped : .idle
     }
 
-    private var boardName: String { boards.currentBoardName }
+    private var boardName: String {
+        Self.boardName(boards.currentBoardId, remote: boards.boards) ?? boards.currentBoardName
+    }
+
+    static func boardName(_ id: String, remote: [RemoteBoard]) -> String? {
+        var known = remote
+        #if DEBUG
+        known += SeedBoard.boards
+        #endif
+        return known.first { $0.boardId == id }?.name
+    }
 
     var body: some View {
         ZStack {
