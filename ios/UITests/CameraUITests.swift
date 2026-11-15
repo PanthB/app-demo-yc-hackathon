@@ -57,7 +57,8 @@ final class CameraUITests: XCTestCase {
         let twoX = element(app, "cameraZoom-2")
         XCTAssertTrue(oneX.isSelected)
         twoX.tap()
-        XCTAssertTrue(twoX.isSelected)
+        expectation(for: NSPredicate(format: "isSelected == true"), evaluatedWith: twoX)
+        waitForExpectations(timeout: 3)
         XCTAssertFalse(oneX.isSelected)
 
         let flip = element(app, "cameraFlip")
