@@ -6,6 +6,7 @@ import UIKit
 struct AddMenu: View {
     @Environment(BoardSync.self) private var sync
     @Environment(\.modelContext) private var context
+    @State private var isTakingPhoto = false
     @State private var isPickingPhotos = false
     @State private var picked: [PhotosPickerItem] = []
     @State private var writing: Writing?
@@ -17,6 +18,11 @@ struct AddMenu: View {
 
     var body: some View {
         Menu {
+            Button {
+                isTakingPhoto = true
+            } label: {
+                Label("take a photo", systemImage: "camera")
+            }
             Button {
                 isPickingPhotos = true
             } label: {
@@ -39,6 +45,11 @@ struct AddMenu: View {
                 .labelStyle(.iconOnly)
         }
         .accessibilityIdentifier("addMenu")
+        .fullScreenCover(isPresented: $isTakingPhoto) {
+            DropCamera()
+                .environment(sync)
+                .environment(sync.boards)
+        }
         .photosPicker(isPresented: $isPickingPhotos, selection: $picked, maxSelectionCount: 4, matching: .images)
         .onChange(of: picked) { _, items in
             guard !items.isEmpty else { return }
