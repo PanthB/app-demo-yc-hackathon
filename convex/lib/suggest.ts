@@ -35,6 +35,21 @@ export function joinNames(names: string[]) {
 export const socialLine = (names: string[], same: boolean) =>
   `${joinNames(names)} saved ${same ? "this too" : "something that goes with this"}.`;
 
+const CLIP_HOSTS = /(^|\.)(tiktok\.com|instagram\.com|youtube\.com|youtu\.be)$/;
+
+export function nounFor(d: { kind: string; url?: string; decision?: { type: string } }) {
+  const type = d.decision?.type;
+  if (type === "song") return "song";
+  if (type === "event") return "plan";
+  if (type === "place") return "spot";
+  if (d.kind === "video" || CLIP_HOSTS.test(linkKey(d.url)?.split("/")[0] ?? "")) return "clip";
+  if (d.kind === "image") return "photo";
+  if (d.kind === "url") return "link";
+  return "note";
+}
+
+export const sitsWithLine = (name: string, noun: string, reason: string) => `sits with ${name}'s ${noun}: ${reason}`;
+
 export function goesWithLine(d: Saved) {
   const title = (d.extraction?.title ?? d.hints?.linkTitle ?? d.enrichment?.title)?.trim().toLowerCase();
   return title && title.length <= 40 ? `this goes with ${title.replace(/[.!?]+$/, "")}.` : undefined;

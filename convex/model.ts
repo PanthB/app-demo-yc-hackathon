@@ -83,7 +83,12 @@ export const enrichment = v.object({
   author: v.optional(v.string()),
   siteName: v.optional(v.string()),
   thumbnailUrl: v.optional(v.string()),
+  genre: v.optional(v.string()),
+  bpm: v.optional(v.number()),
+  durationSec: v.optional(v.number()),
 });
+
+export const neighbor = v.object({ clientId: v.string(), reason: v.string() });
 
 export const extraction = v.object({
   title: v.optional(v.string()),
@@ -158,6 +163,11 @@ export const dropFields = {
   pinned: v.boolean(),
   pinnedAt: v.optional(v.number()),
   suggestion: v.optional(v.string()),
+  vibes: v.optional(v.array(v.string())),
+  clusterId: v.optional(v.string()),
+  clusterLabel: v.optional(v.string()),
+  neighbors: v.optional(v.array(neighbor)),
+  jevClusterId: v.optional(v.string()),
   relatedClientIds: v.array(v.string()),
   pipeline: pipeline,
   searchText: v.optional(v.string()),
@@ -179,6 +189,8 @@ export const dropView = v.object({
   imageUrls: v.array(v.string()),
   authorName: v.optional(v.string()),
   authorColor: v.optional(v.string()),
+  vibes: v.array(v.string()),
+  neighbors: v.array(neighbor),
 });
 
 export const nullable = <T extends Parameters<typeof v.optional>[0]>(x: T) =>
