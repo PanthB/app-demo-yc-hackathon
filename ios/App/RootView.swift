@@ -7,6 +7,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var context
     @Environment(\.openURL) private var openURL
+    @Environment(BoardSync.self) private var sync
     @State private var clock = BoardClock()
 
     var body: some View {
@@ -22,13 +23,19 @@ struct RootView: View {
             }
         }
         .environment(clock)
-        .environment(\.dropActions, DropActions(open: { drop in
-            guard let url = drop.url.flatMap(URL.init(string:)) else {
-                Logger.app.error("drop \(drop.id.uuidString, privacy: .public) has no link to open")
-                return
+        .environment(\.dropActions, DropActions(
+            pin: { sync.setPinned($0, $1) },
+            move: { sync.move($0, to: $1) },
+            done: { sync.markDone($0) },
+            undo: { sync.undoMove($0) },
+            open: { drop in
+                guard let url = drop.url.flatMap(URL.init(string:)) else {
+                    Logger.app.error("drop \(drop.id.uuidString, privacy: .public) has no link to open")
+                    return
+                }
+                openURL(url)
             }
-            openURL(url)
-        }))
+        ))
         #if DEBUG
         .task {
             if UserDefaults.standard.bool(forKey: "BoardDebugSeed") {
