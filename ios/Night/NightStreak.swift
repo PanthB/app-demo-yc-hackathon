@@ -10,10 +10,7 @@ struct NightStreakChip: View {
     var body: some View {
         Button(action: open) {
             HStack(spacing: 4) {
-                Image(systemName: streak.droppedToday ? "flame.fill" : "flame")
-                    .fontWeight(NightStyle.symbolWeight)
-                    .foregroundStyle(streak.droppedToday ? NightStyle.flame : NightStyle.secondary)
-                    .symbolEffect(.bounce.up, options: .nonRepeating, value: reduceMotion ? 0 : moment)
+                NightEmber(droppedToday: streak.droppedToday, moment: moment, size: 26)
                 Text("\(streak.days)")
                     .fontWeight(.semibold)
                     .monospacedDigit()
@@ -38,6 +35,30 @@ struct NightStreakChip: View {
     }
 }
 
+struct NightEmber: View {
+    let droppedToday: Bool
+    let moment: Int
+    let size: CGFloat
+
+    @State private var isBlinking = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Image(isBlinking ? "ember-saved" : droppedToday ? "ember-awake" : "ember-rest")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+            .task(id: moment) {
+                guard moment > 0, droppedToday, !reduceMotion else { return }
+                try? await Task.sleep(for: .seconds(0.25))
+                isBlinking = true
+                try? await Task.sleep(for: .seconds(0.45))
+                isBlinking = false
+            }
+    }
+}
+
 struct NightStreakSheet: View {
     let boardName: String
     let streaks: BoardStreaks
@@ -53,14 +74,12 @@ struct NightStreakSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label {
+                    HStack(spacing: 12) {
+                        NightEmber(droppedToday: streaks.mine.droppedToday, moment: 0, size: 48)
                         Text(streaks.mine.days == 1 ? "1 day" : "\(streaks.mine.days) days").monospacedDigit()
-                    } icon: {
-                        Image(systemName: streaks.mine.droppedToday ? "flame.fill" : "flame")
-                            .fontWeight(NightStyle.symbolWeight)
-                            .foregroundStyle(streaks.mine.isAlive ? NightStyle.flame : NightStyle.secondary)
                     }
                     .font(NightStyle.pageTitle)
+                    .accessibilityElement(children: .combine)
                     Text(streaks.headline)
                         .font(NightStyle.body)
                         .foregroundStyle(NightStyle.secondary)
