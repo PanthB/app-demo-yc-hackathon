@@ -35,6 +35,12 @@ enum DeviceIdentity {
     static var personId: String { storedId(for: "personId") }
     static var boardId: String { storedId(for: "boardId") }
 
+    #if DEBUG
+    static func adopt(personId: String) {
+        AppGroup.defaults.set(personId, forKey: "personId")
+    }
+    #endif
+
     private static func storedId(for key: String) -> String {
         if let existing = AppGroup.defaults.string(forKey: key) {
             return existing

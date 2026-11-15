@@ -6,7 +6,10 @@ final class Drop {
     @Attribute(.unique) var id: UUID
     var createdAt: Date
     var updatedAt: Date
-    var dropperId: String
+    @Attribute(originalName: "dropperId") var authorId: String = ""
+    var authorName: String?
+    var authorColor: String?
+    var boardId: String = ""
     var remoteId: String?
 
     var sourceKindRaw: String
@@ -40,9 +43,10 @@ final class Drop {
     var emphasisRaw: String = Emphasis.normal.rawValue
     var relatedDropIds: [UUID] = []
     var planId: UUID?
+    var suggestion: String?
 
     var zoneSetByUser: Bool = false
-    var pinned: Bool = false
+    var pinnedAt: Date?
     var manualX: Double?
     var manualY: Double?
     var previousZoneRaw: String?
@@ -52,7 +56,8 @@ final class Drop {
     init(
         id: UUID = UUID(),
         createdAt: Date = .now,
-        dropperId: String,
+        authorId: String,
+        boardId: String = "",
         sourceKind: SourceKind,
         rawText: String? = nil,
         url: String? = nil,
@@ -61,7 +66,8 @@ final class Drop {
         self.id = id
         self.createdAt = createdAt
         self.updatedAt = createdAt
-        self.dropperId = dropperId
+        self.authorId = authorId
+        self.boardId = boardId
         self.sourceKindRaw = sourceKind.rawValue
         self.rawText = rawText
         self.url = url
@@ -106,8 +112,17 @@ final class Drop {
         previousZoneRaw != nil
     }
 
+    var isPinned: Bool {
+        pinnedAt != nil
+    }
+
+    func setPinned(_ pinned: Bool) {
+        pinnedAt = pinned ? .now : nil
+        updatedAt = .now
+    }
+
     func applyDecidedZone(_ decided: Zone, unsure: Bool) {
-        guard !zoneSetByUser, !pinned else { return }
+        guard !zoneSetByUser else { return }
         zoneRaw = decided.rawValue
         zoneUnsure = unsure
         updatedAt = .now

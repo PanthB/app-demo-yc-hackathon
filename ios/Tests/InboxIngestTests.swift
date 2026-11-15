@@ -36,7 +36,7 @@ final class InboxIngestTests: XCTestCase {
         XCTAssertEqual(drop.rawText, "marufuku ramen")
         XCTAssertEqual(drop.status, .pending)
         XCTAssertEqual(drop.objectKind, .postcard)
-        XCTAssertEqual(drop.dropperId, "me")
+        XCTAssertEqual(drop.authorId, "me")
         XCTAssertEqual(inbox.pending(), [])
     }
 

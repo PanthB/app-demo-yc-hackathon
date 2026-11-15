@@ -3,21 +3,29 @@ import SwiftData
 import SwiftUI
 
 struct RootView: View {
-    @AppStorage(Look.storageKey) private var storedLook: String?
+    @AppStorage(ViewMode.storageKey) private var storedView: String?
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var context
+    @Environment(\.openURL) private var openURL
     @State private var clock = BoardClock()
 
     var body: some View {
         Group {
-            switch Look.resolve(stored: storedLook) {
-            case .paper:
+            switch ViewMode.resolve(stored: storedView) {
+            case .board:
                 PaperBoardRoot()
-            case .glass:
+            case .cards, .list:
                 GlassBoardRoot()
             }
         }
         .environment(clock)
+        .environment(\.dropActions, DropActions(open: { drop in
+            guard let url = drop.url.flatMap(URL.init(string:)) else {
+                Logger.app.error("drop \(drop.id.uuidString, privacy: .public) has no link to open")
+                return
+            }
+            openURL(url)
+        }))
         #if DEBUG
         .task {
             if UserDefaults.standard.bool(forKey: "BoardDebugSeed") {
@@ -35,15 +43,15 @@ struct RootView: View {
             clock.tick()
         }
         .onOpenURL { url in
-            if let look = Look(url: url) {
-                Logger.app.info("switching to the \(look.rawValue, privacy: .public) look")
-                storedLook = look.rawValue
+            if let mode = ViewMode(url: url) {
+                Logger.app.info("switching to the \(mode.rawValue, privacy: .public) view")
+                storedView = mode.rawValue
                 return
             }
             #if DEBUG
             switch url.host()?.lowercased() {
             case "seed":
-                Logger.app.info("pinning the sample board")
+                Logger.app.info("loading the sf crew sample board")
                 SeedBoard.replace(in: context)
                 return
             case "clear":

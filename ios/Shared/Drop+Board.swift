@@ -6,7 +6,7 @@ extension Drop {
     }
 
     var isHeldByTape: Bool {
-        !zoneSetByUser && !pinned && (status != .processed || zoneUnsure)
+        !zoneSetByUser && !isPinned && (status != .processed || zoneUnsure)
     }
 
     var showsRawThing: Bool {
@@ -28,7 +28,7 @@ extension Drop {
     func boardZone(now: Date, calendar: Calendar = .current) -> Zone {
         ZoneClock.zone(
             stored: zone,
-            heldByPerson: zoneSetByUser || pinned,
+            heldByPerson: zoneSetByUser,
             startsAt: startsAt,
             dueAt: dueAt,
             now: now,
