@@ -20,6 +20,8 @@ const MIN_DROPS = 3;
 const PER_SEARCH = 4;
 const WINDOW = 14 * DAY;
 const SF_OFFSET = -480;
+const REFRESH_GAP = MINUTE;
+const REFRESHES_PER_DAY = 60;
 const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
 
 const kind = v.union(v.literal("event"), v.literal("song"), v.literal("watch"), v.literal("place"));
@@ -57,6 +59,11 @@ async function boardDrops(ctx: QueryCtx, boardId: string) {
     .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
     .order("desc")
     .take(300);
+}
+
+function groupOf(drops: Doc<"drops">[]) {
+  const byClientId = new Map(drops.map((d) => [d.clientId, d]));
+  return (s: Doc<"suggestions">) => byClientId.get(s.inspiredBy[0])?.clusterId ?? s.clusterId;
 }
 
 export function membersByCluster(drops: Doc<"drops">[], clusterOf: (d: Doc<"drops">) => string | undefined) {
@@ -134,6 +141,7 @@ export const list = query({
     if (kinds.length === 0) return [];
     const drops = await boardDrops(ctx, boardId);
     const byClientId = new Map(drops.map((d) => [d.clientId, d]));
+    const group = groupOf(drops);
     const names = savedNames(drops);
     const clusters = new Map<string, { label: string; size: number }>();
     for (const d of drops) {
@@ -162,7 +170,7 @@ export const list = query({
     };
     const views = await Promise.all(
       found.map(async (s) => ({
-        clusterId: byClientId.get(s.inspiredBy[0])?.clusterId ?? s.clusterId,
+        clusterId: group(s),
         view: {
           id: s._id,
           kind: s.kind,
@@ -233,6 +241,31 @@ export const save = mutation({
   },
 });
 
+export const refresh = mutation({
+  args: { boardId: v.string(), personId: v.string() },
+  returns: v.object({ queued: v.number() }),
+  handler: async (ctx, { boardId }) => {
+    const now = Date.now();
+    const searches = await ctx.db
+      .query("suggestionSearches")
+      .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
+      .order("desc")
+      .take(100);
+    if (searches.some((s) => s.manual && now - s._creationTime < REFRESH_GAP)) return { queued: 0 };
+    let today = searches.filter((s) => now - s.startedAt < DAY).length;
+    let queued = 0;
+    for (const [clusterId, members] of membersByCluster(await boardDrops(ctx, boardId), (d) => d.clusterId)) {
+      if (today >= REFRESHES_PER_DAY) break;
+      if (searches.some((s) => s.clusterId === clusterId && s.status === "searching" && now - s.startedAt < COOLDOWN)) continue;
+      const searchId = await ctx.db.insert("suggestionSearches", { boardId, clusterId, status: "scheduled", startedAt: now, members, manual: true });
+      await ctx.scheduler.runAfter(0, internal.suggestions.search, { searchId });
+      today++;
+      queued++;
+    }
+    return { queued };
+  },
+});
+
 export const dismiss = mutation({
   args: { id: v.id("suggestions") },
   returns: v.null(),
@@ -272,11 +305,14 @@ export const start = internalMutation({
     const authors = [...new Set(drops.map((d) => d.authorId))].slice(0, 64);
     const people = await Promise.all(authors.map((id) => personById(ctx, id)));
     const names = Object.fromEntries(people.filter((p) => p !== null).map((p) => [p.personId, p.name]));
-    const known = await ctx.db
-      .query("suggestions")
-      .withIndex("by_boardId", (q) => q.eq("boardId", search.boardId))
-      .order("desc")
-      .take(300);
+    const group = groupOf(drops);
+    const known = (
+      await ctx.db
+        .query("suggestions")
+        .withIndex("by_boardId", (q) => q.eq("boardId", search.boardId))
+        .order("desc")
+        .take(300)
+    ).filter((s) => !(search.manual && !s.savedAt && !s.dismissedAt && group(s) === search.clusterId));
     return {
       boardId: search.boardId,
       clusterId: search.clusterId,
@@ -471,10 +507,16 @@ export const add = internalMutation({
   handler: async (ctx, { searchId, suggestions, usd, note, members }) => {
     const search = await ctx.db.get("suggestionSearches", searchId);
     if (!search) return null;
-    const existing = await ctx.db
+    let existing = await ctx.db
       .query("suggestions")
       .withIndex("by_boardId", (q) => q.eq("boardId", search.boardId))
       .take(300);
+    if (search.manual && suggestions.length > 0) {
+      const group = groupOf(await boardDrops(ctx, search.boardId));
+      const stale = existing.filter((s) => !s.savedAt && !s.dismissedAt && group(s) === search.clusterId);
+      for (const s of stale) await ctx.db.delete("suggestions", s._id);
+      existing = existing.filter((s) => !stale.includes(s));
+    }
     const links = new Set(existing.map((s) => linkKey(s.url)));
     let added = 0;
     for (const s of suggestions) {
