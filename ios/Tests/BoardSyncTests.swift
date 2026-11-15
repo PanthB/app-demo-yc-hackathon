@@ -209,6 +209,27 @@ final class BoardSyncTests: XCTestCase {
         XCTAssertEqual(args["longitude"] as? Double, -122.419611)
     }
 
+    func testASharedGoogleMapsPlaceIsTitledByItsNameNotTheSite() throws {
+        let drop = Drop(authorId: "me", sourceKind: .url, rawText: "Google Maps", url: "https://www.google.com/maps/place/Tartine+Bakery/@37.7614347,-122.4240821,16z/data=!3m1!4b1!4m6!3m5!1s0x808f7e1807365605:0x601f7a97f0ce6c6b!8m2!3d37.7614347!4d-122.4240821")
+        DropReader.readLink(of: drop)
+
+        let args = DropSubmit.arguments(for: drop, reading: DropReading(), boardId: "b", personId: "me")
+
+        XCTAssertEqual(drop.title, "Tartine Bakery")
+        let hints = try XCTUnwrap(args["hints"] as? [String: Any?])
+        XCTAssertEqual(hints["linkTitle"] as? String, "Tartine Bakery")
+        XCTAssertEqual(hints["placeName"] as? String, "Tartine Bakery")
+        XCTAssertEqual(args["latitude"] as? Double, 37.7614347)
+        XCTAssertEqual(args["longitude"] as? Double, -122.4240821)
+    }
+
+    func testTheSampleBoardsDropsAreNeverSent() {
+        XCTAssertTrue(DropKey.isSample(SeedBoard.clientId(board: 1, 15)))
+        XCTAssertTrue(DropKey.isSample(DropKey.id(for: "5eed0000-0000-4000-8000-000000000007")))
+        XCTAssertFalse(DropKey.isSample(DropKey.id(for: "nk2-song")))
+        XCTAssertFalse(DropKey.isSample(UUID()))
+    }
+
     func testAnInviteLinkGivesItsCode() throws {
         XCTAssertEqual(BoardsStore.inviteCode(in: try XCTUnwrap(URL(string: "appdemo://join/SFCREW"))), "SFCREW")
         XCTAssertNil(BoardsStore.inviteCode(in: try XCTUnwrap(URL(string: "appdemo://join"))))

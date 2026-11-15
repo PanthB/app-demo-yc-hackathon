@@ -131,7 +131,7 @@ final class BoardSync {
             predicate: #Predicate { $0.remoteId == nil && $0.statusRaw == pending },
             sortBy: [SortDescriptor(\.createdAt)]
         ))) ?? []
-        for drop in waiting where sending.insert(drop.id).inserted {
+        for drop in waiting where !DropKey.isSample(drop.id) && sending.insert(drop.id).inserted {
             Task {
                 await send(drop)
                 sending.remove(drop.id)

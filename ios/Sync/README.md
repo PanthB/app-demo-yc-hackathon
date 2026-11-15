@@ -1,6 +1,6 @@
 # Sync
 
-Owner: the share and ingest thread (PAN-5). Identity, boards, and the two-way sync between SwiftData and Convex. It uses the one `convex` client from `ios/App/Convex.swift` and follows `handoffs/APPD-1/convex-contract.md`.
+Owner: the share and ingest thread (PAN-5). Identity, boards, and the two-way sync between SwiftData and Convex. It uses the one `convex` client from `ios/App/Convex.swift` and follows `handoffs/APPD-1/convex-contract.md`. Sign-in isn't here: APPD-17 owns it end to end in `ios/Auth`, including the client in `ios/App/Convex.swift` and `people:link` after sign-in.
 
 Compiled into the app target by folder (see `ios/project.yml`), so a new file here needs no project edit. Markdown files are excluded from the build.
 
@@ -23,7 +23,7 @@ An `appdemo://join/<code>` link opens the join sheet with the code filled in.
 ## How the sync works
 
 - **On every wake** (launch and each return to the foreground): ingest the inbox, register the person with `people:upsert`, subscribe to `boards:mine`, subscribe to `drops:list` for every board the person is in, and send drops that are still waiting.
-- **Sending a drop.** A drop with no `remoteId` and status `pending` is read on the phone first (see `ios/Ingest`), its pictures are uploaded through `files:generateUploadUrl` (at most 4), and then `drops:submit` is called with the drop's id as `clientId`. Submit is idempotent, so a drop that didn't get through is sent again 8 seconds later and on the next wake. Seed drops are never sent, because they're already `processed`.
+- **Sending a drop.** A drop with no `remoteId` and status `pending` is read on the phone first (see `ios/Ingest`), its pictures are uploaded through `files:generateUploadUrl` (at most 4), and then `drops:submit` is called with the drop's id as `clientId`. Submit is idempotent, so a drop that didn't get through is sent again 8 seconds later and on the next wake. A drop whose id the sample board made (`DropKey.isSample`) is never sent, so the sample's "reading this one now" drop can't reach the backend from a phone that later goes online.
 - **Reading a board.** Each `drops:list` push is matched to local drops by `clientId`. New ones are inserted, so a friend's drop appears live. Fields the backend read are filled in, the author's name and color and the suggestion are copied as they are, and a preview picture is downloaded to `media/<drop id>/remote.jpg` when the phone has none.
 - **Mood.** `vibes`, `clusterId`, `clusterLabel` and `neighbors` are copied from every push as they are, so a drop that the backend moves to another cluster, or takes out of the clusters, moves on the phone too. A neighbor's `clientId` is the other drop's `id.uuidString`. `genre` comes from `enrichment.genre`, and `mediaDuration` from `enrichment.durationSec` (a song's or a clip's length in seconds).
 - **Zones.** A pipeline zone goes through `applyDecidedZone`, so it never moves a drop a person placed. A zone a person set (`zoneSetByUser`) goes through `moveByUser`, whoever in the board set it.

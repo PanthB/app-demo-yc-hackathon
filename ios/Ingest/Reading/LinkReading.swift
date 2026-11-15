@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 enum LinkReading {
     struct Seen: Equatable {
@@ -7,6 +8,7 @@ enum LinkReading {
         var placeName: String?
         var latitude: Double?
         var longitude: Double?
+        var placeSearch: String?
     }
 
     static func firstLine(of caption: String?) -> String? {
@@ -35,20 +37,56 @@ enum LinkReading {
             uniquingKeysWith: { first, _ in first }
         )
         let path = parts.path.split(separator: "/").map(String.init)
+        var named: String?
         var spot: String?
         if host == "maps.apple.com" {
             seen.placeName = query["name"] ?? query["q"]
+            named = [seen.placeName, query["address"]].compactMap { $0 }.joined(separator: ", ")
             spot = query["coordinate"] ?? query["ll"]
         } else if host.hasPrefix("maps.google.") || ((host == "google.com" || host.hasPrefix("www.google.")) && path.first == "maps") {
-            let named = path.firstIndex(of: "place").flatMap { path.indices.contains($0 + 1) ? path[$0 + 1] : nil } ?? query["q"]
-            seen.placeName = named?.replacingOccurrences(of: "+", with: " ")
-            spot = path.first { $0.hasPrefix("@") }.map { String($0.dropFirst()) }
+            guard !path.contains("dir") else { return seen }
+            let after = path.firstIndex { $0 == "place" || $0 == "search" }.flatMap { path.indices.contains($0 + 1) ? path[$0 + 1] : nil }
+            named = (after.flatMap { $0.hasPrefix("@") || $0.hasPrefix("data=") ? nil : $0 } ?? query["q"] ?? query["query"])?
+                .replacingOccurrences(of: "+", with: " ")
+            let pin = link.firstMatch(of: #/!3d(-?[0-9.]+)!4d(-?[0-9.]+)/#).map { "\($0.1),\($0.2)" }
+            spot = pin ?? path.first { $0.hasPrefix("@") }.map { String($0.dropFirst()) } ?? query["ll"]
+            if coordinate(in: named) != nil {
+                spot = spot ?? named
+                named = nil
+            }
+            seen.placeName = named?.split(separator: ",").first.map { $0.trimmingCharacters(in: .whitespaces) }
         }
-        let numbers = (spot ?? "").split(separator: ",").prefix(2).compactMap { Double($0) }
-        if numbers.count == 2, abs(numbers[0]) <= 90, abs(numbers[1]) <= 180 {
-            seen.latitude = numbers[0]
-            seen.longitude = numbers[1]
+        if seen.placeName?.isEmpty == true { seen.placeName = nil }
+        if let found = coordinate(in: spot) {
+            seen.latitude = found.latitude
+            seen.longitude = found.longitude
+        } else if seen.placeName != nil {
+            seen.placeSearch = named
         }
         return seen
+    }
+
+    static func isShortMapsLink(_ link: String) -> Bool {
+        guard let parts = URLComponents(string: link), let host = parts.host?.lowercased() else { return false }
+        return host == "maps.app.goo.gl" || (host == "goo.gl" && parts.path.hasPrefix("/maps"))
+    }
+
+    static func destination(of link: String) async -> String? {
+        guard let url = URL(string: link) else { return nil }
+        var request = URLRequest(url: url, timeoutInterval: 5)
+        request.httpMethod = "HEAD"
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            return response.url?.absoluteString
+        } catch {
+            Logger.ingest.error("couldn't follow \(url.host() ?? "a short link", privacy: .public) to the place it points at: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
+    private static func coordinate(in text: String?) -> (latitude: Double, longitude: Double)? {
+        let numbers = (text ?? "").split(separator: ",").prefix(2).compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        guard numbers.count == 2, abs(numbers[0]) <= 90, abs(numbers[1]) <= 180 else { return nil }
+        return (numbers[0], numbers[1])
     }
 }

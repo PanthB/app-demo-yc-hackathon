@@ -6,9 +6,11 @@ This target compiles `ios/ShareExtension` and `ios/Shared` by folder, with `APPL
 
 ## What it does
 
-`ShareViewController` hands the shared items to `ShareCollector`, which writes them to the app group inbox with `Inbox.shared`, then shows `ShareNote`, a native glass card over the app the person shared from, for 2 seconds or until it is tapped, and closes. The card says "dropped it, i'll find it a spot.", or "dropped it in sf crew." when the current board is a shared one. The extension records that board for each item it saved, so the drop lands where the card said. It makes no network calls and reads nothing but file metadata. The app does the slow work after it ingests the inbox.
+`ShareViewController` hands the shared items to `ShareCollector`, which writes them to the app group inbox with `Inbox.shared`, and shows `ShareNote`, a native glass card. The card is there from the first frame, saying "hang on, i'm grabbing it." until the save ends. It then stays for 2 seconds counted from when the sheet is on screen, or until it is tapped, fades out and closes. The card says "dropped it, i'll find it a spot.", or "dropped it in sf crew." when the current board is a shared one. The extension records that board for each item it saved, so the drop lands where the card said. It makes no network calls and reads nothing but file metadata. The app does the slow work after it ingests the inbox.
 
 Files are copied on disk with `loadFileRepresentation`, never loaded into memory. An image that arrives only as an object, with no file behind it, is the one exception, because it is already in memory.
+
+The card sits in the full-height sheet iOS 26 presents for every share extension. The extension can't change that sheet: a clear background, `modalPresentationStyle = .overFullScreen`, `preferredContentSize` and subclassing `SLComposeServiceViewController` all still got the sheet on the iOS 26.5 Simulator. iOS empties the sheet the moment `completeRequest` is called and then slides it away, so the card fades out first instead of vanishing halfway down.
 
 ## How a share becomes drops
 
@@ -18,4 +20,4 @@ Files are copied on disk with `loadFileRepresentation`, never loaded into memory
 
 ## Checking it on a phone
 
-The confirmation text has the accessibility identifier `shareConfirmation`. Errors are logged with `Logger.share`.
+The confirmation text has the accessibility identifier `shareConfirmation`. Errors are logged with `Logger.share`, which also logs "the share card is on screen" when the sheet has finished opening.
