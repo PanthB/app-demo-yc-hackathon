@@ -21,6 +21,7 @@ struct NightHeader: View {
     let showBoard: (String) -> Void
     let startBoard: () -> Void
     let joinBoard: () -> Void
+    let openSuggestions: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -63,9 +64,26 @@ struct NightHeader: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("nightHeaderLine")
 
-            if isShared {
-                NightFilterPicker(filter: $filter).padding(.top, 8)
+            HStack(spacing: 12) {
+                if isShared {
+                    NightFilterPicker(filter: $filter)
+                }
+                Spacer(minLength: 0)
+                Button(action: openSuggestions) {
+                    Text("suggestions")
+                        .font(NightStyle.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .frame(height: 44)
+                        .contentShape(.capsule)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .accessibilityHint("shows things that go with this board")
+                .accessibilityIdentifier("nightSuggestions")
             }
+            .padding(.top, 8)
         }
         .padding(.horizontal, NightStyle.margin)
         .padding(.top, 8)
@@ -145,8 +163,9 @@ struct NightViewMenu: View {
             Button("cards", systemImage: "square.grid.2x2") { storedView = ViewMode.cards.rawValue }
             Button("board", systemImage: "rectangle.on.rectangle.angled") { storedView = ViewMode.board.rawValue }
         } label: {
-            Label("switch the view", systemImage: "square.stack.3d.up")
+            Text("views")
         }
+        .accessibilityHint("switches to list, cards or board")
         .accessibilityIdentifier("nightViewMenu")
     }
 }

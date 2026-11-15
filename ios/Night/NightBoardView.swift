@@ -10,6 +10,7 @@ struct NightBoardView: View {
     @State private var filter: DropFilter = .everyone
     @State private var path: [UUID] = []
     @State private var showsStreaks = false
+    @State private var showsSuggestions = false
     @State private var moment = 0
     @State private var holdsDemoStreak = Self.asksForStreakDemo
     @Namespace private var namespace
@@ -49,7 +50,8 @@ struct NightBoardView: View {
                             }
                         },
                         startBoard: { boards.entry = .create },
-                        joinBoard: { boards.entry = .join(code: nil) }
+                        joinBoard: { boards.entry = .join(code: nil) },
+                        openSuggestions: { showsSuggestions = true }
                     )
                     NightFeed(
                         sections: DropSection.build(drops, grouping: isShared ? .vibe : .when, filter: filter, me: me, now: clock.now),
@@ -61,8 +63,7 @@ struct NightBoardView: View {
                 .padding(.bottom, 120)
             }
             .scrollIndicators(.hidden)
-            .scrollEdgeEffectStyle(.hard, for: .top)
-            .background { NightBackdrop(palette: palette) }
+            .background { NightBackdrop(palette: palette, isLiving: false) }
             .overlay(alignment: .top) {
                 LinearGradient(stops: [.init(color: NightStyle.ink.opacity(0.95), location: 0), .init(color: NightStyle.ink.opacity(0.75), location: 0.55), .init(color: NightStyle.ink.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
                     .frame(height: 120)
@@ -102,8 +103,18 @@ struct NightBoardView: View {
                 }
             }
         }
+        .sheet(isPresented: $showsSuggestions) {
+            NavigationStack {
+                SuggestionsFeed(boardId: current)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("done") { showsSuggestions = false }
+                        }
+                    }
+            }
+        }
         .sheet(isPresented: $showsStreaks) {
-            NightStreakSheet(boardName: name, streaks: streaks, members: members, me: me, isShared: isShared)
+            NightStreakSheet(boardName: name, streaks: streaks, members: members, me: me, isShared: isShared, invite: boards.currentBoard?.inviteLink, inviteCode: boards.currentBoard?.inviteCode)
         }
         .onChange(of: StreakMark(board: current, days: mine.days)) { before, after in
             if before.board == after.board, after.days > before.days { moment += 1 }
