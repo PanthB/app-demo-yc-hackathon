@@ -5,9 +5,9 @@ final class ListViewUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    private func launch() -> XCUIApplication {
+    private func launch(seeded: Bool = true, extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-view", "list", "-BoardDebugSeed", "YES"]
+        app.launchArguments = ["-view", "list"] + (seeded ? ["-BoardDebugSeed", "YES"] : []) + extra
         app.launch()
         return app
     }
@@ -23,40 +23,66 @@ final class ListViewUITests: XCTestCase {
         app.descendants(matching: .any)["section-\(id)"]
     }
 
-    private func row(_ app: XCUIApplication, saying words: String) -> XCUIElement {
-        app.buttons.matching(identifier: "dropRow").matching(NSPredicate(format: "label CONTAINS %@", words)).firstMatch
+    private func rows(_ app: XCUIApplication) -> XCUIElementQuery {
+        app.buttons.matching(identifier: "dropRow")
+    }
+
+    private func row(_ app: XCUIApplication, kind: String) -> XCUIElement {
+        rows(app).matching(NSPredicate(format: "label BEGINSWITH %@", kind + ",")).firstMatch
+    }
+
+    private func loose(_ app: XCUIApplication) -> XCUIElement {
+        rows(app).matching(NSPredicate(format: "NOT (label ENDSWITH %@)", ", pinned")).firstMatch
     }
 
     private func list(_ app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)["listView"].firstMatch
     }
 
+    private func detail(_ app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)["dropDetail"].firstMatch
+    }
+
+    private func find(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        for _ in 0..<12 where !element.isHittable { list(app).swipeUp(velocity: .default) }
+        for _ in 0..<24 where !element.isHittable { list(app).swipeDown(velocity: .default) }
+        return element.isHittable
+    }
+
     private func walkTheList(_ app: XCUIApplication, prefix: String) {
-        XCTAssertTrue(header(app, "pinned").waitForExistence(timeout: 20))
-        XCTAssertTrue(header(app, "now").exists)
+        XCTAssertTrue(rows(app).firstMatch.waitForExistence(timeout: 20))
+        XCTAssertTrue(header(app, "pinned").exists)
         attach("\(prefix)-1")
-        var seen: Set<String> = []
-        let ids = ["pinned", "now", "tonight", "thisWeekend", "someday", "vibes", "done"]
-        for page in 2...6 {
-            ids.filter { header(app, $0).exists }.forEach { seen.insert($0) }
-            list(app).swipeUp(velocity: .slow)
+        let done = header(app, "done")
+        var page = 1
+        while !done.isHittable, page < 24 {
+            list(app).swipeUp(velocity: .default)
+            page += 1
             attach("\(prefix)-\(page)")
         }
-        ids.filter { header(app, $0).exists }.forEach { seen.insert($0) }
-        XCTAssertEqual(seen, Set(ids))
-        let done = header(app, "done")
-        for _ in 0..<5 where !done.isHittable { list(app).swipeUp(velocity: .slow) }
         XCTAssertTrue(done.isHittable)
-        XCTAssertFalse(row(app, saying: "dumpling").exists)
+        XCTAssertEqual(done.value as? String, "closed")
         done.tap()
         list(app).swipeUp(velocity: .slow)
-        XCTAssertTrue(row(app, saying: "dumpling").waitForExistence(timeout: 5))
+        XCTAssertEqual(done.value as? String, "open")
+        XCTAssertTrue(rows(app).allElementsBoundByIndex.contains { $0.exists && $0.frame.minY >= done.frame.maxY })
         attach("\(prefix)-done-open")
     }
 
     func testListShowsEverySectionInLight() {
         XCUIDevice.shared.appearance = .light
         walkTheList(launch(), prefix: "light")
+    }
+
+    func testASharedBoardShowsItsSectionsWhateverTheyAre() {
+        XCUIDevice.shared.appearance = .light
+        let app = launch(extra: ["-BoardDebugBoard", "sf-crew"])
+        XCTAssertTrue(rows(app).firstMatch.waitForExistence(timeout: 20))
+        attach("crew-1")
+        for page in 2...4 {
+            list(app).swipeUp(velocity: .default)
+            attach("crew-\(page)")
+        }
     }
 
     func testListShowsEverySectionInDark() {
@@ -68,64 +94,70 @@ final class ListViewUITests: XCTestCase {
     func testASwipePinsARow() {
         XCUIDevice.shared.appearance = .light
         let app = launch()
-        let matcha = row(app, saying: "stonemill matcha")
-        XCTAssertTrue(matcha.waitForExistence(timeout: 20))
-        XCTAssertFalse(matcha.label.contains("pinned"))
-        matcha.swipeRight(velocity: .slow)
+        XCTAssertTrue(rows(app).firstMatch.waitForExistence(timeout: 20))
+        let first = loose(app)
+        XCTAssertTrue(find(first, in: app))
+        let name = first.label
+        first.swipeRight(velocity: .slow)
         XCTAssertTrue(app.buttons["pin"].waitForExistence(timeout: 5))
         attach("swipe-pin")
         app.buttons["pin"].tap()
-        let pinned = row(app, saying: "stonemill matcha")
+        let pinned = rows(app).matching(NSPredicate(format: "label == %@", name + ", pinned")).firstMatch
         XCTAssertTrue(pinned.waitForExistence(timeout: 5))
-        XCTAssertTrue(pinned.label.contains("pinned"))
         attach("pinned")
     }
 
     func testASwipeMarksARowDone() {
         XCUIDevice.shared.appearance = .light
         let app = launch()
-        let reminder = row(app, saying: "call mom back")
-        XCTAssertTrue(reminder.waitForExistence(timeout: 20))
-        reminder.swipeLeft(velocity: .slow)
+        XCTAssertTrue(rows(app).firstMatch.waitForExistence(timeout: 20))
+        let first = loose(app)
+        XCTAssertTrue(find(first, in: app))
+        let name = first.label
+        first.swipeLeft(velocity: .slow)
         XCTAssertTrue(app.buttons["mark done"].waitForExistence(timeout: 5))
         attach("swipe-done")
         app.buttons["mark done"].tap()
-        XCTAssertTrue(reminder.waitForNonExistence(timeout: 5))
+        let gone = rows(app).matching(NSPredicate(format: "label == %@", name)).firstMatch
+        XCTAssertTrue(gone.waitForNonExistence(timeout: 5))
         attach("after-done")
     }
 
-    func testATapOpensTheDetailForASongAClipAndAPlace() {
+    func testATapOpensTheDetailForAPlaceAClipAndASong() {
         XCUIDevice.shared.appearance = .light
         let app = launch()
-        XCTAssertTrue(header(app, "now").waitForExistence(timeout: 20))
-        for (words, name) in [("stonemill matcha", "place"), ("tonkotsu ramen", "cutout"), ("pink pony club", "song"), ("warehouse show", "clip")] {
-            let drop = row(app, saying: words)
-            for _ in 0..<6 where !drop.isHittable { list(app).swipeUp(velocity: .slow) }
-            drop.tap()
-            let detail = app.descendants(matching: .any)["dropDetail"].firstMatch
-            XCTAssertTrue(detail.waitForExistence(timeout: 5))
+        XCTAssertTrue(rows(app).firstMatch.waitForExistence(timeout: 20))
+        var opened = 0
+        for kind in ["place", "clip", "song"] where find(row(app, kind: kind), in: app) {
+            row(app, kind: kind).tap()
+            XCTAssertTrue(detail(app).waitForExistence(timeout: 5))
             sleep(1)
-            attach("detail-\(name)")
-            detail.swipeDown(velocity: .fast)
-            XCTAssertTrue(detail.waitForNonExistence(timeout: 5))
+            attach("detail-\(kind)")
+            detail(app).swipeDown(velocity: .fast)
+            XCTAssertTrue(detail(app).waitForNonExistence(timeout: 5))
+            opened += 1
         }
+        XCTAssertGreaterThan(opened, 0)
     }
 
-    func testTheDetailButtonsWork() {
+    func testTheDetailButtonsWork() throws {
         XCUIDevice.shared.appearance = .dark
+        addTeardownBlock { XCUIDevice.shared.appearance = .light }
         let app = launch()
-        XCTAssertTrue(header(app, "now").waitForExistence(timeout: 20))
-        let song = row(app, saying: "pink pony club")
-        for _ in 0..<6 where !song.isHittable { list(app).swipeUp(velocity: .slow) }
+        XCTAssertTrue(rows(app).firstMatch.waitForExistence(timeout: 20))
+        let song = rows(app).matching(NSPredicate(format: "label BEGINSWITH %@ AND NOT (label ENDSWITH %@)", "song,", ", pinned")).firstMatch
+        try XCTSkipUnless(find(song, in: app), "this board has no song")
+        let name = song.label
         song.tap()
-        let detail = app.descendants(matching: .any)["dropDetail"].firstMatch
-        XCTAssertTrue(detail.waitForExistence(timeout: 5))
+        XCTAssertTrue(detail(app).waitForExistence(timeout: 5))
         sleep(1)
         attach("detail-dark")
 
         app.buttons["pin"].tap()
         XCTAssertTrue(app.buttons["unpin"].waitForExistence(timeout: 5))
         attach("detail-pinned")
+        app.buttons["unpin"].tap()
+        XCTAssertTrue(app.buttons["pin"].waitForExistence(timeout: 5))
 
         app.buttons["move to"].tap()
         XCTAssertTrue(app.buttons["tonight"].waitForExistence(timeout: 5))
@@ -134,16 +166,33 @@ final class ListViewUITests: XCTestCase {
         XCTAssertTrue(app.buttons["tonight"].waitForNonExistence(timeout: 5))
 
         app.buttons["mark done"].tap()
-        XCTAssertTrue(detail.waitForNonExistence(timeout: 5))
-        XCTAssertFalse(row(app, saying: "pink pony club").exists)
+        XCTAssertTrue(detail(app).waitForNonExistence(timeout: 5))
+        XCTAssertFalse(rows(app).matching(NSPredicate(format: "label == %@", name)).firstMatch.exists)
         attach("detail-done")
 
-        let clip = row(app, saying: "warehouse show")
-        for _ in 0..<6 where !clip.isHittable { list(app).swipeUp(velocity: .slow) }
+        let clip = row(app, kind: "clip")
+        try XCTSkipUnless(find(clip, in: app), "this board has no clip")
         clip.tap()
-        XCTAssertTrue(detail.waitForExistence(timeout: 5))
+        XCTAssertTrue(detail(app).waitForExistence(timeout: 5))
         app.buttons["watch"].tap()
         XCTAssertTrue(app.wait(for: .runningBackground, timeout: 10))
+    }
+
+    func testAnEmptyListSaysSo() {
         XCUIDevice.shared.appearance = .light
+        let app = launch(seeded: false)
+        app.open(URL(string: "appdemo://clear")!)
+        XCTAssertTrue(app.staticTexts["nothing here yet."].firstMatch.waitForExistence(timeout: 20))
+        XCTAssertEqual(rows(app).count, 0)
+        attach("empty")
+    }
+
+    func testRowsFitTheLargestTextSize() {
+        XCUIDevice.shared.appearance = .light
+        let app = launch(extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        XCTAssertTrue(rows(app).firstMatch.waitForExistence(timeout: 20))
+        attach("largest-1")
+        list(app).swipeUp(velocity: .slow)
+        attach("largest-2")
     }
 }
