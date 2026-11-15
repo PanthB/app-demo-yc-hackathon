@@ -333,10 +333,12 @@ struct DropCamera: View {
                             RoundedRectangle(cornerRadius: CaptureFlight.landedCorner, style: .continuous)
                                 .strokeBorder(.white, lineWidth: CaptureFlight.landedBorder)
                         }
+                        .transition(.opacity)
                 } else {
                     RoundedRectangle(cornerRadius: CaptureFlight.landedCorner, style: .continuous)
                         .strokeBorder(.white.opacity(0.55), lineWidth: 1.5)
                         .frame(width: 48, height: 48)
+                        .transition(.opacity)
                 }
             }
             .overlay(alignment: .topTrailing) {
@@ -349,6 +351,7 @@ struct DropCamera: View {
                         .frame(minWidth: 18, minHeight: 18)
                         .background(Capsule().fill(.white))
                         .offset(x: 6, y: -6)
+                        .transition(.opacity)
                 }
             }
         }
