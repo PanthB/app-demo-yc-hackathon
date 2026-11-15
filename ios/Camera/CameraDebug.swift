@@ -20,6 +20,15 @@ enum CameraDebug {
         return seconds > 0 ? seconds : nil
     }
 
+    static var forcedAccess: CameraAccess? {
+        switch UserDefaults.standard.string(forKey: "CameraDebugAccess") {
+        case "notAsked": .notAsked
+        case "denied": .denied
+        case "unavailable": .unavailable
+        default: nil
+        }
+    }
+
     static let autoShots = 3
 
     static let stills = ["seed-dolores-sunny", "seed-pinksky", "seed-lights", "seed-landsend", "seed-matcha"]

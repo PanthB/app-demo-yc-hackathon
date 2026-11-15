@@ -79,6 +79,10 @@ final class CameraModel {
 
     func start() async {
         #if DEBUG
+        if let forced = CameraDebug.forcedAccess, access == .checking {
+            access = forced
+            return
+        }
         if CameraDebug.usesStill {
             if still == nil { still = CameraDebug.still(stillIndex) }
             hasFlash = true
@@ -102,6 +106,13 @@ final class CameraModel {
     }
 
     func askForAccess() async {
+        #if DEBUG
+        if CameraDebug.usesStill {
+            access = .checking
+            await start()
+            return
+        }
+        #endif
         if await AVCaptureDevice.requestAccess(for: .video) {
             await run()
         } else {
