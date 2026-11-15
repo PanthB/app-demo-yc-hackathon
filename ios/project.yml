@@ -53,11 +53,15 @@ targets:
         GENERATE_INFOPLIST_FILE: "YES"
         CODE_SIGN_ENTITLEMENTS: Config/App.entitlements
         INFOPLIST_KEY_CFBundleDisplayName: Moments
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "your board uses where you are to bring the things you saved nearby a little closer."
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "voice notes you share get turned into words on your phone, so the board can find them a spot."
+      configs:
+        Release:
+          EXCLUDED_SOURCE_FILE_NAMES: SeedImages.xcassets
     dependencies:
       - target: ShareExtension
       - package: ConvexMobile

@@ -15,9 +15,11 @@ final class Drop {
     var mediaPaths: [String] = []
     var thumbnailPath: String?
     var cutoutPath: String?
+    var mediaDuration: Double?
 
     var statusRaw: String = DropStatus.pending.rawValue
     var title: String?
+    var artist: String?
     var placeName: String?
     var latitude: Double?
     var longitude: Double?
