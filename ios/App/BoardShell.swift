@@ -46,7 +46,7 @@ struct BoardShell: View {
                 .toolbarTitleMenu { boardMenu(known, current: boardId) }
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button("ideas", systemImage: "lightbulb") { showsIdeas = true }
+                        Button("suggestions", systemImage: "lightbulb") { showsIdeas = true }
                             .accessibilityIdentifier("ideasButton")
                     }
                     ToolbarItem(placement: .topBarTrailing) {
