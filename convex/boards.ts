@@ -141,6 +141,19 @@ export const join = mutation({
   },
 });
 
+export const leave = mutation({
+  args: { boardId: v.string(), personId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { boardId, personId }) => {
+    const board = await boardById(ctx, boardId);
+    if (!board) throw new ConvexError("there's no board with that id.");
+    if (!board.shared) throw new ConvexError("you can't leave your own board.");
+    const member = await membership(ctx, personId, boardId);
+    if (member) await ctx.db.delete("members", member._id);
+    return null;
+  },
+});
+
 export const mine = query({
   args: { personId: v.string() },
   returns: v.array(boardView),
