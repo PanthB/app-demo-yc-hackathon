@@ -49,6 +49,14 @@ final class CameraTests: XCTestCase {
     }
 
     @MainActor
+    func testTheZoomButtonUnderThePinchIsSelected() {
+        XCTAssertEqual(DropCamera.selectedPreset(for: 1, in: [1, 2]), 1)
+        XCTAssertEqual(DropCamera.selectedPreset(for: 1.6, in: [1, 2]), 1)
+        XCTAssertEqual(DropCamera.selectedPreset(for: 1.98, in: [1, 2]), 2)
+        XCTAssertEqual(DropCamera.selectedPreset(for: 5, in: [1, 2]), 2)
+    }
+
+    @MainActor
     func testZoomWordsReadLikeTheCameraApp() {
         XCTAssertEqual(DropCamera.zoomWords(1), "1×")
         XCTAssertEqual(DropCamera.zoomWords(2), "2×")

@@ -13,16 +13,30 @@ struct DropCamera: View {
 
     @State private var camera = CameraModel()
     @State private var flights: [CameraShot] = []
-    @State private var landed: [CameraShot] = []
+    @State private var lastPhoto: CameraShot?
+    @State private var dropped = 0
+    @State private var capturing = 0
     @State private var shots = 0
-    @State private var landings = 0
     @State private var flash = 0.0
     @State private var justDropped = false
-    @State private var screen: CGRect = .zero
-    @State private var target: CGPoint = .zero
+    @State private var viewfinderFrame: CGRect = .zero
+    @State private var flightsFrame: CGRect = .zero
+    @State private var thumbnailFrame: CGRect = .zero
     @State private var focus: CGPoint?
     @State private var focusTaps = 0
     @State private var isPinching = false
+
+    private static let space = "camera"
+    private static let zoomPresets: [CGFloat] = [1, 2]
+
+    private enum Status {
+        case idle, dropping, dropped
+    }
+
+    private var status: Status {
+        if capturing > 0 || !flights.isEmpty { return .dropping }
+        return justDropped ? .dropped : .idle
+    }
 
     private var boardName: String { boards.currentBoardName }
 
@@ -44,17 +58,19 @@ struct DropCamera: View {
                     onClose: { dismiss() }
                 )
                 .transition(.opacity)
-                closeButton
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(.horizontal, 16)
+                GlassEffectContainer {
+                    closeButton
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.horizontal, 16)
             }
         }
+        .coordinateSpace(.named(Self.space))
         .animation(.easeOut(duration: 0.25), value: camera.access)
         .preferredColorScheme(.dark)
         .statusBarHidden()
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { screen = $0 }
         .sensoryFeedback(.impact(weight: .medium, intensity: 0.9), trigger: shots)
-        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.7), trigger: landings)
+        .sensoryFeedback(.success, trigger: dropped)
         .task { await camera.start() }
         .onDisappear { camera.stop() }
         .onChange(of: scenePhase) { _, phase in
@@ -64,12 +80,12 @@ struct DropCamera: View {
         .onCameraCaptureEvent { event in
             if event.phase == .ended { shoot() }
         }
-        .task(id: landings) {
-            guard landings > 0 else { return }
+        .task(id: dropped) {
+            guard dropped > 0 else { return }
             justDropped = true
-            try? await Task.sleep(for: .seconds(1.6))
+            try? await Task.sleep(for: .seconds(2.5))
             guard !Task.isCancelled else { return }
-            justDropped = false
+            withAnimation(.smooth(duration: 0.3)) { justDropped = false }
         }
         #if DEBUG
         .task {
@@ -86,9 +102,9 @@ struct DropCamera: View {
     private var viewfinder: some View {
         ZStack {
             preview
-                .ignoresSafeArea()
                 .blur(radius: camera.isSwitching ? 24 : 0)
                 .animation(.easeOut(duration: 0.2), value: camera.isSwitching)
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { viewfinderFrame = $0 }
                 .simultaneousGesture(
                     MagnifyGesture()
                         .onChanged { value in
@@ -100,6 +116,22 @@ struct DropCamera: View {
                         }
                         .onEnded { _ in isPinching = false }
                 )
+                .ignoresSafeArea()
+            scrim
+            ZStack {
+                ForEach(flights) { shot in
+                    CaptureFlight(
+                        shot: shot,
+                        start: viewfinderFrame.offsetBy(dx: -flightsFrame.minX, dy: -flightsFrame.minY),
+                        end: thumbnailFrame.offsetBy(dx: -flightsFrame.minX, dy: -flightsFrame.minY),
+                        reduceMotion: reduceMotion,
+                        onLand: { land(shot) }
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { flightsFrame = $0 }
+            .ignoresSafeArea()
             if let focus {
                 FocusRing()
                     .id(focusTaps)
@@ -107,23 +139,11 @@ struct DropCamera: View {
                     .ignoresSafeArea()
                     .transition(.opacity)
             }
-            scrim
-            controls
             Color.white
                 .opacity(flash)
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
-            ForEach(flights) { shot in
-                CaptureFlight(
-                    shot: shot,
-                    frame: CGRect(origin: .zero, size: screen.size),
-                    target: CGPoint(x: target.x - screen.minX, y: target.y - screen.minY),
-                    reduceMotion: reduceMotion,
-                    onLand: { land(shot) },
-                    onDone: { flights.removeAll { $0.id == shot.id } }
-                )
-            }
-            .ignoresSafeArea()
+            controls
         }
     }
 
@@ -161,19 +181,19 @@ struct DropCamera: View {
 
     private var scrim: some View {
         VStack {
-            LinearGradient(colors: [.black.opacity(0.45), .clear], startPoint: .top, endPoint: .bottom)
-                .frame(height: 160)
+            LinearGradient(colors: [.black.opacity(0.4), .clear], startPoint: .top, endPoint: .bottom)
+                .frame(height: 140)
             Spacer()
-            LinearGradient(colors: [.clear, .black.opacity(0.55)], startPoint: .top, endPoint: .bottom)
-                .frame(height: 280)
+            LinearGradient(colors: [.clear, .black.opacity(0.5)], startPoint: .top, endPoint: .bottom)
+                .frame(height: 300)
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
     }
 
     private var controls: some View {
-        VStack(spacing: 0) {
-            GlassEffectContainer(spacing: 12) {
+        GlassEffectContainer(spacing: 12) {
+            VStack(spacing: 0) {
                 HStack {
                     closeButton
                     Spacer()
@@ -191,39 +211,43 @@ struct DropCamera: View {
                         .accessibilityIdentifier("cameraFlash")
                     }
                 }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
 
-            Spacer()
+                Spacer()
 
-            chip
-                .padding(.bottom, 22)
+                statusCapsule
+                    .frame(height: 36)
+                    .padding(.bottom, 16)
 
-            HStack {
-                zoomButton
-                    .frame(maxWidth: .infinity)
-                Button(action: shoot) {
-                    Color.clear
+                zoomCapsule
+                    .padding(.bottom, 20)
+
+                HStack {
+                    lastPhotoButton
+                    Spacer()
+                    Button(action: shoot) {
+                        Color.clear
+                    }
+                    .buttonStyle(ShutterButtonStyle())
+                    .accessibilityLabel("take a photo")
+                    .accessibilityIdentifier("cameraShutter")
+                    Spacer()
+                    Button {
+                        Task { await camera.flip() }
+                    } label: {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .symbolEffect(.rotate, value: camera.position)
+                            .frame(width: 48, height: 48)
+                    }
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.circle)
+                    .accessibilityLabel(camera.position == .back ? "switch to the front camera" : "switch to the back camera")
+                    .accessibilityIdentifier("cameraFlip")
                 }
-                .buttonStyle(ShutterButtonStyle())
-                .accessibilityLabel("take a photo")
-                .accessibilityIdentifier("cameraShutter")
-                Button {
-                    Task { await camera.flip() }
-                } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath.camera")
-                        .symbolEffect(.rotate, value: camera.position)
-                        .frame(width: 52, height: 52)
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .accessibilityLabel(camera.position == .back ? "switch to the front camera" : "switch to the back camera")
-                .accessibilityIdentifier("cameraFlip")
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 12)
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 12)
         }
         .font(.system(size: 17, weight: .semibold))
         .foregroundStyle(.white)
@@ -239,24 +263,100 @@ struct DropCamera: View {
         }
         .buttonStyle(.glass)
         .buttonBorderShape(.circle)
-        .accessibilityLabel("close the camera")
+        .accessibilityLabel("close camera")
         .accessibilityIdentifier("cameraClose")
     }
 
-    private var zoomButton: some View {
-        Button {
-            camera.setZoom(camera.zoom < 1.95 ? 2 : 1)
-        } label: {
-            Text(Self.zoomWords(camera.zoom))
-                .font(.footnote.weight(.semibold).monospacedDigit())
-                .contentTransition(.numericText(value: camera.zoom))
-                .frame(width: 44, height: 44)
+    @ViewBuilder
+    private var statusCapsule: some View {
+        if status != .idle {
+            Text(status == .dropping ? "dropping it into \(boardName)." : "dropped it into \(boardName).")
+                .font(.subheadline.weight(.semibold))
+                .contentTransition(.opacity)
+                .padding(.horizontal, 16)
+                .frame(height: 36)
+                .glassEffect(.regular, in: .capsule)
+                .animation(.smooth(duration: 0.25), value: status)
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                .accessibilityIdentifier("cameraStatus")
         }
-        .buttonStyle(.glass)
-        .buttonBorderShape(.circle)
+    }
+
+    private var zoomCapsule: some View {
+        HStack(spacing: 2) {
+            ForEach(Self.zoomPresets, id: \.self) { preset in
+                let isSelected = Self.selectedPreset(for: camera.zoom, in: Self.zoomPresets) == preset
+                Button {
+                    withAnimation(.snappy(duration: 0.25)) { camera.setZoom(preset) }
+                } label: {
+                    Text(isSelected ? Self.zoomWords(camera.zoom) : Self.zoomWords(preset).replacingOccurrences(of: "×", with: ""))
+                        .font(.system(size: isSelected ? 13 : 12, weight: .bold).monospacedDigit())
+                        .foregroundStyle(isSelected ? Color.yellow : .white)
+                        .contentTransition(.numericText(value: camera.zoom))
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(.black.opacity(isSelected ? 0.35 : 0)))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("zoom to \(Self.zoomWords(preset))")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+                .accessibilityIdentifier("cameraZoom-\(Int(preset))")
+            }
+        }
+        .padding(3)
+        .glassEffect(.regular.interactive(), in: .capsule)
         .animation(.snappy(duration: 0.2), value: camera.zoom)
-        .accessibilityLabel("zoom is \(Self.zoomWords(camera.zoom))")
-        .accessibilityIdentifier("cameraZoom")
+    }
+
+    private var lastPhotoButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            ZStack {
+                if let lastPhoto {
+                    Image(uiImage: lastPhoto.image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 48, height: 48)
+                        .clipShape(RoundedRectangle(cornerRadius: CaptureFlight.landedCorner, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: CaptureFlight.landedCorner, style: .continuous)
+                                .strokeBorder(.white, lineWidth: CaptureFlight.landedBorder)
+                        }
+                } else {
+                    RoundedRectangle(cornerRadius: CaptureFlight.landedCorner, style: .continuous)
+                        .fill(.clear)
+                        .frame(width: 48, height: 48)
+                        .glassEffect(.regular, in: .rect(cornerRadius: CaptureFlight.landedCorner, style: .continuous))
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                if dropped > 0 {
+                    Text("\(dropped)")
+                        .font(.caption2.weight(.bold).monospacedDigit())
+                        .foregroundStyle(.black)
+                        .contentTransition(.numericText(value: Double(dropped)))
+                        .padding(.horizontal, 5)
+                        .frame(minWidth: 18, minHeight: 18)
+                        .background(Capsule().fill(.white))
+                        .offset(x: 6, y: -6)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(lastPhoto == nil)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { thumbnailFrame = $0 }
+        .keyframeAnimator(initialValue: 1.0, trigger: dropped) { content, scale in
+            content.scaleEffect(reduceMotion ? 1 : scale)
+        } keyframes: { _ in
+            SpringKeyframe(1.08, duration: 0.12, spring: .snappy(duration: 0.3))
+            SpringKeyframe(1, duration: 0.3, spring: .snappy(duration: 0.3))
+        }
+        .accessibilityLabel(dropped == 1 ? "you dropped 1 photo into \(boardName). tap to see the board." : "you dropped \(dropped) photos into \(boardName). tap to see the board.")
+        .accessibilityIdentifier("cameraLastPhoto")
+    }
+
+    static func selectedPreset(for zoom: CGFloat, in presets: [CGFloat]) -> CGFloat {
+        presets.last { zoom >= $0 - 0.05 } ?? presets[0]
     }
 
     static func zoomWords(_ zoom: CGFloat) -> String {
@@ -264,58 +364,32 @@ struct DropCamera: View {
         return rounded == rounded.rounded() ? "\(Int(rounded))×" : String(format: "%.1f×", rounded)
     }
 
-    private var chip: some View {
-        HStack(spacing: 10) {
-            LandedStack(shots: landed, reduceMotion: reduceMotion)
-                .frame(width: 30, height: 30)
-                .onGeometryChange(for: CGPoint.self) { proxy in
-                    let frame = proxy.frame(in: .global)
-                    return CGPoint(x: frame.midX, y: frame.midY)
-                } action: { target = $0 }
-            Text(justDropped ? "dropped it into \(boardName)." : "dropping into \(boardName).")
-                .font(.subheadline.weight(.semibold))
-                .contentTransition(.opacity)
-                .animation(.easeOut(duration: 0.2), value: justDropped)
-        }
-        .padding(.leading, 8)
-        .padding(.trailing, 16)
-        .padding(.vertical, 8)
-        .glassEffect(.regular, in: .capsule)
-        .keyframeAnimator(initialValue: 1.0, trigger: landings) { content, scale in
-            content.scaleEffect(reduceMotion ? 1 : scale)
-        } keyframes: { _ in
-            SpringKeyframe(1.08, duration: 0.12, spring: .snappy)
-            SpringKeyframe(1, duration: 0.45, spring: .init(duration: 0.45, bounce: 0.45))
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("cameraBoardChip")
-    }
-
     private func shoot() {
         guard camera.access == .allowed else { return }
         shots += 1
-        if reduceMotion {
-            flash = 0.35
-            withAnimation(.easeOut(duration: 0.3)) { flash = 0 }
-        } else {
-            withAnimation(.linear(duration: 0.04)) { flash = 0.85 } completion: {
-                withAnimation(.easeOut(duration: 0.28)) { flash = 0 }
-            }
-        }
+        capturing += 1
+        flash = reduceMotion ? 0.4 : 0.8
+        withAnimation(.easeOut(duration: 0.18)) { flash = 0 }
         Task {
-            guard let shot = await camera.capture() else { return }
-            CameraInbox.drop(shot.data)
-            sync.wake(in: context)
-            flights.append(shot)
+            let shot = await camera.capture()
+            if let shot {
+                CameraInbox.drop(shot.data)
+                sync.wake(in: context)
+                flights.append(shot)
+            }
+            capturing -= 1
         }
     }
 
     private func land(_ shot: CameraShot) {
-        withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4, bounce: 0.35)) {
-            landed.append(shot)
-            if landed.count > 3 { landed.removeFirst(landed.count - 3) }
+        var landing = Transaction()
+        landing.disablesAnimations = !reduceMotion
+        if reduceMotion { landing.animation = .easeOut(duration: 0.2) }
+        withTransaction(landing) {
+            lastPhoto = shot
+            flights.removeAll { $0.id == shot.id }
         }
-        landings += 1
+        dropped += 1
     }
 
     private func showFocus(at point: CGPoint) {
@@ -357,37 +431,5 @@ private struct FocusRing: View {
                 withAnimation(.spring(duration: 0.3, bounce: 0.2)) { settled = true }
             }
             .allowsHitTesting(false)
-    }
-}
-
-private struct LandedStack: View {
-    let shots: [CameraShot]
-    let reduceMotion: Bool
-
-    private static let tilts: [Double] = [-9, 7, -2]
-
-    var body: some View {
-        ZStack {
-            if shots.isEmpty {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(.white.opacity(0.6), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
-                    .transition(.opacity)
-            }
-            ForEach(Array(shots.enumerated()), id: \.element.id) { index, shot in
-                Image(uiImage: shot.image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 30, height: 30)
-                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .strokeBorder(.white, lineWidth: 1.5)
-                    }
-                    .rotationEffect(.degrees(Self.tilts[(shots.count - 1 - index) % Self.tilts.count] * (index == shots.count - 1 ? 0.3 : 1)))
-                    .offset(x: CGFloat(index - shots.count + 1) * 5)
-                    .shadow(color: .black.opacity(0.3), radius: 3, y: 2)
-                    .transition(reduceMotion ? .opacity : .scale(scale: 1.4).combined(with: .opacity))
-            }
-        }
     }
 }
