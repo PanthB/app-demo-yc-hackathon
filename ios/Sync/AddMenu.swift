@@ -58,6 +58,7 @@ struct AddMenu: View {
         }
         .alert("paste a link", isPresented: isWriting(.link)) {
             TextField("https://", text: $words)
+                .font(.body)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .keyboardType(.URL)
@@ -68,6 +69,7 @@ struct AddMenu: View {
         }
         .alert("write a note", isPresented: isWriting(.note)) {
             TextField("remind me in 1 hr to call mom", text: $words)
+                .font(.body)
             Button("add it") { addWords(asLink: false) }
             Button("never mind", role: .cancel) {}
         } message: {

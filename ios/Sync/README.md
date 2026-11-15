@@ -16,7 +16,7 @@ Compiled into the app target by folder (see `ios/project.yml`), so a new file he
   - `personId` is "me" for the everyone and mine filter.
   - `try await boards.join(code: "SFCREW", as: nil)` joins a board in one call and switches to it. Joining a board the person is already in just opens it, so the first-run "demo" button can call it every time. `create(named:as:)` is the same for a new board. Both throw a `BoardProblem` whose message can be shown as it is.
 - **`BoardSync`** (`@Environment(BoardSync.self)`): `setPinned(_:_:)`, `move(_:to:)`, `markDone(_:)` and `undoMove(_:)`. Each changes SwiftData at once and sends the mutation. The shell builds `DropActions` from them.
-- **`AddMenu()`** is the add slot's control: a native menu with take a photo (`DropCamera()` from `ios/Camera`, full screen), choose a photo (PhotosPicker), paste link and note. It has no button style of its own, so the shell styles it. What it adds goes through the same inbox as a share.
+- **`AddMenu()`** is the add slot's control: a native menu with take a photo (`DropCamera()` from `ios/Camera`, full screen), choose a photo (PhotosPicker), paste link and note. It has no button style of its own, so the shell styles it. The link and note alerts set the body font on their own text fields, so a font the shell puts on the button doesn't reach them. What it adds goes through the same inbox as a share.
 
 An `appdemo://join/<code>` link opens the join sheet with the code filled in.
 
