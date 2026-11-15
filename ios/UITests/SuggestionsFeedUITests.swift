@@ -66,7 +66,7 @@ final class SuggestionsFeedUITests: XCTestCase {
         let titles = app.staticTexts.matching(identifier: "suggestionTitle")
         let saved = titles.firstMatch.label
         saves(app).firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["suggestionSaved"].waitForExistence(timeout: 3), "saving said nothing")
+        XCTAssertTrue(app.staticTexts["feedNote"].waitForExistence(timeout: 3), "saving said nothing")
         attach("feed-saved")
         XCTAssertTrue(settles(app.staticTexts.matching(NSPredicate(format: "label == %@", saved)), at: 0), "saving left the card in the feed")
         let dismissed = titles.firstMatch.label
@@ -74,6 +74,26 @@ final class SuggestionsFeedUITests: XCTestCase {
         app.buttons.matching(identifier: "suggestionDismiss").firstMatch.tap()
         XCTAssertTrue(settles(app.staticTexts.matching(NSPredicate(format: "label == %@", dismissed)), at: 0), "dismissing left the card in the feed")
         attach("feed-after-save-and-dismiss")
+    }
+
+    func testRefreshSaysItsLookingThenBringsANewOne() throws {
+        let app = try launch()
+        XCTAssertTrue(saves(app).firstMatch.waitForExistence(timeout: 10))
+        let refresh = app.buttons["refreshSuggestions"]
+        XCTAssertTrue(refresh.waitForExistence(timeout: 5))
+        let header = app.descendants(matching: .any)["cluster-sunny-afternoons"]
+        XCTAssertFalse(header.label.contains("looking for new ones"))
+        refresh.tap()
+        let looking = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "looking for new ones"), object: header)
+        XCTAssertEqual(XCTWaiter().wait(for: [looking], timeout: 3), .completed, "a refresh didn't say it was looking")
+        attach("feed-refresh-looking")
+        refresh.tap()
+        XCTAssertTrue(app.staticTexts["already looking."].waitForExistence(timeout: 3), "a second refresh didn't say it was already looking")
+        attach("feed-refresh-already-looking")
+        XCTAssertTrue(app.staticTexts["dandelion chocolate"].waitForExistence(timeout: 10), "nothing new arrived after a refresh")
+        let quiet = XCTNSPredicateExpectation(predicate: NSPredicate(format: "NOT (label CONTAINS %@)", "looking for new ones"), object: header)
+        XCTAssertEqual(XCTWaiter().wait(for: [quiet], timeout: 5), .completed, "the looking line stayed after the new one arrived")
+        attach("feed-refresh-arrived")
     }
 
     func testTurningBothKindsOffSaysSoAndComesBack() throws {
