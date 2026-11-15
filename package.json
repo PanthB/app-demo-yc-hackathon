@@ -7,7 +7,8 @@
     "predev": "convex dev --until-success && convex dashboard",
     "logs": "convex logs",
     "typecheck": "tsc -p convex",
-    "lint": "npm run typecheck && eslint . --report-unused-disable-directives --max-warnings 0"
+    "lint": "npm run typecheck && eslint . --report-unused-disable-directives --max-warnings 0",
+    "seed:sf-crew": "node scripts/seed-sf-crew.mjs"
   },
   "dependencies": {
     "chrono-node": "^2.10.3",
