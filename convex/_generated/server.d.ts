@@ -32,6 +32,7 @@ type Env = {
   readonly CONVEX_SITE_URL: string;
   readonly OPENROUTER_API_KEY: string | undefined;
   readonly READER_MODEL: string | undefined;
+  readonly SCRAPECREATORS_API_KEY: string | undefined;
   readonly SUPERMEMORY_API_KEY: string | undefined;
 };
 

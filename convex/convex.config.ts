@@ -6,6 +6,7 @@ const app = defineApp({
     OPENROUTER_API_KEY: v.optional(v.string()),
     SUPERMEMORY_API_KEY: v.optional(v.string()),
     READER_MODEL: v.optional(v.string()),
+    SCRAPECREATORS_API_KEY: v.optional(v.string()),
   },
 });
 
