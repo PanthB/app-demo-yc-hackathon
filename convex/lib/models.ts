@@ -4,7 +4,7 @@ import { internal } from "../_generated/api";
 const OPENAI = "https://api.openai.com";
 const OPENAI_MODEL = "gpt-6-luna";
 const MAX_WEB_SEARCHES = 4;
-const DEFAULT_BUDGET_USD = 20;
+const DEFAULT_BUDGET_USD = 100;
 
 const OPENAI_PRICES: Record<string, { input: number; cached: number; cacheWrite: number; output: number; webSearchCall: number }> = {
   "gpt-6-luna": { input: 0.1, cached: 0.01, cacheWrite: 0.125, output: 0.5, webSearchCall: 0.01 },
