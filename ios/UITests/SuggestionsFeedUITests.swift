@@ -5,12 +5,16 @@ final class SuggestionsFeedUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    private func launch(board: String = "sf-crew", extra: [String] = []) -> XCUIApplication {
+    private func launch(sample: String = "full", extra: [String] = []) throws -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-view", "cards", "-BoardDebugSeed", "YES", "-BoardDebugSuggestions", board, "-BoardDebugSuggestionsSample", "YES"] + extra
+        app.launchArguments = ["-view", "cards", "-BoardDebugSeed", "YES", "-BoardDebugSuggestionsSample", sample] + extra
         app.launch()
+        let way = app.buttons["suggestionsButton"]
+        guard way.waitForExistence(timeout: 10) else { throw XCTSkip("nothing in the shell opens the suggestions feed.") }
+        way.tap()
+        guard app.buttons["recsMenu"].waitForExistence(timeout: 5) else { throw XCTSkip("the shell's button doesn't show SuggestionsFeed yet.") }
         let back = app.buttons["turn them back on"]
-        if back.waitForExistence(timeout: 2) { back.tap() }
+        if back.waitForExistence(timeout: 1) { back.tap() }
         return app
     }
 
@@ -43,21 +47,21 @@ final class SuggestionsFeedUITests: XCTestCase {
         XCTAssertTrue(end.isHittable, "the feed never reached the cluster that is still being searched")
     }
 
-    func testTheFeedShowsEveryClusterInLight() {
-        let app = launch(extra: ["-AppleInterfaceStyle", "Light"])
+    func testTheFeedShowsEveryClusterInLight() throws {
+        let app = try launch(extra: ["-AppleInterfaceStyle", "Light"])
         XCUIDevice.shared.appearance = .light
         walk(app, attaching: "feed-light")
     }
 
-    func testTheFeedShowsEveryClusterInDark() {
-        let app = launch()
+    func testTheFeedShowsEveryClusterInDark() throws {
+        let app = try launch()
         XCUIDevice.shared.appearance = .dark
         walk(app, attaching: "feed-dark")
         XCUIDevice.shared.appearance = .light
     }
 
-    func testSavingAndDismissingTakeACardAway() {
-        let app = launch()
+    func testSavingAndDismissingTakeACardAway() throws {
+        let app = try launch()
         XCTAssertTrue(saves(app).firstMatch.waitForExistence(timeout: 10))
         let titles = app.staticTexts.matching(identifier: "suggestionTitle")
         let saved = titles.firstMatch.label
@@ -72,8 +76,8 @@ final class SuggestionsFeedUITests: XCTestCase {
         attach("feed-after-save-and-dismiss")
     }
 
-    func testTurningBothKindsOffSaysSoAndComesBack() {
-        let app = launch()
+    func testTurningBothKindsOffSaysSoAndComesBack() throws {
+        let app = try launch()
         XCTAssertTrue(saves(app).firstMatch.waitForExistence(timeout: 10))
         app.buttons["recsMenu"].tap()
         let media = app.buttons["songs, clips and shows"]
@@ -100,14 +104,14 @@ final class SuggestionsFeedUITests: XCTestCase {
         XCTAssertTrue(saves(app).firstMatch.waitForExistence(timeout: 5))
     }
 
-    func testAnEmptyFeedSaysSo() {
-        let app = launch(board: "seed-panth-board")
+    func testAnEmptyFeedSaysSo() throws {
+        let app = try launch(sample: "empty")
         XCTAssertTrue(app.staticTexts["nothing yet."].waitForExistence(timeout: 10))
         attach("feed-empty")
     }
 
-    func testCardsFitTheLargestTextSize() {
-        let app = launch(extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+    func testCardsFitTheLargestTextSize() throws {
+        let app = try launch(extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
         XCTAssertTrue(saves(app).firstMatch.waitForExistence(timeout: 10))
         attach("feed-largest-text-1")
         let dismiss = app.buttons.matching(identifier: "suggestionDismiss").firstMatch

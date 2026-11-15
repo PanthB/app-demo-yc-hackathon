@@ -109,8 +109,8 @@ extension FeedSuggestion {
 
 #if DEBUG
 extension FeedGroup {
-    static func sample(for boardId: String) -> [FeedGroup] {
-        guard boardId == SeedBoard.crewBoardId else { return [] }
+    static func sample(_ name: String) -> [FeedGroup] {
+        guard name != "empty" else { return [] }
         func drop(_ number: String, _ title: String) -> FeedSuggestion.Source {
             FeedSuggestion.Source(clientId: "5EED0002-0000-4000-8000-00000000000\(number)", title: title)
         }
