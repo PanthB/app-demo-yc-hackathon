@@ -13,8 +13,8 @@ export const recompute = internalMutation({
       .take(300);
     const placed = clusterBoard(
       drops
-        .filter((d) => d.status === "processed" && d.zone !== "done" && (d.vibes?.length ?? 0) > 0)
-        .map((d) => ({ clientId: d.clientId, vibes: d.vibes ?? [], capturedAt: d.capturedAt, previousClusterId: d.clusterId, jevClusterId: d.jevClusterId })),
+        .filter((d) => d.status === "processed" && d.zone !== "done" && !d.found?.dismissedAt && (d.vibes?.length ?? 0) > 0)
+        .map((d) => ({ clientId: d.clientId, vibes: d.vibes ?? [], capturedAt: d.capturedAt, previousClusterId: d.clusterId, jevClusterId: d.jevClusterId, found: Boolean(d.found) })),
     );
     for (const d of drops) {
       const p = placed.get(d.clientId);
@@ -40,7 +40,7 @@ export const current = internalQuery({
       .take(300);
     const clusters = new Map<string, { clusterId: string; clusterLabel: string; size: number; titles: string[] }>();
     for (const d of drops) {
-      if (!d.clusterId) continue;
+      if (!d.clusterId || d.found?.dismissedAt) continue;
       const c = clusters.get(d.clusterId) ?? { clusterId: d.clusterId, clusterLabel: d.clusterLabel ?? "", size: 0, titles: [] };
       c.size++;
       const title = d.extraction?.title ?? d.enrichment?.title;

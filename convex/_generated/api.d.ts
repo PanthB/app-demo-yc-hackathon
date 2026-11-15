@@ -12,6 +12,7 @@ import type * as board from "../board.js";
 import type * as boards from "../boards.js";
 import type * as clusters from "../clusters.js";
 import type * as drops from "../drops.js";
+import type * as events from "../events.js";
 import type * as files from "../files.js";
 import type * as lib_enrich from "../lib/enrich.js";
 import type * as lib_models from "../lib/models.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   boards: typeof boards;
   clusters: typeof clusters;
   drops: typeof drops;
+  events: typeof events;
   files: typeof files;
   "lib/enrich": typeof lib_enrich;
   "lib/models": typeof lib_models;

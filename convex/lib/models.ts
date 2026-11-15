@@ -3,13 +3,14 @@ import { internal } from "../_generated/api";
 
 const OPENAI = "https://api.openai.com";
 const OPENAI_MODEL = "gpt-6-luna";
+const MAX_WEB_SEARCHES = 5;
 const DEFAULT_BUDGET_USD = 20;
 
-const OPENAI_PRICES: Record<string, { input: number; cached: number; cacheWrite: number; output: number }> = {
-  "gpt-6-luna": { input: 0.1, cached: 0.01, cacheWrite: 0.125, output: 0.5 },
-  "gpt-6.1-terra": { input: 1, cached: 0.05, cacheWrite: 1.25, output: 5 },
-  "gpt-5.4-nano": { input: 0.2, cached: 0.02, cacheWrite: 0.2, output: 1.25 },
-  "gpt-5.4-mini": { input: 0.75, cached: 0.075, cacheWrite: 0.75, output: 4.5 },
+const OPENAI_PRICES: Record<string, { input: number; cached: number; cacheWrite: number; output: number; webSearchCall: number }> = {
+  "gpt-6-luna": { input: 0.1, cached: 0.01, cacheWrite: 0.125, output: 0.5, webSearchCall: 0.01 },
+  "gpt-6.1-terra": { input: 1, cached: 0.05, cacheWrite: 1.25, output: 5, webSearchCall: 0.01 },
+  "gpt-5.4-nano": { input: 0.2, cached: 0.02, cacheWrite: 0.2, output: 1.25, webSearchCall: 0.01 },
+  "gpt-5.4-mini": { input: 0.75, cached: 0.075, cacheWrite: 0.75, output: 4.5, webSearchCall: 0.01 },
 };
 
 export const readerModel = () => env.OPENAI_READER_MODEL?.trim() || OPENAI_MODEL;
@@ -96,7 +97,7 @@ type Usage = {
   prompt_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
 };
 
-async function openaiPost(ctx: ActionCtx, route: "reader" | "decisions", path: string, body: { model: string } & Record<string, unknown>, timeoutMs: number) {
+async function openaiPost(ctx: ActionCtx, route: "reader" | "decisions" | "events", path: string, body: { model: string } & Record<string, unknown>, timeoutMs: number) {
   const price = OPENAI_PRICES[body.model];
   if (!price) throw new ProviderUnavailable(`no listed price for ${body.model}, so it can't be held to the budget`);
   const budget = openaiBudgetUsd();
@@ -109,14 +110,17 @@ async function openaiPost(ctx: ActionCtx, route: "reader" | "decisions", path: s
   const cachedTokens = details.cached_tokens ?? 0;
   const cacheWriteTokens = details.cache_write_tokens ?? 0;
   const outputTokens = usage.output_tokens ?? usage.completion_tokens ?? 0;
+  const output = Array.isArray(result.output) ? (result.output as { type?: string; action?: { type?: string } }[]) : [];
+  const webSearchCalls = output.filter((o) => o.type === "web_search_call" && (o.action?.type ?? "search") === "search").length;
   const usd =
     ((inputTokens - cachedTokens - cacheWriteTokens) * price.input +
       cachedTokens * price.cached +
       cacheWriteTokens * price.cacheWrite +
       (route === "decisions" ? 0 : outputTokens * price.output)) /
-    1_000_000;
-  await ctx.runMutation(internal.spend.recordOpenAI, { model: body.model, route, inputTokens, cachedTokens, cacheWriteTokens, outputTokens, usd });
-  return result;
+      1_000_000 +
+    webSearchCalls * price.webSearchCall;
+  await ctx.runMutation(internal.spend.recordOpenAI, { model: body.model, route, inputTokens, cachedTokens, cacheWriteTokens, outputTokens, webSearchCalls, usd });
+  return { result, usd, webSearchCalls };
 }
 
 export type Question = { type: "choice"; instructions: string; criteria: Record<string, string> } | { type: "noul"; instructions: string };
@@ -127,7 +131,7 @@ type OpenAIAnswer =
   | { type: "score" | "refusal"; name: string };
 
 async function openaiDecide(ctx: ActionCtx, model: string, state: unknown, questions: Record<string, Question>) {
-  const result = await openaiPost(
+  const { result } = await openaiPost(
     ctx,
     "decisions",
     "/v1/decisions",
@@ -184,7 +188,7 @@ function parseReading(result: Record<string, unknown>, model: string) {
 }
 
 export async function openaiRead(ctx: ActionCtx, text: string, images: Image[], model: string) {
-  const result = await openaiPost(
+  const { result } = await openaiPost(
     ctx,
     "reader",
     "/v1/chat/completions",
@@ -192,6 +196,90 @@ export async function openaiRead(ctx: ActionCtx, text: string, images: Image[], 
     30_000,
   );
   return parseReading(result, model);
+}
+
+export type FoundEvent = {
+  title: string;
+  venue: string;
+  neighborhood: string | null;
+  starts_at: string;
+  url: string;
+  price_usd: number | null;
+  description: string;
+  inspired_by: string[];
+};
+
+const EVENTS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["events"],
+  properties: {
+    events: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["title", "venue", "neighborhood", "starts_at", "url", "price_usd", "description", "inspired_by"],
+        properties: {
+          title: { type: "string", description: "the event's own name, lowercase, without deal or listing prefixes like '$2 off:'" },
+          venue: { type: "string", description: "the venue's name, lowercase" },
+          neighborhood: nullableString("the san francisco neighborhood the venue is in, lowercase"),
+          starts_at: { type: "string", description: "local start time in san francisco, YYYY-MM-DDTHH:MM, from the event's page" },
+          url: { type: "string", description: "the event's own page (venue, ticketing or listing) that you found in this search" },
+          price_usd: nullableNumber("the lowest ticket price in US dollars, 0 when free, null when the page doesn't say"),
+          description: { type: "string", description: "one short lowercase sentence on what it is" },
+          inspired_by: { type: "array", items: { type: "string" }, description: "one or two drop refs (like d3) that this event fits best, best first" },
+        },
+      },
+    },
+  },
+};
+
+export async function findEvents(ctx: ActionCtx, instructions: string, board: string) {
+  const model = OPENAI_MODEL;
+  const { result, usd, webSearchCalls } = await openaiPost(
+    ctx,
+    "events",
+    "/v1/responses",
+    {
+      model,
+      reasoning: { effort: "medium" },
+      instructions,
+      input: board,
+      tools: [
+        {
+          type: "web_search",
+          search_context_size: "medium",
+          user_location: { type: "approximate", country: "US", city: "San Francisco", region: "California", timezone: "America/Los_Angeles" },
+        },
+      ],
+      tool_choice: "required",
+      max_tool_calls: MAX_WEB_SEARCHES,
+      include: ["web_search_call.action.sources"],
+      text: { format: { type: "json_schema", name: "found_events", strict: true, schema: EVENTS_SCHEMA } },
+      max_output_tokens: 6000,
+    },
+    120_000,
+  );
+  type Item = {
+    type?: string;
+    action?: { sources?: { url?: string }[] };
+    content?: { type?: string; text?: string; annotations?: { type?: string; url?: string }[] }[];
+  };
+  const output = (result.output ?? []) as Item[];
+  const sources = new Set<string>();
+  let text = "";
+  for (const item of output) {
+    for (const source of item.action?.sources ?? []) if (source.url) sources.add(source.url);
+    for (const part of item.content ?? []) {
+      if (part.type !== "output_text") continue;
+      text += part.text ?? "";
+      for (const a of part.annotations ?? []) if (a.url) sources.add(a.url);
+    }
+  }
+  if (!text) throw new Error(`${model} returned no events (${String(result.status)})`);
+  const { events } = JSON.parse(text) as { events: FoundEvent[] };
+  return { events, sources: [...sources], usd, webSearchCalls, by: `${model} web search via openai` };
 }
 
 export function choice(answer: DecisionAnswer | undefined) {
