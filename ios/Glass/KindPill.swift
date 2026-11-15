@@ -1,14 +1,25 @@
 import SwiftUI
 
 struct KindPill: View {
-    let kind: DropKind
+    let symbol: String
+    let word: String
     var onPicture = true
     @ScaledMetric(relativeTo: .caption) private var height: CGFloat = 22
 
+    init(kind: DropKind, onPicture: Bool = true) {
+        self.init(symbol: kind.symbol, word: kind.word, onPicture: onPicture)
+    }
+
+    init(symbol: String, word: String, onPicture: Bool = true) {
+        self.symbol = symbol
+        self.word = word
+        self.onPicture = onPicture
+    }
+
     var body: some View {
         HStack(spacing: 3) {
-            Image(systemName: kind.symbol)
-            Text(kind.word)
+            Image(systemName: symbol)
+            Text(word)
         }
         .font(.caption.weight(.semibold))
         .padding(.horizontal, 8)
@@ -16,7 +27,7 @@ struct KindPill: View {
         .background(Color(.tertiarySystemFill).opacity(onPicture ? 0 : 1), in: .capsule)
         .glassEffect(onPicture ? .regular : .identity, in: .capsule)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(kind.word)
+        .accessibilityLabel(word)
     }
 }
 
