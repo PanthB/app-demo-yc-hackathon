@@ -10,7 +10,7 @@ build:
                     - command -v xcodegen >/dev/null || HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install xcodegen
                     - cd ios && xcodegen generate
                 build_commands:
-                    - cd ios && xcodebuild -project AppDemo.xcodeproj -scheme AppDemo -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+                    - cd ios && xcodebuild -project AppDemo.xcodeproj -scheme AppDemo -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build build
                 output_path: ios/build/Build/Products/Debug-iphonesimulator/AppDemo.app
                 timeout_seconds: 1800
 session:

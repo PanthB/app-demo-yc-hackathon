@@ -1,0 +1,52 @@
+test:
+  metadata:
+    name: phase1-6a-wandering-mode
+    platform: ios
+    tags:
+      - phase1
+      - location
+      - modes
+  build:
+    name: app-demo-yc-hackathon
+  variables:
+    share-target: "Moments"
+    share-url: "https://en.wikipedia.org/wiki/Tartine_Bakery"
+    home-location: "37.7793,-122.4193"
+    near-location: "37.7627,-122.4236"
+  blocks:
+    - type: manual
+      step_type: set_location
+      step_description: "{{home-location}}"
+    - type: manual
+      step_type: navigate
+      step_description: "{{share-url}}"
+    - type: instructions
+      step_description: Tap the Share button in Safari and pick {{share-target}} from the row of apps in the share sheet. If it isn't in the row, scroll the row or tap More to find it.
+    - type: manual
+      step_type: open_app
+    - type: if
+      condition: Is a system permission prompt (location or notifications) visible?
+      then:
+        - type: instructions
+          step_description: Tap the button that allows it (Allow While Using App, or Allow).
+    - type: manual
+      step_type: wait
+      step_description: "20"
+    - type: validation
+      step_description: The Tartine Bakery object is on the board and no compass or "min away" line points at it yet.
+    - type: manual
+      step_type: set_location
+      step_description: "{{near-location}}"
+    - type: manual
+      step_type: wait
+      step_description: "5"
+    - type: validation
+      step_description: The board has switched to wandering mode. A compass line points toward Tartine Bakery and says how many minutes away it is, and the Tartine Bakery object has grown or moved forward.
+    - type: extraction
+      step_description: Describe where each object on the board is right now, in one short line.
+      variable_name: wandering-layout
+    - type: manual
+      step_type: wait
+      step_description: "30"
+    - type: validation
+      step_description: Nothing changed without a reason. The board is still in wandering mode and the objects are still laid out like this, "{{wandering-layout}}".
