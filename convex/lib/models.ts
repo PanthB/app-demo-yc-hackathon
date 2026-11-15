@@ -2,13 +2,16 @@ import { env } from "../_generated/server";
 
 const OPENROUTER = "https://openrouter.ai/api";
 export const JEV_MODEL = "typesafe/jev-1.14";
-export const DEFAULT_READER = "deepseek/deepseek-v4.1-flash-1017";
+export const CLAIRIC = "cloudflare/clairic";
+export const VISION_STAND_IN = "deepseek/deepseek-v4.1-flash-1017";
 
-export const readerModel = () => env.READER_MODEL?.trim() || DEFAULT_READER;
+export const readerModel = () => env.READER_MODEL?.trim() || CLAIRIC;
 export const hasOpenRouter = () => Boolean(env.OPENROUTER_API_KEY);
 export const hasSupermemory = () => Boolean(env.SUPERMEMORY_API_KEY);
 
 export class ProviderUnavailable extends Error {}
+
+export type Image = { mime: string; base64: string };
 
 export type ChoiceAnswer = { type: "choice"; choice: string; probabilities?: Record<string, number>; confidence?: number };
 export type NoulAnswer = { type: "noul"; noul: number; confidence?: number };
@@ -80,8 +83,7 @@ export async function jevDecide(state: unknown, questions: Record<string, unknow
   return result.answers as Record<string, DecisionAnswer>;
 }
 
-export async function readDrop(text: string, imageUrls: string[]) {
-  const model = readerModel();
+export async function visionRead(text: string, images: Image[], model: string) {
   const result = await post(
     "/v1/chat/completions",
     {
@@ -93,7 +95,7 @@ export async function readDrop(text: string, imageUrls: string[]) {
           role: "user",
           content: [
             { type: "text", text },
-            ...imageUrls.map((url) => ({ type: "image_url", image_url: { url } })),
+            ...images.map((i) => ({ type: "image_url", image_url: { url: `data:${i.mime};base64,${i.base64}` } })),
           ],
         },
       ],
@@ -106,7 +108,74 @@ export async function readDrop(text: string, imageUrls: string[]) {
   const content = choices?.[0]?.message?.content;
   if (!content) throw new Error(`${model} returned no content`);
   const json = content.trim().replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
-  return { reading: JSON.parse(json) as Reading, model };
+  return JSON.parse(json) as Reading;
+}
+
+const CLAIRIC_FORMATS: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
+const LOW_CONFIDENCE = 0.4;
+
+const CLAIRIC_FIELDS = {
+  title: { type: "text", instructions: "a short name for the thing saved: the place, event, song, product or idea" },
+  place_name: { type: "text", instructions: "the name of one specific place, venue, restaurant or shop" },
+  area: { type: "text", instructions: "the city or neighborhood it is in" },
+  starts_at: { type: "datetime", instructions: "when it happens or when the person means to do it, in the person's local time, counted from saved_at" },
+  when_text: { type: "text", instructions: "the words that say when, quoted from the input, such as 'sometime in march' or 'saturday night'" },
+  due_in: { type: "duration", unit: "minutes", integer: true, instructions: "for a reminder like 'remind me in 1 hr', the time from saved_at until it is due" },
+  price: { type: "number", decimals: 2, unit: "USD", instructions: "the price per person or per ticket" },
+  kind_words: { type: "list", items: "text", instructions: "words for what kind of thing it is, like ramen, concert or thrift store" },
+  vibe_words: { type: "list", items: "text", instructions: "mood words for how it feels, like cozy, loud or sunny" },
+  minutes_there: { type: "estimate", unit: "minutes", min: 5, max: 600, step: 5, instructions: "how long someone would spend there or doing it" },
+};
+
+type FieldAnswer = { value?: unknown; confidence?: number; p_null?: number };
+
+export async function clairicRead(text: string, referenceDate: string, images: Image[]) {
+  const unsupported = images.filter((i) => !CLAIRIC_FORMATS[i.mime]);
+  if (unsupported.length > 0) throw new Error(`clairic can't read ${unsupported.map((i) => i.mime).join(", ")}`);
+  const refs = images.map(() => crypto.randomUUID());
+  const result = await post(
+    "/alpha/extractions",
+    {
+      model: CLAIRIC,
+      state: refs.length ? [text, ...refs] : text,
+      fields: CLAIRIC_FIELDS,
+      reference_date: referenceDate,
+      ...(refs.length
+        ? { assets: Object.fromEntries(refs.map((ref, i) => [ref, { type: "image", format: CLAIRIC_FORMATS[images[i].mime], data_base64: images[i].base64 }])) }
+        : {}),
+    },
+    20_000,
+  );
+  const answers = (result.answers ?? {}) as Record<string, FieldAnswer | undefined>;
+  const fieldConfidence: Record<string, number> = {};
+  const pick = (field: string) => {
+    const answer = answers[field];
+    if (!answer || answer.value === null || answer.value === undefined) return undefined;
+    if (typeof answer.confidence === "number") {
+      if (answer.confidence < LOW_CONFIDENCE) return undefined;
+      fieldConfidence[field] = answer.confidence;
+    }
+    return answer.value;
+  };
+  const str = (x: unknown) => (typeof x === "string" ? x : null);
+  const num = (x: unknown) => (typeof x === "number" ? x : null);
+  const list = (x: unknown) => (Array.isArray(x) ? x.filter((s): s is string => typeof s === "string") : []);
+  const reading: Reading = {
+    title: str(pick("title")),
+    place_name: str(pick("place_name")),
+    area: str(pick("area")),
+    starts_at: str(pick("starts_at")),
+    when_text: str(pick("when_text")),
+    due_in_minutes: num(pick("due_in")),
+    price: num(pick("price")),
+    kind_words: list(pick("kind_words")),
+    vibe_words: list(pick("vibe_words")),
+    minutes_there: num(pick("minutes_there")),
+    confidence: 0,
+  };
+  const scores = Object.values(fieldConfidence);
+  reading.confidence = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+  return { reading, fieldConfidence };
 }
 
 export function choice(answer: DecisionAnswer | undefined) {

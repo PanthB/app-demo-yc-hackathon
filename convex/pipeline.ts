@@ -15,13 +15,19 @@ import {
   JEV_MODEL,
   noul,
   ProviderUnavailable,
-  readDrop,
+  clairicRead,
+  CLAIRIC,
+  readerModel,
+  VISION_STAND_IN,
+  visionRead,
+  type Image,
   type Reading,
 } from "./lib/models";
 import {
   corpus,
   fromLocalIso,
   keywords,
+  localDate,
   localStamp,
   objectKindFor,
   overlap,
@@ -51,17 +57,32 @@ const ZONE_CRITERIA: Record<string, string> = {
   vibes: "no time at all: music, an outfit or a mood to attach to a plan later",
 };
 
-async function loadImages(ctx: ActionCtx, drop: Doc<"drops">) {
-  const images: string[] = [];
+async function toImage(blob: Blob, notes: string[]): Promise<Image | undefined> {
+  const mime = blob.type.split(";")[0];
+  if (!IMAGE_TYPES.has(mime) || blob.size > 5_000_000) {
+    notes.push(`${mime || "untyped"} image of ${blob.size} bytes not sent to the reader`);
+    return undefined;
+  }
+  return { mime, base64: Buffer.from(await blob.arrayBuffer()).toString("base64") };
+}
+
+async function loadImages(ctx: ActionCtx, drop: Doc<"drops">, thumbnailUrl: string | undefined) {
+  const images: Image[] = [];
   const notes: string[] = [];
   for (const id of drop.imageIds.slice(0, 4)) {
     const blob = await ctx.storage.get(id);
-    if (!blob) continue;
-    if (!IMAGE_TYPES.has(blob.type)) {
-      notes.push(`${blob.type || "untyped"} image not sent to the reader`);
-      continue;
+    const image = blob && (await toImage(blob, notes));
+    if (image) images.push(image);
+  }
+  if (images.length === 0 && thumbnailUrl) {
+    try {
+      const response = await fetch(thumbnailUrl, { signal: AbortSignal.timeout(8000) });
+      const image = response.ok ? await toImage(await response.blob(), notes) : undefined;
+      if (image) images.push(image);
+      else if (!response.ok) notes.push(`link thumbnail returned ${response.status}`);
+    } catch (e) {
+      notes.push(`link thumbnail fetch failed: ${errorText(e)}`);
     }
-    images.push(`data:${blob.type};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`);
   }
   return { images, notes };
 }
@@ -69,7 +90,7 @@ async function loadImages(ctx: ActionCtx, drop: Doc<"drops">) {
 const text = (s: string | null | undefined) => (s && s.trim() ? s.trim() : undefined);
 const num = (n: number | null | undefined) => (typeof n === "number" && Number.isFinite(n) ? n : undefined);
 
-function fromReading(r: Reading, drop: Doc<"drops">, fallback: Extraction): Extraction {
+function fromReading(r: Reading, drop: Doc<"drops">, fallback: Extraction, fieldConfidence?: Record<string, number>): Extraction {
   const offset = drop.utcOffsetMinutes;
   const dueIn = num(r.due_in_minutes);
   const dueAt = drop.hints?.dueAt ?? (dueIn && dueIn > 0 ? drop.capturedAt + dueIn * 60_000 : undefined);
@@ -89,6 +110,7 @@ function fromReading(r: Reading, drop: Doc<"drops">, fallback: Extraction): Extr
     vibeWords: (r.vibe_words ?? []).map((w) => w.toLowerCase()),
     minutesThere: num(r.minutes_there),
     confidence: Math.min(1, Math.max(0, num(r.confidence) ?? 0)),
+    fieldConfidence,
   };
 }
 
@@ -143,15 +165,28 @@ export const run = internalAction({
       let extraction = fallback;
       if (!hasOpenRouter()) pipeline.extract = rules("no OPENROUTER_API_KEY in the convex env");
       else {
-        try {
-          const { images, notes } = await loadImages(ctx, drop);
-          if (images.length === 0 && enrichment?.thumbnailUrl) images.push(enrichment.thumbnailUrl);
-          const input = [`saved_at: ${localStamp(drop.capturedAt, drop.utcOffsetMinutes)} local time`, `shared as: ${drop.kind}`, corpus(drop.text, drop.url, drop.hints, enrichment)].join("\n");
-          const { reading, model } = await readDrop(input, images);
-          extraction = fromReading(reading, drop, fallback);
-          pipeline.extract = { ran: "done", by: `${model} via openrouter`, reason: [`${images.length} image(s) read`, ...notes].join("; ") };
-        } catch (e) {
-          pipeline.extract = rules(fellBack("reader", e));
+        const { images, notes } = await loadImages(ctx, drop, enrichment?.thumbnailUrl);
+        const input = [`saved_at: ${localStamp(drop.capturedAt, drop.utcOffsetMinutes)} local time`, `shared as: ${drop.kind}`, corpus(drop.text, drop.url, drop.hints, enrichment)].join("\n");
+        const imageNote = [`${images.length} image(s) sent`, ...notes];
+        const reader = readerModel();
+        let visionModel = reader;
+        if (reader === CLAIRIC) {
+          try {
+            const { reading, fieldConfidence } = await clairicRead(input, localDate(drop.capturedAt, drop.utcOffsetMinutes), images);
+            extraction = fromReading(reading, drop, fallback, fieldConfidence);
+            pipeline.extract = { ran: "done", by: `${CLAIRIC} via openrouter`, reason: imageNote.join("; ") };
+          } catch (e) {
+            imageNote.unshift(`clairic failed: ${errorText(e)}`);
+            visionModel = VISION_STAND_IN;
+          }
+        }
+        if (pipeline.extract.ran === "pending") {
+          try {
+            extraction = fromReading(await visionRead(input, images, visionModel), drop, fallback);
+            pipeline.extract = { ran: "done", by: `${visionModel} via openrouter`, reason: imageNote.join("; ") };
+          } catch (e) {
+            pipeline.extract = rules([...imageNote.filter((n) => n.startsWith("clairic")), fellBack(`reader ${visionModel}`, e)].join("; "));
+          }
         }
       }
 
