@@ -28,7 +28,7 @@ struct BoardMood: Identifiable, Equatable {
             }
             moods.append(BoardMood(
                 id: key,
-                label: group.shelf == .loose ? "still finding their place" : group.label,
+                label: group.shelf == .loose ? "not sorted yet" : group.label,
                 drops: members,
                 fresh: members.filter { $0.authorId != me && now.timeIntervalSince($0.createdAt) < freshWindow }.count,
                 lastActive: newest.createdAt
@@ -78,6 +78,7 @@ struct MoodHome: View {
                     Text(reading.last.map { "reading what \($0.authorLabel) just shared." } ?? Self.line(moods.active, now: now))
                         .font(.subheadline)
                         .foregroundStyle(reading.isEmpty ? NightStyle.secondary : Color.white)
+                        .lineLimit(1)
                         .contentTransition(.opacity)
                         .animation(.smooth(duration: 0.3), value: reading.count)
                         .padding(.horizontal, 20)
@@ -153,11 +154,11 @@ struct MoodHome: View {
         let things = moods.reduce(0) { $0 + $1.drops.count }
         let vibes = moods.filter { $0.id != "pinned" && $0.id != "loose" }.count
         let latest = moods.flatMap(\.drops).max { $0.createdAt < $1.createdAt }
-        var line = "\(things) things in \(vibes == 1 ? "one mood" : "\(vibes) moods")."
-        if let latest, now.timeIntervalSince(latest.createdAt) < 3600 {
-            line += " \(latest.authorLabel) added \(ConstellationView.article(latest.kind)) \(latest.createdAt.formatted(.relative(presentation: .named)).lowercased())."
+        guard let latest, now.timeIntervalSince(latest.createdAt) < 3600 else {
+            return "\(things) things in \(vibes == 1 ? "one mood" : "\(vibes) moods")."
         }
-        return line
+        let when = now.timeIntervalSince(latest.createdAt) < 60 ? "just now" : latest.createdAt.formatted(.relative(presentation: .named)).lowercased()
+        return "\(latest.authorLabel) added \(ConstellationView.article(latest.kind)) \(when)."
     }
 }
 
@@ -169,7 +170,7 @@ private struct MoodTile: View {
     @State private var pulse = false
 
     private func fanned(_ drop: Drop, index: Int) -> some View {
-        let tilt: Double = index == 0 ? 0 : (index == 1 ? -7 : 7)
+        let tilt: Double = index == 0 ? 0 : (index == 1 ? -4 : 4)
         let size: CGFloat = index == 0 ? 64 : 54
         let x = CGFloat(index) * 40
         let y: CGFloat = index == 0 ? 0 : 6
@@ -183,7 +184,6 @@ private struct MoodTile: View {
 
     var body: some View {
         let latest = mood.drops.first
-        let recent = latest.map { now.timeIntervalSince($0.createdAt) < 3600 } ?? false
         let glow = latest?.personColor ?? .white
         VStack(alignment: .leading, spacing: 12) {
             ZStack(alignment: .leading) {
@@ -208,10 +208,10 @@ private struct MoodTile: View {
                 if mood.fresh > 0 {
                     Text("\(mood.fresh) new")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(NightStyle.ink)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
-                        .background(glow, in: .capsule)
+                        .background(.white.opacity(0.14), in: .capsule)
                         .contentTransition(.numericText())
                         .transition(.scale.combined(with: .opacity))
                 }
@@ -222,20 +222,18 @@ private struct MoodTile: View {
         .background(NightStyle.surface)
         .clipShape(NightStyle.card)
         .overlay {
-            NightStyle.card.strokeBorder(recent ? glow.opacity(pulse ? 0.95 : 0.55) : NightStyle.hairline, lineWidth: recent ? 1.5 : 1)
+            NightStyle.card.strokeBorder(pulse ? glow.opacity(0.8) : NightStyle.hairline, lineWidth: 1)
         }
-        .shadow(color: recent ? glow.opacity(pulse ? 0.55 : 0.22) : .clear, radius: pulse ? 22 : 12)
-        .scaleEffect(pulse && !reduceMotion ? 1.035 : 1)
+        .scaleEffect(pulse && !reduceMotion ? 1.02 : 1)
         .animation(.spring(duration: 0.4, bounce: 0.3), value: mood.drops.count)
         .onChange(of: mood.drops.count) { old, new in
             guard new > old else { return }
-            withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.4)) { pulse = true }
+            withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.2)) { pulse = true }
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(0.6))
                 withAnimation(.smooth(duration: 0.8)) { pulse = false }
             }
         }
-        .sensoryFeedback(.impact(weight: .light), trigger: mood.drops.count)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(mood.label), \(mood.drops.count) things\(mood.fresh > 0 ? ", \(mood.fresh) new" : "")")
     }
@@ -251,7 +249,7 @@ struct MoodScreen: View {
     @Environment(BoardClock.self) private var clock
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var cap = MoodScreen.firstCap
+    @State private var page = 0
 
     static var firstCap: Int {
         #if DEBUG
@@ -263,8 +261,10 @@ struct MoodScreen: View {
 
     var body: some View {
         let members = mood.members(of: drops, now: clock.now)
-        let shown = Array(members.prefix(cap))
-        let earlier = members.count - shown.count
+        let cap = Self.firstCap
+        let start = min(page * cap, max(members.count - 1, 0))
+        let shown = Array(members.dropFirst(start).prefix(cap))
+        let earlier = members.count - start - shown.count
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 Text(mood.label)
@@ -273,15 +273,21 @@ struct MoodScreen: View {
                 Spacer(minLength: 8)
                 if earlier > 0 {
                     Button("\(earlier) earlier", systemImage: "square.stack") {
-                        withAnimation(LayoutMotion.settle(reduceMotion)) { cap += 7 }
+                        withAnimation(LayoutMotion.settle(reduceMotion)) { page += 1 }
                     }
                     .buttonStyle(.glass)
                     .font(.subheadline.weight(.semibold))
                     .accessibilityIdentifier("earlierStack")
+                } else if page > 0 {
+                    Button("newest", systemImage: "arrow.uturn.up") {
+                        withAnimation(LayoutMotion.settle(reduceMotion)) { page = 0 }
+                    }
+                    .buttonStyle(.glass)
+                    .font(.subheadline.weight(.semibold))
                 }
             }
             .padding(.horizontal, 20)
-            Text("\(members.count) things, newest in the middle.")
+            Text("\(members.count) \(members.count == 1 ? "thing" : "things")")
                 .font(.subheadline)
                 .foregroundStyle(NightStyle.secondary)
                 .contentTransition(.numericText())

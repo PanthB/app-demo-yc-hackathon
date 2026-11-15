@@ -134,6 +134,7 @@ struct ConstellationView: View {
 
     @Environment(BoardClock.self) private var clock
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("BoardLines") private var showsLines = false
     @State private var selected: UUID?
     @State private var zoom: CGFloat = 1
     @GestureState private var pinch: CGFloat = 1
@@ -201,6 +202,7 @@ struct ConstellationView: View {
                     .onTapGesture { withAnimation(LayoutMotion.select(reduceMotion)) { selected = nil } }
 
                 Canvas { context, _ in
+                    guard showsLines else { return }
                     for cluster in geometry.clusters where !plan.focused {
                         let center = frame.place(cluster.center)
                         let radius = (collapsed ? Self.collapsedRadius(cluster) : cluster.radius) * frame.scale
@@ -329,7 +331,7 @@ struct ConstellationView: View {
                         .id(toast)
                         .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
                         .accessibilityIdentifier("layoutToast")
-                } else {
+                } else if !(collapsed ? plan.collapsedLegend : plan.legend).isEmpty {
                     LayoutLegend(text: collapsed ? plan.collapsedLegend : plan.legend)
                         .padding(.bottom, 8)
                         .transition(.opacity)
@@ -654,8 +656,6 @@ struct ConstellationView: View {
                 plan.links = snapshot.pairs.map { LayoutLink(first: $0.first, second: $0.second, reason: $0.reason) }
                 plan.snapshot = snapshot
                 plan.focused = true
-                plan.legend = "the newest is in the middle and the biggest. strings join what goes together, and a pinch out takes you back."
-                plan.collapsedLegend = plan.legend
                 return plan
             }
             let field = ClusterField(snapshot, size: plane(for: snapshot, view: view), following: previousField)
@@ -666,8 +666,8 @@ struct ConstellationView: View {
             plan.links = snapshot.pairs.map { LayoutLink(first: $0.first, second: $0.second, reason: $0.reason) }
             plan.snapshot = snapshot
             plan.field = field
-            plan.legend = "each group is a vibe, and the strings join things that go together. tap one to see why."
-            plan.collapsedLegend = "these are the vibes on this board. pinch in or tap one to see what's inside."
+            plan.legend = "each group is a vibe."
+            plan.collapsedLegend = "tap a vibe to open it."
         } else {
             let zones: [Zone] = [.now, .tonight, .thisWeekend, .someday, .vibes]
             var byZone: [Zone: [Drop]] = [:]
@@ -682,8 +682,8 @@ struct ConstellationView: View {
                 plan.links += LayoutLink.trail(list.map(\.id), reason: zone == .vibes ? "saved one after the other." : "this comes next \(zone.displayName).")
                 for drop in list { plan.cluster[drop.id] = zone.rawValue }
             }
-            plan.legend = "each group is a time, with the soonest in the middle and the dotted line running in order. pinch out to see them all."
-            plan.collapsedLegend = "now is at the top. pinch in or tap a group to open it."
+            plan.legend = "soonest is in the middle."
+            plan.collapsedLegend = "tap a time to open it."
         }
         return plan
     }
