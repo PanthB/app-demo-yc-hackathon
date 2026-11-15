@@ -384,6 +384,7 @@ private struct LandedStack: View {
                             .strokeBorder(.white, lineWidth: 1.5)
                     }
                     .rotationEffect(.degrees(Self.tilts[(shots.count - 1 - index) % Self.tilts.count] * (index == shots.count - 1 ? 0.3 : 1)))
+                    .offset(x: CGFloat(index - shots.count + 1) * 5)
                     .shadow(color: .black.opacity(0.3), radius: 3, y: 2)
                     .transition(reduceMotion ? .opacity : .scale(scale: 1.4).combined(with: .opacity))
             }

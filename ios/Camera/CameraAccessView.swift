@@ -31,8 +31,12 @@ struct CameraAccessView: View {
             Spacer()
             VStack(spacing: 12) {
                 primary
+                    .tint(.white)
+                    .foregroundStyle(.black)
                 secondary
+                    .foregroundStyle(.white)
             }
+            .font(.body.weight(.semibold))
             .controlSize(.large)
         }
         .padding(.horizontal, 24)
