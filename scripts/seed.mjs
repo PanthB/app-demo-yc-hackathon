@@ -6,7 +6,7 @@ const dir = process.argv[2] ?? "ios/Seed/SeedImages.xcassets";
 const run = (fn, fnArgs = {}) => JSON.parse(execFileSync("npx", ["convex", "run", fn, JSON.stringify(fnArgs)], { encoding: "utf8" }));
 const types = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png" };
 
-if (!existsSync(dir)) console.warn(`no images at ${dir}, so my board goes in without photos`);
+if (!existsSync(dir)) console.warn(`no images at ${dir}, so both boards go in without photos`);
 const images = {};
 for (const set of existsSync(dir) ? readdirSync(dir).filter((d) => d.endsWith(".imageset")) : []) {
   for (const file of readdirSync(join(dir, set)).filter((f) => types[extname(f).toLowerCase()])) {
