@@ -1,0 +1,36 @@
+test:
+  metadata:
+    name: phase1-4-tag-flip
+    platform: ios
+    tags:
+      - phase1
+      - board
+  build:
+    name: app-demo-yc-hackathon
+  variables:
+    share-target: "Moments"
+    share-url: "https://en.wikipedia.org/wiki/Tartine_Bakery"
+  blocks:
+    - type: manual
+      step_type: navigate
+      step_description: "{{share-url}}"
+    - type: instructions
+      step_description: Tap the Share button in Safari and pick {{share-target}} from the row of apps in the share sheet. If it isn't in the row, scroll the row or tap More to find it.
+    - type: manual
+      step_type: open_app
+    - type: if
+      condition: Is a system permission prompt (location or notifications) visible?
+      then:
+        - type: instructions
+          step_description: Tap the button that allows it (Allow While Using App, or Allow).
+    - type: manual
+      step_type: wait
+      step_description: "20"
+    - type: instructions
+      step_description: Tap the Tartine Bakery object once.
+    - type: validation
+      step_description: The object has flipped over to its tag, which shows who dropped it, what was read from it (such as Tartine Bakery or San Francisco), and when it was saved.
+    - type: instructions
+      step_description: Tap the tag once to flip it back.
+    - type: validation
+      step_description: The Tartine Bakery object shows its front again.

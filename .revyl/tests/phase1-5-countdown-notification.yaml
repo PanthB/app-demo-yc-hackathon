@@ -1,0 +1,40 @@
+test:
+  metadata:
+    name: phase1-5-countdown-notification
+    platform: ios
+    tags:
+      - phase1
+      - countdown
+      - notifications
+  build:
+    name: app-demo-yc-hackathon
+  blocks:
+    - type: manual
+      step_type: open_app
+    - type: if
+      condition: Is a system permission prompt (location or notifications) visible?
+      then:
+        - type: instructions
+          step_description: Tap the button that allows it (Allow While Using App, or Allow).
+    - type: instructions
+      step_description: Add a typed note to the board that says "remind me in 1 hr to call mom".
+    - type: if
+      condition: Is a system permission prompt (location or notifications) visible?
+      then:
+        - type: instructions
+          step_description: Tap the button that allows it (Allow While Using App, or Allow).
+    - type: validation
+      step_description: A sticky note about calling mom is on the board with a countdown showing about an hour (59 or 60 minutes) left.
+    - type: instructions
+      step_description: Add a typed note to the board that says "remind me in 1 minute to stretch".
+    - type: validation
+      step_description: A sticky note about stretching is on the board with a countdown showing less than a minute left.
+    - type: manual
+      step_type: go_home
+    - type: manual
+      step_type: wait
+      step_description: "75"
+    - type: instructions
+      step_description: Swipe down from the top-left edge of the screen to open Notification Center.
+    - type: validation
+      step_description: Notification Center shows a notification from the app about stretching.

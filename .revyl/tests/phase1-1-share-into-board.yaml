@@ -1,0 +1,27 @@
+test:
+  metadata:
+    name: phase1-1-share-into-board
+    platform: ios
+    tags:
+      - phase1
+      - share
+  build:
+    name: app-demo-yc-hackathon
+  variables:
+    share-target: "Moments"
+    share-url: "https://en.wikipedia.org/wiki/Tartine_Bakery"
+  blocks:
+    - type: manual
+      step_type: navigate
+      step_description: "{{share-url}}"
+    - type: instructions
+      step_description: Tap the Share button in Safari and pick {{share-target}} from the row of apps in the share sheet. If it isn't in the row, scroll the row or tap More to find it.
+    - type: validation
+      step_description: The share sheet shows "dropped it, i'll find it a spot." right away.
+    - type: manual
+      step_type: open_app
+      step_description: com.apple.mobileslideshow
+    - type: instructions
+      step_description: Open any photo in the library, tap Share, and pick {{share-target}} from the row of apps. If it isn't in the row, scroll the row or tap More to find it.
+    - type: validation
+      step_description: The share sheet shows "dropped it, i'll find it a spot." right away.
