@@ -10,7 +10,7 @@ struct PinnedCard: View {
         let face = drop.previewFace(now: now)
         HStack(spacing: 12) {
             if face.drawsSmall {
-                DropThumbnail(face: face, kind: drop.kind, seed: drop.id, side: 80, radius: 14)
+                DropThumbnail(face: face, kind: drop.kind, seed: drop.id, side: 80, radius: 14, picture: drop.pictureURL(for: face))
             }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {

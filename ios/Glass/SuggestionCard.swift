@@ -2,10 +2,11 @@ import SwiftUI
 
 struct SuggestionCard: View {
     let suggestion: FeedSuggestion
-    let drops: [UUID: Drop]
+    let vibe: String
     let save: () -> Void
     let dismiss: () -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .caption) private var pillHeight: CGFloat = 22
 
     var body: some View {
         let pill = suggestion.pill
@@ -14,7 +15,7 @@ struct SuggestionCard: View {
             : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
         VStack(alignment: .leading, spacing: 12) {
             top {
-                FeedThumb(picture: nil, link: suggestion.thumbnailUrl, symbol: pill.symbol)
+                FeedThumb(link: suggestion.thumbnailUrl, symbol: pill.symbol)
                 VStack(alignment: .leading, spacing: 4) {
                     KindPill(symbol: pill.symbol, word: pill.word, onPicture: false)
                         .padding(.bottom, 2)
@@ -28,21 +29,14 @@ struct SuggestionCard: View {
             if let words = suggestion.blurb {
                 Text(words).font(.subheadline).foregroundStyle(.secondary)
             }
-            Divider()
-            VStack(alignment: .leading, spacing: 8) {
-                Text(suggestion.reason).font(.subheadline).lineLimit(3)
-                ForEach(suggestion.inspiredBy ?? [], id: \.clientId) { source in
-                    let drop = drops[DropKey.id(for: source.clientId)]
-                    HStack(spacing: 8) {
-                        FeedThumb(picture: picture(of: drop), link: source.thumbnailUrl, symbol: drop?.kind.symbol ?? "square.on.square", side: 28, radius: 7)
-                        Text(CardWords.clean(source.title) ?? "something on the board")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-            }
-            .accessibilityElement(children: .combine)
+            Text(vibe)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 8)
+                .frame(height: pillHeight)
+                .background(Color(.tertiarySystemFill), in: .capsule)
+                .accessibilityLabel("fits \(vibe)")
+                .accessibilityIdentifier("suggestionVibe")
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) { actions }
                 VStack(alignment: .leading, spacing: 8) { actions }
@@ -77,46 +71,17 @@ struct SuggestionCard: View {
             .accessibilityIdentifier("suggestionLink")
         }
     }
-
-    private func picture(of drop: Drop?) -> UIImage? {
-        switch drop?.previewFace(now: .now) {
-        case .image(let image), .cutout(let image): image
-        default: nil
-        }
-    }
 }
 
 struct FeedThumb: View {
-    let picture: UIImage?
     let link: String?
     let symbol: String
     var side: CGFloat = 88
     var radius: CGFloat = 14
 
-    private var url: URL? {
-        guard let link, var parts = URLComponents(string: link) else { return nil }
-        if parts.scheme == "http" { parts.scheme = "https" }
-        return parts.url
-    }
-
     var body: some View {
-        Color(.tertiarySystemFill)
+        DownsampledImage(url: link.flatMap(URL.init(string:)), size: CGSize(width: side, height: side), glyph: symbol)
             .frame(width: side, height: side)
-            .overlay {
-                if let picture {
-                    Image(uiImage: picture).resizable().scaledToFill()
-                } else {
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image.resizable().scaledToFill()
-                        } else {
-                            Image(systemName: symbol)
-                                .font((side >= 56 ? Font.title2 : .caption).weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
             .clipShape(.rect(cornerRadius: radius, style: .continuous))
             .accessibilityHidden(true)
     }

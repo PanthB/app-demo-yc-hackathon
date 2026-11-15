@@ -10,7 +10,7 @@ struct DropRow: View {
         let face = drop.previewFace(now: now)
         let layout = typeSize >= .xxLarge ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
         HStack(spacing: 12) {
-            DropThumbnail(face: face, kind: drop.kind, seed: drop.id)
+            DropThumbnail(face: face, kind: drop.kind, seed: drop.id, picture: drop.pictureURL(for: face))
                 .overlay {
                     if drop.kind == .video, face.fillsItsFrame { ClipBadge(length: nil).dynamicTypeSize(.large) }
                 }

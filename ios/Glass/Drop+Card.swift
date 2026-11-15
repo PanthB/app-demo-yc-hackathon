@@ -84,6 +84,12 @@ extension Drop {
         return .words(CardWords.unread(kind, from: authorId == DeviceIdentity.personId ? nil : authorLabel))
     }
 
+    func pictureURL(for face: PreviewFace) -> URL? {
+        guard case .image = face else { return nil }
+        let path = MediaStore.image(at: thumbnailPath) != nil ? thumbnailPath : (sourceKind == .image ? mediaPaths.first : nil)
+        return path.flatMap(MediaStore.url(for:))
+    }
+
     func cardTitle(beside face: PreviewFace) -> String? {
         CardWords.title([title, rawText], hiding: face.words)
     }

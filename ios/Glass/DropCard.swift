@@ -10,7 +10,7 @@ struct DropCard: View {
         let now = clock.now
         let face = drop.previewFace(now: now)
         VStack(alignment: .leading, spacing: 0) {
-            DropPreview(face: face, seed: drop.id, pictureRatio: drop.kind == .song ? 1 : nil)
+            DropPreview(face: face, seed: drop.id, pictureRatio: drop.kind == .song ? 1 : nil, picture: drop.pictureURL(for: face), glyph: drop.kind.symbol)
                 .overlay(alignment: .bottomLeading) {
                     drop.playBadge(on: face).padding(12)
                 }
