@@ -33,7 +33,7 @@ struct InboxIngest {
                     let drop = Drop(
                         id: item.id,
                         createdAt: item.createdAt,
-                        dropperId: dropperId,
+                        authorId: dropperId,
                         sourceKind: item.kind,
                         rawText: item.text,
                         url: item.url,
