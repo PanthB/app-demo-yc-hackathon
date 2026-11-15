@@ -26,6 +26,7 @@ import {
 import {
   corpus,
   fromLocalIso,
+  isClipLink,
   isMusicLink,
   keywords,
   localDate,
@@ -124,8 +125,16 @@ function fromReading(r: Reading, drop: Doc<"drops">, fallback: Extraction, field
   const dueAt = drop.hints?.dueAt ?? (dueIn && dueIn > 0 ? drop.capturedAt + dueIn * 60_000 : undefined);
   const startsRaw = text(r.starts_at);
   const read = dueAt ? undefined : startsRaw ? fromLocalIso(startsRaw, offset) : undefined;
-  const startsAt = read !== undefined && read < drop.capturedAt - PAST_SLACK && fallback.startsAt !== undefined ? fallback.startsAt : read;
   const whenText = text(r.when_text)?.toLowerCase();
+  const startsAt = dueAt
+    ? undefined
+    : read === undefined
+      ? whenText
+        ? fallback.startsAt
+        : undefined
+      : read < drop.capturedAt - PAST_SLACK && fallback.startsAt !== undefined
+        ? fallback.startsAt
+        : read;
   const anchor = dueAt ?? startsAt;
   return {
     title: text(r.title)?.toLowerCase() ?? fallback.title,
@@ -316,8 +325,8 @@ export const run = internalAction({
           if (!timed) {
             questions.zone = {
               type: "choice",
-              instructions: `When is the person likely to act on new_drop, given saved_at (their local time when they saved it)? ${UNTRUSTED}`,
-              criteria: ZONE_CRITERIA,
+              instructions: `new_drop gives no time. Is it something to do someday, or a vibe to keep around? ${UNTRUSTED}`,
+              criteria: { someday: ZONE_CRITERIA.someday, vibes: ZONE_CRITERIA.vibes },
             };
           }
           candidates.forEach((_, i) => {
@@ -339,7 +348,7 @@ export const run = internalAction({
           for (const facet of ["mood", "time", "setting"] as const) {
             questions[`vibe_${facet}`] = {
               type: "choice",
-              instructions: `Which ${facet === "time" ? "time of day" : facet} fits new_drop best? Pick none unless one clearly fits. ${UNTRUSTED}`,
+              instructions: `Which ${facet === "time" ? "time of day" : facet} does new_drop feel like? Judge its mood and feel, not only what it says outright: a song, a place or a clip can feel like late night or golden hour with no time given. Pick none only if nothing fits. ${UNTRUSTED}`,
               criteria: {
                 none: "nothing here clearly fits",
                 ...Object.fromEntries(facetValues(facet).map((value) => [optionKey(value), FACET_CRITERIA[facet][value]])),
@@ -399,6 +408,11 @@ export const run = internalAction({
         }
       }
 
+      if (isClipLink(drop.url)) {
+        const timedClip = extraction.dueAt !== undefined || extraction.startsAt !== undefined;
+        decision = { ...decision, type: "mood", objectKind: "polaroid", ...(timedClip ? {} : { zone: "vibes" as const, unsure: false }) };
+      }
+
       if (!memory) pipeline.remember = skipped("no SUPERMEMORY_API_KEY in the convex env");
       else {
         try {
@@ -426,7 +440,7 @@ export const run = internalAction({
         utcOffsetMinutes: drop.utcOffsetMinutes,
         place: (drop.kind === "image" || drop.kind === "video" || drop.hints?.placeName) && drop.latitude !== undefined && drop.longitude !== undefined ? { latitude: drop.latitude, longitude: drop.longitude } : undefined,
       });
-      const picked = Object.entries(jevFacets);
+      const picked = Object.entries(jevFacets).filter(([, value]) => value);
       const vibes = orderVibes([
         ...picked.flatMap(([, value]) => (value ? [value] : [])),
         ...ruledVibes.filter((value) => !picked.some(([facet]) => facetOf(value) === facet)),

@@ -27,6 +27,9 @@ const MUSIC_HOSTS = /(^|\.)(spotify\.com|music\.apple\.com|soundcloud\.com|bandc
 
 export const isMusicLink = (url?: string) => MUSIC_HOSTS.test(hostOf(url) ?? "");
 
+const CLIP_HOSTS = /(^|\.)(tiktok\.com|instagram\.com|youtube\.com|youtu\.be)$/;
+export const isClipLink = (url?: string) => CLIP_HOSTS.test(hostOf(url) ?? "");
+
 export const hostOf = (url?: string) => {
   if (!url) return undefined;
   try {
