@@ -1,41 +1,49 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 99c88fcd-d1df-4263-af8e-4eecbc77bdbb
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T22:27:03Z"
+    checksum: 8dcb70654bcd5b975e705135c42d7675d1f6ccd90844ba4d630394b76db012eb
 test:
-  metadata:
-    name: phase1-5-countdown
-    platform: ios
-    tags:
-      - phase1
-      - countdown
-  build:
-    name: app-demo-yc-hackathon
-  blocks:
-    - type: manual
-      step_type: open_app
-    - type: if
-      condition: Is a system permission prompt (location or notifications) visible?
-      then:
+    metadata:
+        name: phase1-5-countdown
+        platform: ios
+        tags:
+            - phase1
+            - countdown
+    build:
+        name: app-demo-yc-hackathon
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: if
+          condition: Is the app showing a welcome or first-run screen instead of a board?
+          then:
+            - type: instructions
+              step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
         - type: instructions
-          step_description: Tap the button that allows it (Allow While Using App, or Allow).
-    - type: if
-      condition: Is the app showing a welcome or first-run screen instead of a board?
-      then:
+          step_description: Tap the plus button at the bottom right of the glass bar, choose note, type "remind me in 1 hr to call grandma" in the write a note box, and tap add it.
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: manual
+          step_type: wait
+          step_description: "10"
+        - type: validation
+          step_description: An item about calling grandma shows a reminder pill and a countdown with about an hour left (59 or 60 minutes).
         - type: instructions
-          step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
-    - type: instructions
-      step_description: "Tap the plus button at the bottom right of the glass bar, choose note, type \"remind me in 1 hr to call grandma\" in the write a note box, and tap add it."
-    - type: if
-      condition: Is a system permission prompt (location or notifications) visible?
-      then:
-        - type: instructions
-          step_description: Tap the button that allows it (Allow While Using App, or Allow).
-    - type: manual
-      step_type: wait
-      step_description: "10"
-    - type: validation
-      step_description: An item about calling grandma shows a reminder pill and a countdown with about an hour left (59 or 60 minutes).
-    - type: instructions
-      step_description: "Tap the plus button at the bottom right of the glass bar, choose note, type \"remind me in 2 minutes to stretch\" in the write a note box, and tap add it."
-    - type: manual
-      step_type: wait
-      step_description: "10"
-    - type: validation
-      step_description: An item about stretching shows a countdown with two minutes or less left, and it sits above the item about calling grandma.
+          step_description: Tap the plus button at the bottom right of the glass bar, choose note, type "remind me in 2 minutes to stretch" in the write a note box, and tap add it.
+        - type: manual
+          step_type: wait
+          step_description: "10"
+        - type: validation
+          step_description: An item about stretching shows a countdown with two minutes or less left, and it sits above the item about calling grandma.

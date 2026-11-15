@@ -7,6 +7,9 @@
       invite code, board id, board name, guest id and each note's client id.
   python3 .revyl/scripts/qa_board.py pin <boardId> <clientId> [true|false]
       Pins or unpins a drop as the other person, for gate-two-phone-live.
+  python3 .revyl/scripts/qa_board.py song <code>
+      Joins the board as a second invented qa- friend and drops a Spotify song,
+      for gate-friend-drop-arrives-live.
   python3 .revyl/scripts/qa_board.py list <boardId>
       Prints the board's drops with title, zone, pinned and previousZone.
 
@@ -39,7 +42,7 @@ def create():
     tag = uuid.uuid4().hex[:6]
     person = f"qa-{tag}"
     board = call("mutation", "boards:create", {
-        "personId": person, "boardId": f"qa-{tag}-board", "name": f"qa {tag}", "personName": "qa guest",
+        "personId": person, "boardId": f"qa-{tag}-board", "name": f"qa {tag}", "personName": "qa friend",
     })
     drops = {}
     for words in NOTES:
@@ -52,6 +55,17 @@ def create():
         drops[words] = client
     print(json.dumps({"code": board["inviteCode"], "boardId": board["boardId"], "name": board["name"],
                       "personId": person, "drops": drops}, indent=2))
+
+
+def song(code):
+    person = f"qa-friend-{uuid.uuid4().hex[:6]}"
+    board = call("mutation", "boards:join", {"personId": person, "code": code, "personName": "qa friend"})
+    call("mutation", "drops:submit", {
+        "boardId": board["boardId"], "personId": person, "clientId": str(uuid.uuid4()).upper(), "kind": "url",
+        "text": None, "url": "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC", "imageIds": None,
+        "capturedAt": time.time() * 1000, "utcOffsetMinutes": -480, "latitude": None, "longitude": None, "hints": None,
+    })
+    print(json.dumps({"boardId": board["boardId"], "personId": person}))
 
 
 def show(board_id):
@@ -68,6 +82,8 @@ if __name__ == "__main__":
     elif command == "pin" and len(sys.argv) >= 4:
         pinned = len(sys.argv) < 5 or sys.argv[4] != "false"
         call("mutation", "drops:setPinned", {"boardId": sys.argv[2], "clientId": sys.argv[3], "pinned": pinned})
+    elif command == "song" and len(sys.argv) == 3:
+        song(sys.argv[2])
     elif command == "list" and len(sys.argv) == 3:
         show(sys.argv[2])
     else:

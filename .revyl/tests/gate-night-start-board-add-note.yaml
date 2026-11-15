@@ -1,0 +1,64 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: bab54c93-f50c-411e-a47d-e5b9c6dcf21c
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T22:27:11Z"
+    checksum: 50a8081c38e6837541952d6eefbf38f70ce8a312a7e154fed814a47c79837dd3
+test:
+    metadata:
+        name: gate-night-start-board-add-note
+        platform: ios
+        tags:
+            - gate
+            - night
+            - boards
+    build:
+        name: app-demo-yc-hackathon
+    variables:
+        board-name: qa gate revyl
+        note: tacos at la taqueria tonight at 9pm
+        person-name: revyl gate
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: if
+          condition: Is the app showing a welcome or first-run screen instead of a board?
+          then:
+            - type: instructions
+              step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://view/night
+        - type: validation
+          step_description: The night view is showing with a board name at the top left and a round plus button at the bottom.
+        - type: instructions
+          step_description: Tap the board name at the top left, then choose start a shared board.
+        - type: validation
+          step_description: A sheet titled new shared board is showing with a field for the board's name and one for your name.
+        - type: instructions
+          step_description: Type {{board-name}} in the board name field and {{person-name}} in the your name field if it's there, then tap make it.
+        - type: validation
+          step_description: The sheet closes and the night view's title reads {{board-name}}, with everyone and mine buttons under it.
+        - type: instructions
+          step_description: Tap the plus button at the bottom, then choose note.
+        - type: validation
+          step_description: An alert titled write a note is showing.
+        - type: instructions
+          step_description: Type {{note}} and tap add it.
+        - type: manual
+          step_type: wait
+          step_description: "10"
+        - type: validation
+          step_description: A card about tacos at la taqueria, with 9pm in its meta line and saved by {{person-name}} or you, is on the night view.
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://view/cards
+        - type: validation
+          step_description: The title reads {{board-name}} and the tacos card is the only card.

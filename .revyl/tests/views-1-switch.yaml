@@ -1,39 +1,47 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 2dec6f09-51ca-45c1-9e62-2c27a4fdb5ab
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T22:26:55Z"
+    checksum: fda6637bdd5e0cf74ca6fbed3384ff1a9467ef125e549b555ef6b4a5b986ac52
 test:
-  metadata:
-    name: views-1-switch
-    platform: ios
-    tags:
-      - views
-      - offline-seed
-  build:
-    name: app-demo-yc-hackathon
-  blocks:
-    - type: manual
-      step_type: open_app
-    - type: if
-      condition: Is a system permission prompt (location or notifications) visible?
-      then:
+    metadata:
+        name: views-1-switch
+        platform: ios
+        tags:
+            - views
+            - offline-seed
+    build:
+        name: app-demo-yc-hackathon
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: if
+          condition: Is the app showing a welcome or first-run screen instead of a board?
+          then:
+            - type: instructions
+              step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
+        - type: validation
+          step_description: The title at the top reads my board, and the cards view is showing. Drops are cards in a grid under lowercase section headers such as pinned, now and someday, and every card has a small type pill.
+        - type: extraction
+          step_description: What is the title of the first drop in the pinned section? Answer with just the title.
+          variable_name: pinned-title
         - type: instructions
-          step_description: Tap the button that allows it (Allow While Using App, or Allow).
-    - type: if
-      condition: Is the app showing a welcome or first-run screen instead of a board?
-      then:
+          step_description: In the glass bar at the bottom, tap the list (the bulleted list icon) button in the view switch on the left.
+        - type: validation
+          step_description: The list view is showing. Drops are rows with a small thumbnail, a title and one meta line, under the same section headers, and {{pinned-title}} is in the pinned section at the top.
         - type: instructions
-          step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
-    - type: validation
-      step_description: The title at the top reads my board, and the cards view is showing. Drops are cards in a grid under lowercase section headers such as pinned, now and someday, and every card has a small type pill.
-    - type: extraction
-      step_description: What is the title of the first drop in the pinned section? Answer with just the title.
-      variable_name: pinned-title
-    - type: instructions
-      step_description: In the glass bar at the bottom, tap the list (the bulleted list icon) button in the view switch on the left.
-    - type: validation
-      step_description: The list view is showing. Drops are rows with a small thumbnail, a title and one meta line, under the same section headers, and {{pinned-title}} is in the pinned section at the top.
-    - type: instructions
-      step_description: In the glass bar at the bottom, tap the board (the pin icon) button in the view switch on the left.
-    - type: validation
-      step_description: The board view is showing. Drops are objects on a corkboard, lined up in rows by section, and {{pinned-title}} is with the pinned ones at the top.
-    - type: instructions
-      step_description: In the glass bar at the bottom, tap the cards (the four-squares icon) button in the view switch on the left.
-    - type: validation
-      step_description: The cards view is showing again, with {{pinned-title}} in the pinned section at the top.
+          step_description: In the glass bar at the bottom, tap the board (the pin icon) button in the view switch on the left.
+        - type: validation
+          step_description: The board view is showing. Drops are objects on a corkboard, lined up in rows by section, and {{pinned-title}} is with the pinned ones at the top.
+        - type: instructions
+          step_description: In the glass bar at the bottom, tap the cards (the four-squares icon) button in the view switch on the left.
+        - type: validation
+          step_description: The cards view is showing again, with {{pinned-title}} in the pinned section at the top.

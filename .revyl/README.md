@@ -41,20 +41,20 @@ Every test is a plain-English YAML file in `tests/`. Revyl's agent reads the scr
 
 | Test | Flow | State |
 | --- | --- | --- |
-| `views-1-switch` | Switch from cards to list to board and back with the glass bar. Each view shows the same sections, and a pinned drop stays at the top. Run with `-BoardDebugSeed YES`. | Draft. Every step passed on a device session on the shell branch (d0fc6a7). Published when the shell is on main |
-| `views-2-pin` | Pin a drop from its long-press menu, see it at the top in cards and list, then unpin it. Run with `-BoardDebugSeed YES`. | Draft, passed on the shell branch the same way |
-| `views-3-filter-mine` | Open sf crew from the title menu and switch the everyone/mine control. Only panth's drops remain under mine. Run with `-BoardDebugSeed YES`. | Draft, passed on the shell branch the same way |
-| `views-4-join-by-code` | On a fresh device, join "sf crew" from the title menu with the code `SFCREW` as "revyl", and see both boards in the menu. | Published (v1 used the invite link, which passed on main at 70f40e0). The title-menu version is pushed when the shell is on main |
+| `views-1-switch` | Switch from cards to list to board and back with the glass bar. Each view shows the same sections, and a pinned drop stays at the top. Run with `-BoardDebugSeed YES`. | Published v1, run on main at 330cdc9 (see evidence) |
+| `views-2-pin` | Pin a drop from its long-press menu, see it at the top in cards and list, then unpin it. Run with `-BoardDebugSeed YES`. | Published v1, run on main at 330cdc9 (see evidence) |
+| `views-3-filter-mine` | Open sf crew from the title menu and switch the everyone/mine control. Only panth's drops remain under mine. Run with `-BoardDebugSeed YES`. | Published v1, run on main at 330cdc9 (see evidence) |
+| `views-4-join-by-code` | On a fresh device, join "sf crew" from the title menu with the code `SFCREW` as "revyl", and see both boards in the menu. | Published v2 (the title-menu version), run on main at 330cdc9 (see evidence) |
 | `phase1-1-share-into-board` | Join sf crew, share Tartine Bakery from Safari and a photo from Photos, and see "dropped it in sf crew." both times. It opens `appdemo://debug/hold-share-note` first (APPD-11's #55), so the note stays until the test taps it. | Published v2 fails on main at 70f40e0 because the note closes after 2 seconds. The hold version is pushed when #55 is on main |
 | `phase1-2-drop-lands-on-board` | On a fresh device, a shared Google Maps link shows up as an item right away, then reads Tartine Bakery under a section. | Published, passes on main at 70f40e0 |
-| `phase1-5-countdown` | Add "remind me in 1 hr to call grandma" and "remind me in 2 minutes to stretch" from the plus button, and see live countdowns with the sooner one on top. The local notification half is parked, because no branch schedules notifications yet. | Draft, waits on the shell |
+| `phase1-5-countdown` | Add "remind me in 1 hr to call grandma" and "remind me in 2 minutes to stretch" from the plus button, and see live countdowns with the sooner one on top. The local notification half is parked, because no branch schedules notifications yet. | Published v1, run on main at 330cdc9 (see evidence) |
 | `phase1-6a-nearby-suggestion` | Moving the simulated location next to a saved place adds a "few min from you" suggestion, and nothing moves while the context stays the same. | Draft |
-| `phase1-6b-time-sections` | At the real time of day, "coffee in 20 minutes" added from the plus button sits under now and "movie at 10pm" under tonight. It needs a run between about 9am and 8pm Pacific. The board clock override (`-BoardDebugNow`) isn't used, because the backend reads time words against the real date: with the phone set to Friday 6:30pm, "movie at 10pm" came back as Sunday Nov 15 and sat under now. | Draft, waits on the shell |
+| `phase1-6b-time-sections` | At the real time of day, "coffee in 20 minutes" added from the plus button sits under now and "movie at 10pm" under tonight. It needs a run between about 9am and 8pm Pacific. The board clock override (`-BoardDebugNow`) isn't used, because the backend reads time words against the real date: with the phone set to Friday 6:30pm, "movie at 10pm" came back as Sunday Nov 15 and sat under now. | Published v1, run on main at 330cdc9 (see evidence) |
 | `phase1-3-drag-between-zones`, `phase1-4-tag-flip` | Dragging between zones and the tag flip. | Deferred by the views plan, tagged `deferred` |
 
 ### Gate tests
 
-APPD-26 wrote these from flows that passed in its gate round 1 on main at 03aead9. They run live against the dev deployment as a fresh person, never with `-BoardDebugSeed` and never as a seed person.
+APPD-26 wrote these from flows that passed in its gate rounds: round 1 on main at 03aead9 and round 2 on 381369c. They run live against the dev deployment as a fresh person, never with `-BoardDebugSeed` and never as a seed person.
 
 | Test | Flow | Needs |
 | --- | --- | --- |
@@ -63,8 +63,12 @@ APPD-26 wrote these from flows that passed in its gate round 1 on main at 03aead
 | `gate-pin-move-done-undo` | On a qa board: pin, move to now, put it back, mark done, put it back, unpin. | `--var qa-code=<code>` from `qa_board.py create` |
 | `gate-share-from-safari` | Join a qa board, share Wikipedia's Mission Dolores Park page from Safari, see "dropped it in <board>", and find the card in the app. It opens `appdemo://debug/hold-share-note` first, which needs #55 on main. | `--var qa-code=<code> --var "board-name=<name>"` |
 | `gate-two-phone-live` | Join a qa board on this phone, then see a pin made by the other person show up live within the 30-second wait. | `--var qa-code=<code>`, and run `qa_board.py pin <boardId> <tacos clientId>` while the test waits |
+| `gate-board-filter-cards-list` | Join a qa board and sf crew, check that cards and list show only sf crew, then pick the qa board from the night view's menu and see only its drops. | `--var qa-code=<code> --var "qa-name=<name>"` |
+| `gate-night-start-board-add-note` | In the night view, start a shared board, add "tacos at la taqueria tonight at 9pm" from the plus button, and find it in night and cards. | Nothing. It makes its own qa board named "qa gate revyl" |
+| `gate-friend-drop-arrives-live` | Join a qa board, then see a friend's Spotify song arrive live during a 45-second wait. | `--var qa-code=<code> --var "qa-name=<name>"`, and run `qa_board.py song <code>` while the test waits |
+| `gate-relaunch-keeps-board` | Join a qa board, pin tacos, kill and reopen the app, and see the same board with the pin and every card still there. | `--var qa-code=<code> --var "qa-name=<name>"` |
 
-`scripts/qa_board.py` makes the qa board through the deployment's public functions as an invented `qa-` guest. It adds three notes that the pipeline places as tacos (tonight), picnic (this weekend) and learn to surf (someday), and it prints the invite code, board id, name and each note's client id. `qa_board.py list <boardId>` prints each drop's zone, pin and previous zone, which is how to check the backend after a run. Make a new qa board for each run, because the tests change it.
+`scripts/qa_board.py` makes the qa board through the deployment's public functions as an invented `qa-` guest. It adds three notes that the pipeline places as tacos (tonight), picnic (this weekend) and learn to surf (someday), and it prints the invite code, board id, name and each note's client id. The guest is called "qa friend". `qa_board.py song <code>` joins as a second qa friend and drops a Spotify song. `qa_board.py list <boardId>` prints each drop's zone, pin and previous zone, which is how to check the backend after a run. Make a new qa board for each run, because the tests change it.
 
 ```bash
 python3 .revyl/scripts/qa_board.py create          # copy code, boardId and name
