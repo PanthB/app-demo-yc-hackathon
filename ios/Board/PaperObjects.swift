@@ -110,7 +110,7 @@ private struct Polaroid: View {
     let image: UIImage
 
     private var isVideo: Bool {
-        drop.sourceKind == .video || ["tiktok.com", "instagram.com", "youtube.com", "youtu.be"].contains { drop.linkHost?.hasSuffix($0) == true }
+        drop.kind == .video
     }
 
     var body: some View {
