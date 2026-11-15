@@ -28,6 +28,18 @@ const isSaved = (d: Doc<"drops">) => !d.found && d.status === "processed" && d.z
 const titleOf = (d: Doc<"drops">) => (d.extraction?.title ?? d.hints?.linkTitle ?? d.enrichment?.title ?? "").trim();
 const artistOf = (d: Doc<"drops">) => (d.decision?.type === "song" ? (d.enrichment?.author ?? d.hints?.artist)?.trim() : undefined);
 const placeKey = (place?: string) => place?.trim().toLowerCase() || undefined;
+const nameKey = (s?: string | null) => s?.toLowerCase().replace(/\([^)]*\)/g, " ").replace(/[^a-z0-9]+/g, " ").trim() || undefined;
+const savedNames = (drops: Doc<"drops">[]) =>
+  drops
+    .filter((d) => !d.found)
+    .flatMap((d) => [titleOf(d), d.extraction?.placeName, d.hints?.placeName].map(nameKey))
+    .filter((k): k is string => k !== undefined);
+
+function alreadySaved(s: { kind: string; title: string; place?: string | null }, names: string[]) {
+  const within = (a: string, b: string) => a.length >= 6 && b.includes(a);
+  const keys = [s.title, s.kind === "place" ? s.place : undefined].map(nameKey).filter((k): k is string => k !== undefined);
+  return keys.some((k) => names.some((n) => k === n || within(k, n) || (s.kind !== "event" && within(n, k))));
+}
 
 async function boardDrops(ctx: QueryCtx, boardId: string) {
   return await ctx.db
@@ -108,6 +120,7 @@ export const list = query({
     const now = Date.now();
     const drops = await boardDrops(ctx, boardId);
     const byClientId = new Map(drops.map((d) => [d.clientId, d]));
+    const names = savedNames(drops);
     const clusters = new Map<string, { label: string; size: number }>();
     for (const d of drops) {
       if (!d.clusterId || !isSaved(d)) continue;
@@ -127,7 +140,7 @@ export const list = query({
         .order("desc")
         .take(200)
     )
-      .filter((s) => !s.savedAt && !s.dismissedAt && (s.startsAt === undefined || s.startsAt > now - HOUR))
+      .filter((s) => !s.savedAt && !s.dismissedAt && (s.startsAt === undefined || s.startsAt > now - HOUR) && !alreadySaved(s, names))
       .sort((a, b) => b.foundAt - a.foundAt || a._creationTime - b._creationTime);
     const thumbnailOf = async (d: Doc<"drops">) => {
       const stored = d.imageIds[0] ? await ctx.storage.getUrl(d.imageIds[0]) : null;
@@ -282,9 +295,10 @@ const instructions = (label: string, from: string, to: string) =>
     `You suggest things for a group of friends in San Francisco to watch or go to, for one cluster of their shared board: drops that share a vibe, "${label}".`,
     "Search the web and suggest up to 4 that match that vibe and those drops, mixing kinds when they fit:",
     `event, a real event in San Francisco between ${from} and ${to} with a date and a start time;`,
-    "song, a track by a saved artist or one that sounds like the saved songs;",
+    "song, another track by a saved artist or one that sounds like the saved songs;",
     "watch, a movie or a show with the same feel;",
     "place, a real place in San Francisco to go, near or like the saved places.",
+    "They already saved every drop listed, so never suggest one of those again, not the same song, movie, place or title from another page: each suggestion is something new to them.",
     "Each one needs its own page that you found in this search, such as the event's venue or ticketing page, the song's Spotify or Apple Music page, the movie's IMDb or streaming page, or the place's own site. Copy the URL exactly.",
     "Never invent anything, a date, a price or a URL. When fewer fit, return fewer, or none. At most one per venue or place.",
     "inspired_by names the one or two drops each fits best, by ref (like d3).",
@@ -318,6 +332,7 @@ export const search = internalAction({
       const seen = new Set(result.sources.map(linkKey));
       const takenLinks = new Set([...job.drops.map((d) => linkKey(d.url)), ...job.known.map((k) => linkKey(k.url))].filter(Boolean));
       const takenPlaces = new Set(job.known.map((k) => placeKey(k.place)).filter(Boolean));
+      const names = [...savedNames(job.drops), ...job.known.map((k) => nameKey(k.title)).filter((k): k is string => k !== undefined)];
       const real = await Promise.all(
         result.suggestions.map(async (s) => /^https?:\/\//.test(s.url) && (seen.has(linkKey(s.url)) || (await pageNames(s.url, s.title)))),
       );
@@ -331,7 +346,7 @@ export const search = internalAction({
         const named = s.inspired_by.map((ref) => refs.get(ref)).filter((d): d is Doc<"drops"> => d !== undefined).slice(0, 2);
         if (!key || !real[i]) skip("no page that names it");
         else if (s.kind === "event" && (startsAt === undefined || startsAt < now - HOUR / 2 || startsAt > now + WINDOW)) skip("not in the next two weeks");
-        else if (takenLinks.has(key)) skip("already on the board or suggested");
+        else if (takenLinks.has(key) || alreadySaved(s, names)) skip("already on the board or suggested");
         else if (place && takenPlaces.has(place)) skip("same place as another suggestion");
         else if (kept.length >= PER_SEARCH) skip("over the 4 per search");
         else {
