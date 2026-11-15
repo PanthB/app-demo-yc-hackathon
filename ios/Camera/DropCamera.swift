@@ -82,7 +82,6 @@ struct DropCamera: View {
         }
         .task(id: dropped) {
             guard dropped > 0 else { return }
-            justDropped = true
             try? await Task.sleep(for: .seconds(2.5))
             guard !Task.isCancelled else { return }
             withAnimation(.smooth(duration: 0.3)) { justDropped = false }
@@ -335,9 +334,8 @@ struct DropCamera: View {
                         }
                 } else {
                     RoundedRectangle(cornerRadius: CaptureFlight.landedCorner, style: .continuous)
-                        .fill(.clear)
+                        .strokeBorder(.white.opacity(0.55), lineWidth: 1.5)
                         .frame(width: 48, height: 48)
-                        .glassEffect(.regular, in: .rect(cornerRadius: CaptureFlight.landedCorner, style: .continuous))
                 }
             }
             .overlay(alignment: .topTrailing) {
@@ -403,6 +401,7 @@ struct DropCamera: View {
         withTransaction(landing) {
             lastPhoto = shot
             flights.removeAll { $0.id == shot.id }
+            justDropped = true
         }
         dropped += 1
     }
