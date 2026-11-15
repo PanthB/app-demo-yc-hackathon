@@ -223,16 +223,25 @@ struct DropCamera: View {
                 zoomCapsule
                     .padding(.bottom, 20)
 
-                HStack {
-                    lastPhotoButton
-                    Spacer()
+                HStack(spacing: 0) {
+                    HStack(spacing: 10) {
+                        lastPhotoButton
+                        Text(boardName)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .lineLimit(1)
+                            .opacity(status == .idle ? 1 : 0)
+                            .animation(.smooth(duration: 0.25), value: status)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     Button(action: shoot) {
                         Color.clear
                     }
                     .buttonStyle(ShutterButtonStyle())
                     .accessibilityLabel("take a photo")
                     .accessibilityIdentifier("cameraShutter")
-                    Spacer()
+                    .padding(.horizontal, 12)
                     Button {
                         Task { await camera.flip() }
                     } label: {
@@ -244,6 +253,7 @@ struct DropCamera: View {
                     .buttonBorderShape(.circle)
                     .accessibilityLabel(camera.position == .back ? "switch to the front camera" : "switch to the back camera")
                     .accessibilityIdentifier("cameraFlip")
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 12)
@@ -270,7 +280,7 @@ struct DropCamera: View {
     @ViewBuilder
     private var statusCapsule: some View {
         if status != .idle {
-            Text(status == .dropping ? "dropping it into \(boardName)." : "dropped it into \(boardName).")
+            Text(status == .dropping ? "dropping it in \(boardName)." : "dropped it in \(boardName).")
                 .font(.subheadline.weight(.semibold))
                 .contentTransition(.opacity)
                 .padding(.horizontal, 16)
@@ -352,7 +362,7 @@ struct DropCamera: View {
             SpringKeyframe(1.08, duration: 0.12, spring: .snappy(duration: 0.3))
             SpringKeyframe(1, duration: 0.3, spring: .snappy(duration: 0.3))
         }
-        .accessibilityLabel(dropped == 1 ? "you dropped 1 photo into \(boardName). tap to see the board." : "you dropped \(dropped) photos into \(boardName). tap to see the board.")
+        .accessibilityLabel(dropped == 1 ? "you dropped 1 photo in \(boardName). tap to see the board." : "you dropped \(dropped) photos in \(boardName). tap to see the board.")
         .accessibilityIdentifier("cameraLastPhoto")
     }
 
@@ -369,13 +379,17 @@ struct DropCamera: View {
         guard camera.access == .allowed else { return }
         shots += 1
         capturing += 1
-        flash = reduceMotion ? 0.4 : 0.8
+        flash = reduceMotion ? 0.3 : 0.5
         withAnimation(.easeOut(duration: 0.18)) { flash = 0 }
         Task {
             let shot = await camera.capture()
             if let shot {
-                CameraInbox.drop(shot.data)
-                sync.wake(in: context)
+                if CameraDebug.mayDrop {
+                    CameraInbox.drop(shot.data)
+                    sync.wake(in: context)
+                } else {
+                    Logger.camera.info("a sample photo stays off the board because the board isn't offline")
+                }
                 flights.append(shot)
             }
             capturing -= 1

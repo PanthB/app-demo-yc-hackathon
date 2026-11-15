@@ -12,15 +12,17 @@ Each photo is written to the same inbox the share extension and `AddMenu`'s phot
 
 ## What it does
 
-- A custom AVFoundation camera (`CameraModel`, `CameraPreview`): the live preview fills the screen, with Liquid Glass controls for close, flash, zoom and flip, tap to focus, pinch to zoom, and the shutter. The volume buttons and Camera Control take a photo through `onCameraCaptureEvent`, and Camera Control's zoom slider is added when the session supports controls.
-- A chip names the board the photo lands in: "dropping into sf crew.", then "dropped it into sf crew." for a moment after each photo.
-- The moment (`CaptureFlight`): the shutter squishes on touch down, a quick white flash and a haptic fire when the photo is taken, the frozen frame shrinks into a rounded, tilted card with a soft shadow, lifts, then drops along an arc into the chip, where it lands in a small fanned stack with a settle and a second haptic. Every part is a spring or a short ease-out, nothing blocks the shutter, and several photos can be in the air at once. Under Reduce Motion the frame cross-fades into the chip instead and the flash is dimmer.
+- A custom AVFoundation camera (`CameraModel`, `CameraPreview`): the live preview fills the screen. Close and flash sit at the top; a zoom capsule (1×, 2), the last-photo thumbnail, the shutter and flip sit at the bottom, all Liquid Glass in one `GlassEffectContainer`. Tap to focus, pinch to zoom. The volume buttons and Camera Control take a photo through `onCameraCaptureEvent`, and Camera Control's zoom slider is added when the session supports controls.
+- The moment (`CaptureFlight`): the shutter squishes on touch down; a short flash on the viewfinder only (under the controls) and a haptic fire when the photo is taken; the frozen frame shrinks into a 4:5 white-bordered card with a slight tilt and a soft shadow, then falls into the last-photo thumbnail at the bottom left, landing exactly on its frame. The thumbnail takes over on contact, pops, shows a count, and fires a success haptic. Nothing blocks the shutter, and several photos can be in the air at once. Under Reduce Motion the frame cross-fades into the thumbnail instead and the flash is dimmer.
+- Status: at rest the board's name sits quietly beside the thumbnail. While a photo is flying a capsule says "dropping it in sf crew.", then "dropped it in sf crew." for 2.5 seconds before it fades. Tapping the thumbnail closes the camera onto the board.
 - Permission states (`CameraAccessView`): before asking, after a denial (a button to Settings and a photo picker instead), and no camera (a photo picker). Returning from Settings checks again.
 
 ## Debug
 
 - On the Simulator, in DEBUG, the viewfinder shows sample stills from `ios/Seed/SeedImages.xcassets` and each photo advances to the next one. `-CameraDebugStill YES` does the same on a device.
+- Sample photos only go into the inbox when `-BoardDebugSeed YES` keeps the board offline, so a Simulator run never sends them to the dev deployment.
 - `-CameraDebugAutoShoot <seconds>` takes three photos, the first after that many seconds and then one every 2.2 seconds, so the moment can be recorded with `simctl io recordVideo`.
 - `-CameraDebugOpen YES` opens the camera at launch, through `.cameraDebugLauncher()` on the root view (a no-op outside DEBUG).
+- `-CameraDebugAccess notAsked|denied|unavailable` shows a permission state.
 
 Errors are logged with `Logger.camera`.

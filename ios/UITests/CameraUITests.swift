@@ -34,7 +34,7 @@ final class CameraUITests: XCTestCase {
 
         shutter.tap()
         XCTAssertTrue(status.waitForExistence(timeout: 2))
-        let dropped = NSPredicate(format: "label BEGINSWITH %@", "dropped it into")
+        let dropped = NSPredicate(format: "label BEGINSWITH %@", "dropped it in ")
         expectation(for: dropped, evaluatedWith: status)
         waitForExpectations(timeout: 3)
         attach("camera-2-dropped")
@@ -45,7 +45,7 @@ final class CameraUITests: XCTestCase {
         sleep(2)
         let lastPhoto = element(app, "cameraLastPhoto")
         XCTAssertTrue(lastPhoto.isEnabled)
-        XCTAssertTrue(lastPhoto.label.hasPrefix("you dropped 3 photos into"), lastPhoto.label)
+        XCTAssertTrue(lastPhoto.label.hasPrefix("you dropped 3 photos in "), lastPhoto.label)
         attach("camera-3-three-photos")
 
         let flash = element(app, "cameraFlash")

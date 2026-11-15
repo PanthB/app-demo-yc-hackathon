@@ -1,8 +1,18 @@
 import SwiftUI
 import UIKit
 
-#if DEBUG
 enum CameraDebug {
+    static var mayDrop: Bool {
+        #if DEBUG
+        !usesStill || UserDefaults.standard.bool(forKey: "BoardDebugSeed")
+        #else
+        true
+        #endif
+    }
+}
+
+#if DEBUG
+extension CameraDebug {
     static var usesStill: Bool {
         #if targetEnvironment(simulator)
         true
@@ -31,7 +41,7 @@ enum CameraDebug {
 
     static let autoShots = 3
 
-    static let stills = ["seed-dolores-sunny", "seed-pinksky", "seed-lights", "seed-landsend", "seed-matcha"]
+    static let stills = ["seed-dolores-sunny", "seed-pinksky", "seed-landsend", "seed-matcha"]
 
     static func still(_ index: Int) -> UIImage? {
         UIImage(named: stills[index % stills.count])

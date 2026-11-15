@@ -11,7 +11,6 @@ struct CaptureFlight: View {
     @State private var isFaded = false
 
     static let lift = 0.3
-    static let hold = 0.12
     static let fall = 0.45
     static let cardAspect: CGFloat = 4 / 5
     static let landedCorner: CGFloat = 12
@@ -46,7 +45,7 @@ struct CaptureFlight: View {
                 try? await Task.sleep(for: .milliseconds(200))
             } else {
                 isFlying = true
-                try? await Task.sleep(for: .seconds(Self.lift + Self.hold + Self.fall))
+                try? await Task.sleep(for: .seconds(Self.lift + Self.fall))
             }
             onLand()
         }
@@ -67,42 +66,35 @@ struct CaptureFlight: View {
         } keyframes: { _ in
             KeyframeTrack(\.width) {
                 LinearKeyframe(cardWidth, duration: Self.lift, timingCurve: .easeOut)
-                LinearKeyframe(cardWidth, duration: Self.hold)
                 LinearKeyframe(end.width, duration: Self.fall, timingCurve: .easeInOut)
             }
             KeyframeTrack(\.height) {
                 LinearKeyframe(cardHeight, duration: Self.lift, timingCurve: .easeOut)
-                LinearKeyframe(cardHeight, duration: Self.hold)
                 LinearKeyframe(end.height, duration: Self.fall, timingCurve: .easeInOut)
             }
             KeyframeTrack(\.x) {
-                LinearKeyframe(start.midX, duration: Self.lift + Self.hold)
+                LinearKeyframe(start.midX, duration: Self.lift)
                 LinearKeyframe(end.midX, duration: Self.fall, timingCurve: .easeOut)
             }
             KeyframeTrack(\.y) {
                 LinearKeyframe(cardY, duration: Self.lift, timingCurve: .easeOut)
-                LinearKeyframe(cardY, duration: Self.hold)
-                LinearKeyframe(end.midY, duration: Self.fall, timingCurve: .easeIn)
+                LinearKeyframe(end.midY, duration: Self.fall, timingCurve: .easeInOut)
             }
             KeyframeTrack(\.rotation) {
                 LinearKeyframe(-4, duration: Self.lift, timingCurve: .easeOut)
-                LinearKeyframe(-4, duration: Self.hold)
                 LinearKeyframe(0, duration: 0.25, timingCurve: .easeOut)
             }
             KeyframeTrack(\.corner) {
                 LinearKeyframe(26, duration: Self.lift, timingCurve: .easeOut)
-                LinearKeyframe(26, duration: Self.hold)
                 LinearKeyframe(Self.landedCorner, duration: Self.fall, timingCurve: .easeInOut)
             }
             KeyframeTrack(\.border) {
                 LinearKeyframe(5, duration: Self.lift, timingCurve: .easeOut)
-                LinearKeyframe(5, duration: Self.hold)
                 LinearKeyframe(Self.landedBorder, duration: Self.fall, timingCurve: .easeInOut)
             }
             KeyframeTrack(\.lift) {
                 LinearKeyframe(1, duration: Self.lift, timingCurve: .easeOut)
-                LinearKeyframe(1, duration: Self.hold)
-                LinearKeyframe(0, duration: Self.fall, timingCurve: .easeIn)
+                LinearKeyframe(0, duration: Self.fall, timingCurve: .easeInOut)
             }
         }
     }
