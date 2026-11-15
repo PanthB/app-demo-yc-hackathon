@@ -14,6 +14,7 @@ struct BoardShell: View {
     @State private var groupings: [String: DropGrouping] = [:]
     @State private var showsMembers = false
     @State private var showsSuggestions = false
+    @State private var toast: String?
 
     var body: some View {
         let mode = ViewMode(stored: storedView)
@@ -26,11 +27,19 @@ struct BoardShell: View {
         let me = boards.personId
         let onBoard = drops.filter { $0.boardId == boardId || (!shared && $0.boardId.isEmpty) }
         let sections = DropSection.build(onBoard, grouping: grouping, filter: filter, me: me, now: clock.now)
+        let arrival = onBoard.first { $0.authorId != me && $0.createdAt > .now.addingTimeInterval(-120) }
 
         NavigationStack(path: $path) {
             content(mode: mode, grouping: grouping, sections: sections, drops: onBoard, me: me)
                 .id(mode)
                 .transition(.opacity)
+                .overlay(alignment: .top) {
+                    if let toast {
+                        ShellToast(text: toast)
+                            .padding(.top, 8)
+                            .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    }
+                }
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarTitleMenu { boardMenu(known, current: boardId) }
@@ -91,6 +100,18 @@ struct BoardShell: View {
                     DropDetailView(drop: drop)
                         .navigationTransition(.zoom(sourceID: drop.id, in: namespace))
                 }
+        }
+        .onChange(of: arrival?.id) { _, id in
+            guard id != nil, let arrival else { return }
+            let words = ShellToast.words(for: arrival)
+            AccessibilityNotification.Announcement(words).post()
+            withAnimation(reduceMotion ? nil : .snappy) { toast = words }
+        }
+        .task(id: toast) {
+            guard toast != nil else { return }
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : .smooth) { toast = nil }
         }
         .animation(reduceMotion ? nil : .smooth, value: filter)
         .animation(reduceMotion ? nil : .smooth, value: grouping)

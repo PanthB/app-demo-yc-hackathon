@@ -122,3 +122,22 @@ struct ShellSuggestions: View {
         .presentationDetents([.medium, .large])
     }
 }
+
+struct ShellToast: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .glassEffect(.regular, in: .capsule)
+            .accessibilityIdentifier("arrivalToast")
+    }
+
+    static func words(for drop: Drop) -> String {
+        let word = drop.kind.word
+        let article = word.first.map { "aeiou".contains($0) } == true ? "an" : "a"
+        return "\(CardWords.clean(drop.authorName) ?? "someone") added \(article) \(word)."
+    }
+}

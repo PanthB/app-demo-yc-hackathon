@@ -299,6 +299,19 @@ enum SeedBoard {
     }
 
     @MainActor
+    static func arrive(on boardId: String, in context: ModelContext, now: Date = .now) {
+        let drop = Drop(createdAt: now, authorId: maya.id, boardId: boardId, sourceKind: .url, url: "https://open.spotify.com/track/6ZRuF2n1CQxyxxAAWsKJOy")
+        drop.authorName = maya.name
+        drop.authorColor = maya.color
+        drop.title = "nights like this"
+        drop.artist = "kehlani"
+        drop.type = .song
+        drop.objectKind = .record
+        context.insert(drop)
+        save(context)
+    }
+
+    @MainActor
     static func clear(_ context: ModelContext) {
         do {
             try context.delete(model: Drop.self)

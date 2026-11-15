@@ -29,6 +29,17 @@ final class ShellUITests: XCTestCase {
         Thread.sleep(forTimeInterval: seconds)
     }
 
+    func testAFriendsDropShowsItsToast() {
+        let app = launch()
+        XCTAssertTrue(element(app, "cardsView").waitForExistence(timeout: 20))
+        pause()
+        app.open(URL(string: "appdemo://arrive")!)
+        let toast = element(app, "arrivalToast")
+        XCTAssertTrue(toast.waitForExistence(timeout: 5))
+        XCTAssertEqual(toast.label, "maya added a song.")
+        XCTAssertTrue(toast.waitForNonExistence(timeout: 5))
+    }
+
     func testForYallOpensTheSuggestions() {
         let app = launch()
         let button = element(app, "suggestionsButton")
