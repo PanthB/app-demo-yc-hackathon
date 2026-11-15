@@ -47,6 +47,10 @@ targets:
         excludes: ["*.md", "**/*.md"]
       - path: Auth
         excludes: ["*.md", "**/*.md"]
+      - path: Night
+        excludes: ["*.md", "**/*.md"]
+      - path: Camera
+        excludes: ["*.md", "**/*.md"]
       - path: Assets
         excludes: ["*.md", "**/*.md"]
     configFiles:
@@ -64,6 +68,7 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "your board uses where you are to bring the things you saved nearby a little closer."
+        INFOPLIST_KEY_NSCameraUsageDescription: "your camera takes a photo and drops it straight onto your board."
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "voice notes you share get turned into words on your phone, so the board can find them a spot."
       configs:
         Release:

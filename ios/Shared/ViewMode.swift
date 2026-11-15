@@ -1,7 +1,7 @@
 import Foundation
 
 enum ViewMode: String, CaseIterable, Sendable {
-    case list, cards, board
+    case list, cards, board, night
 
     static let storageKey = "view"
     static let urlScheme = "appdemo"
