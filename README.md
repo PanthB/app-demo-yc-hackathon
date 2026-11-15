@@ -1,6 +1,6 @@
-# app-demo-yc-hackathon
+# Resona
 
-Our project for The Consumer Mobile Hackathon (YC, San Francisco, November 15, 2026).
+My solo project for The Consumer Mobile Hackathon (YC, San Francisco, November 15, 2026).
 
 ## Stack
 
