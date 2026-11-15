@@ -36,7 +36,7 @@ struct ListView: View {
 
     private func header(_ section: DropSection) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(section.title).font(.title3.weight(.semibold)).foregroundStyle(.primary)
+            Text(section.title).font(.title3.weight(.semibold)).foregroundStyle(Color.primary)
             Text("\(section.drops.count)").font(.title3).foregroundStyle(.secondary).monospacedDigit()
         }
         .textCase(nil)
@@ -68,8 +68,9 @@ struct ListView: View {
         Button {
             select(drop)
         } label: {
-            DropRow(drop: drop).foregroundStyle(.primary)
+            DropRow(drop: drop)
         }
+        .buttonStyle(.plain)
         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         .swipeActions(edge: .leading) {
             Button(drop.isPinned ? "unpin" : "pin", systemImage: drop.isPinned ? "pin.slash" : "pin") {
