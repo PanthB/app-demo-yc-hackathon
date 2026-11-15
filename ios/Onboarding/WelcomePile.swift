@@ -19,11 +19,11 @@ struct WelcomePile: View {
     }
 
     private let slots: [Slot] = [
-        Slot(kind: .song, sample: .song, width: 124, x: -58, y: -98, tilt: -7),
-        Slot(kind: .link, sample: nil, width: 148, x: 62, y: -68, tilt: 6),
-        Slot(kind: .place, sample: .ramen, width: 146, x: -52, y: -33, tilt: 4),
-        Slot(kind: .photo, sample: .bridge, width: 112, x: 64, y: 22, tilt: -5),
-        Slot(kind: .video, sample: .clip, width: 110, x: -6, y: 64, tilt: 3),
+        Slot(kind: .song, sample: .song, width: 124, x: -68, y: -98, tilt: -7),
+        Slot(kind: .photo, sample: .bridge, width: 112, x: 54, y: -60, tilt: 6),
+        Slot(kind: .place, sample: .ramen, width: 146, x: -62, y: -33, tilt: 4),
+        Slot(kind: .link, sample: nil, width: 148, x: 74, y: 22, tilt: -4),
+        Slot(kind: .video, sample: .clip, width: 110, x: -50, y: 64, tilt: 3),
     ]
 
     var body: some View {
@@ -37,7 +37,9 @@ struct WelcomePile: View {
                     }
                 }
                 .overlay(alignment: .topLeading) {
-                    NightKindTag(kind: slot.kind).padding(10)
+                    NightKindTag(kind: slot.kind)
+                        .scaleEffect(0.85, anchor: .topLeading)
+                        .padding(9)
                 }
                     .scaleEffect(dealt ? (shown ? 1 : 0.94) : 1.08)
                     .rotationEffect(.degrees(dealt ? slot.tilt : slot.tilt + 14))
