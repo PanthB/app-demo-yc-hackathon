@@ -15,7 +15,7 @@ export const recompute = internalMutation({
     const placed = clusterBoard(
       drops
         .filter((d) => d.status === "processed" && d.zone !== "done" && !d.found?.dismissedAt && (d.vibes?.length ?? 0) > 0)
-        .map((d) => ({ clientId: d.clientId, vibes: d.vibes ?? [], capturedAt: d.capturedAt, previousClusterId: d.clusterId, jevClusterId: d.jevClusterId, found: Boolean(d.found) })),
+        .map((d) => ({ clientId: d.clientId, vibes: d.vibes ?? [], capturedAt: d.capturedAt, previousClusterId: d.clusterId, previousClusterLabel: d.clusterLabel, jevClusterId: d.jevClusterId, found: Boolean(d.found) })),
     );
     for (const d of drops) {
       const p = placed.get(d.clientId);

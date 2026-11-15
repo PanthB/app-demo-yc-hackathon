@@ -183,7 +183,15 @@ export const reasonFor = (a: string[], b: string[]) => {
   return shared.length ? `both ${shared.map(phrase).join(", ")}.` : undefined;
 };
 
-export type ClusterItem = { clientId: string; vibes: string[]; capturedAt: number; previousClusterId?: string; jevClusterId?: string; found?: boolean };
+export type ClusterItem = {
+  clientId: string;
+  vibes: string[];
+  capturedAt: number;
+  previousClusterId?: string;
+  previousClusterLabel?: string;
+  jevClusterId?: string;
+  found?: boolean;
+};
 export type Placement = { clusterId: string; clusterLabel: string; neighbors: { clientId: string; reason: string }[] };
 
 export function clusterBoard(items: ClusterItem[]): Map<string, Placement> {
@@ -238,12 +246,14 @@ export function clusterBoard(items: ClusterItem[]): Map<string, Placement> {
       ids.set(k, id);
     });
 
-  const labels = groups.map((all) => {
+  const labels = groups.map((all, k) => {
     const saved = all.filter((i) => !sorted[i].found);
     const g = saved.length > 0 ? saved : all;
     const counts = new Map<string, number>();
     for (const i of g) for (const v of sorted[i].vibes) counts.set(v, (counts.get(v) ?? 0) + 1);
     const common = [...counts.entries()].filter(([, c]) => c * 2 >= g.length || g.length === 1);
+    const previous = all.map((i) => sorted[i]).find((x) => x.previousClusterId === ids.get(k) && x.previousClusterLabel)?.previousClusterLabel;
+    if (previous?.split(", ").every((part) => common.some(([v]) => phrase(v) === part))) return previous;
     const pool = common.length ? common : [...counts.entries()];
     return pool
       .sort((a, b) => b[1] * weightOf(b[0]) - a[1] * weightOf(a[0]) || FACET_ORDER.indexOf(FACET_OF.get(a[0])!) - FACET_ORDER.indexOf(FACET_OF.get(b[0])!))
