@@ -5,9 +5,9 @@ final class ListViewUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    private func launch(seeded: Bool = true, extra: [String] = []) -> XCUIApplication {
+    private func launch(extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-view", "list"] + (seeded ? ["-BoardDebugSeed", "YES"] : []) + extra
+        app.launchArguments = ["-view", "list", "-BoardDebugSeed", "YES"] + extra
         app.launch()
         return app
     }
@@ -180,7 +180,8 @@ final class ListViewUITests: XCTestCase {
 
     func testAnEmptyListSaysSo() {
         XCUIDevice.shared.appearance = .light
-        let app = launch(seeded: false)
+        let app = launch()
+        XCTAssertTrue(rows(app).firstMatch.waitForExistence(timeout: 20))
         app.open(URL(string: "appdemo://clear")!)
         XCTAssertTrue(app.staticTexts["nothing here yet."].firstMatch.waitForExistence(timeout: 20))
         XCTAssertEqual(rows(app).count, 0)

@@ -5,9 +5,9 @@ final class CardsViewUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    private func launch(seeded: Bool = true, extra: [String] = []) -> XCUIApplication {
+    private func launch(extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-view", "cards"] + (seeded ? ["-BoardDebugSeed", "YES"] : []) + extra
+        app.launchArguments = ["-view", "cards", "-BoardDebugSeed", "YES"] + extra
         app.launch()
         return app
     }
@@ -150,7 +150,8 @@ final class CardsViewUITests: XCTestCase {
 
     func testAnEmptyBoardSaysSo() {
         XCUIDevice.shared.appearance = .light
-        let app = launch(seeded: false)
+        let app = launch()
+        XCTAssertTrue(all(app, "dropCard").firstMatch.waitForExistence(timeout: 20))
         app.open(URL(string: "appdemo://clear")!)
         XCTAssertTrue(app.staticTexts["nothing here yet."].firstMatch.waitForExistence(timeout: 20))
         XCTAssertEqual(all(app, "dropCard").count, 0)
