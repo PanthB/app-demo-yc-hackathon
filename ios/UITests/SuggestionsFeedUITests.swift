@@ -36,6 +36,7 @@ final class SuggestionsFeedUITests: XCTestCase {
 
     private func walk(_ app: XCUIApplication, attaching prefix: String) {
         XCTAssertTrue(saves(app).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts.matching(identifier: "suggestionVibe").firstMatch.exists, "a card didn't say which vibe it fits")
         attach("\(prefix)-1")
         let end = app.descendants(matching: .any)["cluster-golden-hour"]
         var page = 1

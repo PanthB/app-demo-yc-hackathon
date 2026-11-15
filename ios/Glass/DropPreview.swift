@@ -4,6 +4,8 @@ struct DropPreview: View {
     let face: PreviewFace
     let seed: UUID
     var pictureRatio: CGFloat?
+    var picture: URL?
+    var glyph = "photo"
     @ScaledMetric(relativeTo: .caption) private var pillHeight: CGFloat = 22
 
     var body: some View {
@@ -11,7 +13,13 @@ struct DropPreview: View {
         case .image(let image):
             Color.clear
                 .aspectRatio(1 / (pictureRatio ?? face.ratio), contentMode: .fit)
-                .overlay { Image(uiImage: image).resizable().scaledToFill() }
+                .overlay {
+                    if let picture {
+                        DownsampledImage(url: picture, size: CGSize(width: 240, height: 240 * (pictureRatio ?? face.ratio)), glyph: glyph, fallback: image)
+                    } else {
+                        Image(uiImage: image).resizable().scaledToFill()
+                    }
+                }
                 .clipped()
         case .cutout(let image):
             Color.clear

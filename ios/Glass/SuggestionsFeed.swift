@@ -21,6 +21,10 @@ final class SuggestionsModel {
         var queued: Double
     }
 
+    private struct Saved: Decodable {
+        var clientId: String
+    }
+
     private(set) var groups: [FeedGroup]?
     private(set) var hidden: Set<String> = []
     private(set) var problem: String?
@@ -118,13 +122,7 @@ final class SuggestionsModel {
         guard let following else { return nil }
         let args: [String: ConvexEncodable?] = ["boardId": following.boardId, "personId": following.personId]
         do {
-            let started: Refreshed
-            do {
-                started = try await convex.mutation("suggestions:refresh", with: args)
-            } catch {
-                Logger.suggestions.info("suggestions:refresh didn't run as a mutation, trying it as an action: \(String(describing: error), privacy: .public)")
-                started = try await convex.action("suggestions:refresh", with: args)
-            }
+            let started: Refreshed = try await convex.mutation("suggestions:refresh", with: args)
             guard started.queued == 0 else { return nil }
             lines.giveUp(self.groups ?? [], now: .now)
             settle()
@@ -154,7 +152,12 @@ final class SuggestionsModel {
         guard !Self.keepsWritesLocal else { return }
         Task {
             do {
-                try await convex.mutation(function, with: args)
+                if function == "suggestions:save" {
+                    let saved: Saved = try await convex.mutation(function, with: args)
+                    Logger.suggestions.info("a suggestion was saved as the drop \(saved.clientId, privacy: .public)")
+                } else {
+                    try await convex.mutation(function, with: args)
+                }
             } catch {
                 Logger.suggestions.error("\(function, privacy: .public) didn't reach the backend for \(id, privacy: .public): \(String(describing: error), privacy: .public)")
                 hidden.remove(id)
@@ -205,10 +208,10 @@ final class SuggestionsModel {
 
 struct SuggestionsFeed: View {
     let boardId: String
+    var embedded = false
 
     @Environment(BoardsStore.self) private var boards
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Query private var drops: [Drop]
     @AppStorage("recsMedia") private var media = true
     @AppStorage("recsEvents") private var events = true
     @State private var model = SuggestionsModel()
@@ -231,9 +234,75 @@ struct SuggestionsFeed: View {
     }
 
     var body: some View {
+        if embedded {
+            feed.safeAreaInset(edge: .top, spacing: 0) {
+                GlassEffectContainer(spacing: 8) {
+                    HStack(spacing: 8) {
+                        Spacer()
+                        recsMenu.glassEffect(.regular.interactive(), in: .circle)
+                        refreshButton.glassEffect(.regular.interactive(), in: .circle)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+            }
+        } else {
+            feed
+                .navigationTitle("suggestions")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) { recsMenu }
+                    ToolbarItem(placement: .topBarTrailing) { refreshButton }
+                }
+        }
+    }
+
+    private var recsMenu: some View {
+        Menu {
+            Section("what to look for") {
+                Toggle("songs, clips and shows", isOn: $media)
+                Toggle("events and places nearby", isOn: $events)
+            }
+            .menuActionDismissBehavior(.disabled)
+        } label: {
+            icon("slider.horizontal.3", "what to look for")
+        }
+        .accessibilityIdentifier("recsMenu")
+    }
+
+    private var refreshButton: some View {
+        Button {
+            turns += 1
+            Task {
+                guard let words = await model.refresh() else { return }
+                note = words
+                said += 1
+            }
+        } label: {
+            icon("arrow.clockwise", "refresh suggestions")
+                .symbolEffect(.rotate, value: turns)
+        }
+        .disabled(model.groups?.isEmpty ?? true)
+        .accessibilityIdentifier("refreshSuggestions")
+    }
+
+    @ViewBuilder
+    private func icon(_ symbol: String, _ title: String) -> some View {
+        if embedded {
+            Image(systemName: symbol)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: 44)
+                .contentShape(.circle)
+                .accessibilityLabel(title)
+        } else {
+            Label(title, systemImage: symbol)
+        }
+    }
+
+    private var feed: some View {
         let groups = groups
-        let known = Dictionary(drops.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        ScrollView {
+        return ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
                 if let problem = model.problem, model.groups != nil {
                     Text(problem).font(.footnote).foregroundStyle(.secondary).padding(.top, 12)
@@ -241,7 +310,7 @@ struct SuggestionsFeed: View {
                 ForEach(groups) { group in
                     header(group)
                     ForEach(group.suggestions) { suggestion in
-                        SuggestionCard(suggestion: suggestion, drops: known) {
+                        SuggestionCard(suggestion: suggestion, vibe: group.clusterLabel) {
                             saves += 1
                             said += 1
                             note = "saved to \(boards.boards.first { $0.boardId == boardId }?.name ?? "the board")."
@@ -257,8 +326,8 @@ struct SuggestionsFeed: View {
             .padding(.bottom, 24)
             .animation(reduceMotion ? nil : .smooth, value: groups)
         }
-        .scrollEdgeEffectStyle(.hard, for: .top)
-        .background(Color(.systemGroupedBackground))
+        .scrollEdgeEffectStyle(embedded ? .soft : .hard, for: .top)
+        .background(embedded ? Color.clear : Color(.systemGroupedBackground))
         .overlay {
             if !media, !events {
                 ContentUnavailableView {
@@ -311,36 +380,6 @@ struct SuggestionsFeed: View {
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled else { return }
             note = nil
-        }
-        .navigationTitle("suggestions")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Section("what to look for") {
-                        Toggle("songs, clips and shows", isOn: $media)
-                        Toggle("events and places nearby", isOn: $events)
-                    }
-                    .menuActionDismissBehavior(.disabled)
-                } label: {
-                    Label("what to look for", systemImage: "slider.horizontal.3")
-                }
-                .accessibilityIdentifier("recsMenu")
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    turns += 1
-                    Task {
-                        guard let words = await model.refresh() else { return }
-                        note = words
-                        said += 1
-                    }
-                } label: {
-                    Label("refresh suggestions", systemImage: "arrow.clockwise")
-                        .symbolEffect(.rotate, value: turns)
-                }
-                .disabled(model.groups?.isEmpty ?? true)
-                .accessibilityIdentifier("refreshSuggestions")
-            }
         }
         .sensoryFeedback(.success, trigger: saves)
         .task(id: boardId) {

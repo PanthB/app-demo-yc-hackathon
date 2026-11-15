@@ -6,6 +6,7 @@ struct DropThumbnail: View {
     let seed: UUID
     var side: CGFloat = 56
     var radius: CGFloat = 12
+    var picture: URL?
 
     var body: some View {
         Color(.tertiarySystemFill)
@@ -21,7 +22,11 @@ struct DropThumbnail: View {
     private var small: some View {
         switch face {
         case .image(let image):
-            Image(uiImage: image).resizable().scaledToFill()
+            if let picture {
+                DownsampledImage(url: picture, size: CGSize(width: side, height: side), glyph: kind.symbol, fallback: image)
+            } else {
+                Image(uiImage: image).resizable().scaledToFill()
+            }
         case .cutout(let image):
             Image(uiImage: image).resizable().scaledToFit().padding(4)
         case .date(let top, let day):
