@@ -16,7 +16,7 @@ struct SignInSheet: View {
     static var isAvailable: Bool { AppleSignIn.isEnabled }
 
     /// Fixed, so the sheet never resizes after it appears.
-    static let height: CGFloat = 372
+    static let height: CGFloat = 350
 
     @State private var working = false
     @State private var problem: String?
@@ -28,14 +28,14 @@ struct SignInSheet: View {
                 .font(.system(size: 24, weight: .bold))
                 .contentTransition(.interpolate)
             ZStack {
-                Text(problem ?? "with apple, your boards follow you to any phone. as a guest, they stay on this one.")
+                Text(problem ?? "with apple, your boards follow you to any phone.")
                     .id(problem)
                     .transition(.blurReplace)
             }
             .font(.system(size: 16))
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
-            .frame(height: 44)
+            .frame(height: 22)
             .padding(.top, 6)
             .padding(.bottom, 24)
 

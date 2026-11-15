@@ -27,7 +27,7 @@ struct WordsText: View {
             .font(.system(size: size, weight: .semibold))
             .lineSpacing(1)
             .textRenderer(WordFade(progress: progress, count: words.count))
-            .accessibilityLabel(lead + " " + rest)
+            .accessibilityLabel(words.joined(separator: " "))
             .onAppear {
                 withAnimation(reduceMotion ? .easeOut(duration: 0.25) : .easeOut(duration: 0.35 + 0.06 * Double(words.count))) {
                     progress = 1
