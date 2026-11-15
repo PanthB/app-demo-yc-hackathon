@@ -83,11 +83,16 @@ struct CardsView: View {
         ScrollView(.horizontal) {
             HStack(alignment: .top, spacing: 12) {
                 ForEach(drops) { drop in
-                    card(drop, pictureRatio: 0.6)
-                        .containerRelativeFrame(.horizontal, count: 3, span: 2, spacing: 12)
+                    Button {
+                        select(drop)
+                    } label: {
+                        PinnedCard(drop: drop)
+                    }
+                    .buttonStyle(CardPressStyle())
+                    .matchedTransitionSource(id: drop.id, in: namespace)
+                    .containerRelativeFrame(.horizontal, count: 4, span: 3, spacing: 12)
                 }
             }
-            .fixedSize(horizontal: false, vertical: true)
             .scrollTargetLayout()
         }
         .contentMargins(.horizontal, 16, for: .scrollContent)
@@ -95,11 +100,11 @@ struct CardsView: View {
         .scrollIndicators(.hidden)
     }
 
-    private func card(_ drop: Drop, pictureRatio: CGFloat? = nil) -> some View {
+    private func card(_ drop: Drop) -> some View {
         Button {
             select(drop)
         } label: {
-            DropCard(drop: drop, pictureRatio: pictureRatio)
+            DropCard(drop: drop)
         }
         .buttonStyle(CardPressStyle())
         .matchedTransitionSource(id: drop.id, in: namespace)

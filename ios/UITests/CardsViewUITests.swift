@@ -35,10 +35,11 @@ final class CardsViewUITests: XCTestCase {
         let done = header(app, "done")
         for _ in 0..<4 where !done.isHittable { cards.swipeUp(velocity: .slow) }
         XCTAssertTrue(done.isHittable)
-        let before = app.descendants(matching: .any).matching(identifier: "dropCard").count
+        let landlord = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "landlord")).firstMatch
+        XCTAssertFalse(landlord.exists)
         done.tap()
         cards.swipeUp(velocity: .slow)
-        XCTAssertGreaterThan(app.descendants(matching: .any).matching(identifier: "dropCard").count, before - 1)
+        XCTAssertTrue(landlord.waitForExistence(timeout: 5))
         attach("\(prefix)-done-open")
     }
 
@@ -51,6 +52,7 @@ final class CardsViewUITests: XCTestCase {
         XCUIDevice.shared.appearance = .dark
         let app = launch(["-GlassDebugPins", "YES"])
         XCTAssertTrue(header(app, "pinned").waitForExistence(timeout: 20))
+        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "pinnedCard").count, 3)
         walkTheBoard(app, prefix: "dark")
         XCUIDevice.shared.appearance = .light
     }
