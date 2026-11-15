@@ -1,0 +1,165 @@
+import SwiftUI
+
+struct NightStreakChip: View {
+    let streak: DailyStreak
+    let moment: Int
+    let open: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Button(action: open) {
+            HStack(spacing: 4) {
+                Image(systemName: streak.droppedToday ? "flame.fill" : "flame")
+                    .fontWeight(NightStyle.symbolWeight)
+                    .foregroundStyle(streak.droppedToday ? NightStyle.flame : NightStyle.secondary)
+                    .symbolEffect(.bounce.up, options: .nonRepeating, value: reduceMotion ? 0 : moment)
+                Text("\(streak.days)")
+                    .fontWeight(.semibold)
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+                    .contentTransition(.numericText(value: Double(streak.days)))
+            }
+            .font(NightStyle.itemTitle)
+            .padding(.horizontal, 4)
+            .keyframeAnimator(initialValue: 1.0, trigger: reduceMotion ? 0 : moment) { content, scale in
+                content.scaleEffect(scale)
+            } keyframes: { _ in
+                SpringKeyframe(1.0, duration: 0.01)
+                SpringKeyframe(1.2, duration: 0.2, spring: .snappy)
+                SpringKeyframe(1.0, duration: 0.5, spring: .bouncy)
+            }
+        }
+        .background { StreakFlare(trigger: reduceMotion ? 0 : moment).clipShape(.capsule) }
+        .sensoryFeedback(.success, trigger: moment)
+        .accessibilityLabel(streak.days == 1 ? "your streak, one day" : "your streak, \(streak.days) days")
+        .accessibilityHint(streak.isWaitingOnToday ? "drop something today to keep it going" : "shows everyone's streaks")
+        .accessibilityIdentifier("nightStreakChip")
+    }
+}
+
+private struct StreakFlare: View {
+    let trigger: Int
+
+    private struct Glow {
+        var scale = 0.4
+        var opacity = 0.0
+    }
+
+    var body: some View {
+        Circle()
+            .fill(NightStyle.flame)
+            .blur(radius: 12)
+            .keyframeAnimator(initialValue: Glow(), trigger: trigger) { content, glow in
+                content.scaleEffect(glow.scale).opacity(glow.opacity)
+            } keyframes: { _ in
+                KeyframeTrack(\.scale) {
+                    LinearKeyframe(0.4, duration: 0.01)
+                    CubicKeyframe(2.4, duration: 1.0)
+                }
+                KeyframeTrack(\.opacity) {
+                    LinearKeyframe(0.7, duration: 0.08)
+                    CubicKeyframe(0, duration: 0.9)
+                }
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+struct NightStreakSheet: View {
+    let boardName: String
+    let streaks: BoardStreaks
+    let members: [NightMember]
+    let me: String
+    let isShared: Bool
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label {
+                        Text(streaks.mine.days == 1 ? "1 day" : "\(streaks.mine.days) days").monospacedDigit()
+                    } icon: {
+                        Image(systemName: streaks.mine.droppedToday ? "flame.fill" : "flame")
+                            .fontWeight(NightStyle.symbolWeight)
+                            .foregroundStyle(streaks.mine.isAlive ? NightStyle.flame : NightStyle.secondary)
+                    }
+                    .font(NightStyle.pageTitle)
+                    Text(streaks.headline)
+                        .font(NightStyle.body)
+                        .foregroundStyle(NightStyle.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                WeekStrip(days: streaks.myWeek, label: "your week in \(boardName)")
+
+                if isShared {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(streaks.crew.days > 1 ? "the crew is on a \(streaks.crew.days) day run." : "the crew's streak starts with the next drop.")
+                            .font(NightStyle.itemTitle)
+                        WeekStrip(days: streaks.crewWeek, label: "the crew's week")
+                        VStack(spacing: 12) {
+                            ForEach(members) { member in
+                                let streak = streaks.members[member.id] ?? .none
+                                HStack(spacing: 8) {
+                                    NightAvatar(name: member.name, colorName: member.color, personId: member.id)
+                                    Text(member.id == me ? "\(member.name) (you)" : member.name).font(NightStyle.body)
+                                    Spacer()
+                                    Label(streak.days == 1 ? "1 day" : "\(streak.days) days", systemImage: streak.droppedToday ? "flame.fill" : "flame")
+                                        .font(NightStyle.body)
+                                        .fontWeight(NightStyle.symbolWeight)
+                                        .monospacedDigit()
+                                        .foregroundStyle(streak.isAlive ? NightStyle.flame : NightStyle.tertiary)
+                                }
+                                .accessibilityElement(children: .combine)
+                            }
+                        }
+                    }
+                }
+
+                Text("a streak counts the days in a row you drop something here. it stays alive until the end of today.")
+                    .font(NightStyle.body)
+                    .foregroundStyle(NightStyle.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(NightStyle.margin)
+            .padding(.top, 8)
+        }
+        .scrollIndicators(.hidden)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .accessibilityIdentifier("nightStreakSheet")
+    }
+}
+
+private struct WeekStrip: View {
+    let days: [Bool]
+    let label: String
+
+    private static let letters = ["s", "m", "t", "w", "t", "f", "s"]
+
+    var body: some View {
+        let today = Calendar.current.component(.weekday, from: .now) - 1
+        HStack(spacing: 0) {
+            ForEach(days.indices, id: \.self) { index in
+                let weekday = (today - (days.count - 1 - index) + 70) % 7
+                VStack(spacing: 8) {
+                    Circle()
+                        .fill(days[index] ? NightStyle.flame : Color.white.opacity(0.08))
+                        .frame(width: 28, height: 28)
+                        .overlay {
+                            if index == days.count - 1 {
+                                Circle().strokeBorder(.white.opacity(0.8), lineWidth: 2).padding(-4)
+                            }
+                        }
+                    Text(Self.letters[weekday])
+                        .font(NightStyle.caption)
+                        .foregroundStyle(NightStyle.tertiary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(days.filter { $0 }.count) of the last 7 days")
+    }
+}

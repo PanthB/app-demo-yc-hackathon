@@ -104,18 +104,42 @@ struct NightFilterPicker: View {
 
 struct NightMembers: View {
     let members: [NightMember]
+    let streaks: [String: DailyStreak]
+    let open: () -> Void
 
     var body: some View {
-        HStack(spacing: -6) {
-            ForEach(members.prefix(4)) { member in
-                NightAvatar(name: member.name, colorName: member.color, personId: member.id)
-                    .padding(1.5)
-                    .background(NightStyle.ink, in: .circle)
+        Button(action: open) {
+            HStack(spacing: -6) {
+                ForEach(members.prefix(4)) { member in
+                    NightAvatar(name: member.name, colorName: member.color, personId: member.id)
+                        .padding(1.5)
+                        .background(NightStyle.ink, in: .circle)
+                        .overlay(alignment: .bottomTrailing) {
+                            if let streak = streaks[member.id], streak.days > 1 {
+                                Text("\(streak.days)")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .monospacedDigit()
+                                    .foregroundStyle(.black)
+                                    .frame(minWidth: 15, minHeight: 15)
+                                    .background(NightStyle.flame, in: .circle)
+                                    .padding(1)
+                                    .background(NightStyle.ink, in: .circle)
+                                    .offset(x: 4, y: 4)
+                            }
+                        }
+                }
             }
+            .padding(.horizontal, 8)
         }
-        .padding(.horizontal, 8)
+        .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(members.count) people: \(members.map(\.name).joined(separator: ", "))")
+        .accessibilityLabel(members.map { member in
+            let days = streaks[member.id]?.days ?? 0
+            return days > 1 ? "\(member.name), \(days) day streak" : member.name
+        }.joined(separator: ", "))
+        .accessibilityHint("shows everyone's streaks")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("nightMembers")
     }
 }
 

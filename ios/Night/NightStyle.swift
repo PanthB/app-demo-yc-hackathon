@@ -8,6 +8,7 @@ enum NightStyle {
     static let hairline = Color.white.opacity(0.08)
     static let secondary = Color.white.opacity(0.62)
     static let tertiary = Color.white.opacity(0.4)
+    static let flame = Color(red: 1.0, green: 0.52, blue: 0.16)
 
     static let cardRadius: CGFloat = 24
     static let card = RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
