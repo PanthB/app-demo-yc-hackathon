@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 136 88" width="136" height="88">
+  <path fill-rule="evenodd" d="M4 0h128a4 4 0 0 1 4 4v80a4 4 0 0 1 -4 4h-128a4 4 0 0 1 -4 -4v-80a4 4 0 0 1 4 -4ZM14 8h108a4 4 0 0 1 4 4v48a4 4 0 0 1 -4 4h-108a4 4 0 0 1 -4 -4v-48a4 4 0 0 1 4 -4Z" fill="#2B2420"/>
+  <path fill-rule="evenodd" d="M12 6h112a4 4 0 0 1 4 4v52a4 4 0 0 1 -4 4h-112a4 4 0 0 1 -4 -4v-52a4 4 0 0 1 4 -4ZM16 10h104a4 4 0 0 1 4 4v44a4 4 0 0 1 -4 4h-104a4 4 0 0 1 -4 -4v-44a4 4 0 0 1 4 -4Z" fill="#FFFBF2"/>
+  <path d="M44 27h48a4 4 0 0 1 4 4v10a4 4 0 0 1 -4 4h-48a4 4 0 0 1 -4 -4v-10a4 4 0 0 1 4 -4Z" fill="#2B2420"/>
+  <path d="M40 88L45 72Q45.6 70 48 70H88Q90.4 70 91 72L96 88Z" fill="#8A7F74" fill-opacity=".45"/>
+  <circle cx="57" cy="80" r="2.5" fill="#2B2420"/>
+  <circle cx="79" cy="80" r="2.5" fill="#2B2420"/>
+  <g fill="#8A7F74"><circle cx="4.5" cy="4.5" r="1.5"/><circle cx="131.5" cy="4.5" r="1.5"/><circle cx="4.5" cy="83.5" r="1.5"/><circle cx="131.5" cy="83.5" r="1.5"/></g>
+</svg>
