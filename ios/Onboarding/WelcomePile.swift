@@ -38,8 +38,7 @@ struct WelcomePile: View {
                 }
                 .overlay(alignment: .topLeading) {
                     PileTag(kind: slot.kind)
-                        .scaleEffect(0.85, anchor: .topLeading)
-                        .padding(9)
+                        .padding(13)
                 }
                     .scaleEffect(dealt ? (shown ? 1 : 0.94) : 1.08)
                     .rotationEffect(.degrees(dealt ? slot.tilt : slot.tilt + 14))
@@ -133,15 +132,15 @@ private struct PileTag: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: kind.symbol).fontWeight(NightStyle.symbolWeight)
+            Image(systemName: kind.symbol)
+                .font(.system(size: 10, weight: .semibold))
             Text(kind.word)
+                .font(.system(size: 12, weight: .semibold))
         }
-        .font(NightStyle.caption)
         .foregroundStyle(.white)
-        .padding(.horizontal, 8)
-        .frame(height: NightStyle.pillHeight)
+        .padding(.horizontal, 9)
+        .frame(height: 22)
         .background(Color(white: 0.1).opacity(0.84), in: .capsule)
         .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1))
-        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
     }
 }
