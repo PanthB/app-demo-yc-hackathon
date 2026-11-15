@@ -68,12 +68,13 @@ final class ShareViewController: UIViewController {
         }
         let items = extensionContext?.inputItems as? [NSExtensionItem] ?? []
         let saved = await ShareCollector.save(items, to: inbox)
-        for id in saved {
-            if let boardId { AppGroup.defaults.set(boardId, forKey: "inboxBoard.\(id.uuidString)") }
+        for item in saved {
+            if let boardId { AppGroup.defaults.set(boardId, forKey: "inboxBoard.\(item.id.uuidString)") }
         }
         if saved.isEmpty {
             Logger.share.error("nothing in this share could be kept")
         }
+        Task { [boardId] in await ShareSend.send(saved, boardId: boardId) }
         return !saved.isEmpty
     }
 }

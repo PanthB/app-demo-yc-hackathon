@@ -40,6 +40,7 @@ final class BoardSync {
     func wake(in context: ModelContext) {
         self.context = context
         InboxIngest.appGroup?.run(in: context)
+        AppGroup.defaults.set(Self.staysOffline ? nil : Bundle.main.object(forInfoDictionaryKey: "CONVEX_URL") as? String, forKey: "convexURL")
         guard !Self.staysOffline else { return }
         boards.start()
         follow()

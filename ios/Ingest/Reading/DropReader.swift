@@ -49,7 +49,7 @@ enum DropReader {
     static func readPlace(of drop: Drop) async {
         guard drop.sourceKind == .url, drop.latitude == nil, var link = drop.url else { return }
         if LinkReading.isShortMapsLink(link) {
-            guard let long = await LinkReading.destination(of: link) else { return }
+            guard let long = await destination(of: link) else { return }
             link = long
             keep(LinkReading.read(link, caption: drop.rawText), on: drop)
         }
@@ -58,6 +58,19 @@ enum DropReader {
         else { return }
         drop.latitude = place.latitude
         drop.longitude = place.longitude
+    }
+
+    private static func destination(of link: String) async -> String? {
+        guard let url = URL(string: link) else { return nil }
+        var request = URLRequest(url: url, timeoutInterval: 5)
+        request.httpMethod = "HEAD"
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            return response.url?.absoluteString
+        } catch {
+            Logger.ingest.error("couldn't follow \(url.host() ?? "a short link", privacy: .public) to the place it points at: \(String(describing: error), privacy: .public)")
+            return nil
+        }
     }
 
     @MainActor

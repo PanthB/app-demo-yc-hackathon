@@ -1,5 +1,4 @@
 import Foundation
-import os
 
 enum LinkReading {
     struct Seen: Equatable {
@@ -49,7 +48,8 @@ enum LinkReading {
             named = (after.flatMap { $0.hasPrefix("@") || $0.hasPrefix("data=") ? nil : $0 } ?? query["q"] ?? query["query"])?
                 .replacingOccurrences(of: "+", with: " ")
             let pin = link.firstMatch(of: #/!3d(-?[0-9.]+)!4d(-?[0-9.]+)/#).map { "\($0.1),\($0.2)" }
-            spot = pin ?? path.first { $0.hasPrefix("@") }.map { String($0.dropFirst()) } ?? query["ll"]
+            let center = named == nil ? nil : path.first { $0.hasPrefix("@") }.map { String($0.dropFirst()) }
+            spot = pin ?? center ?? query["ll"]
             if coordinate(in: named) != nil {
                 spot = spot ?? named
                 named = nil
@@ -69,19 +69,6 @@ enum LinkReading {
     static func isShortMapsLink(_ link: String) -> Bool {
         guard let parts = URLComponents(string: link), let host = parts.host?.lowercased() else { return false }
         return host == "maps.app.goo.gl" || (host == "goo.gl" && parts.path.hasPrefix("/maps"))
-    }
-
-    static func destination(of link: String) async -> String? {
-        guard let url = URL(string: link) else { return nil }
-        var request = URLRequest(url: url, timeoutInterval: 5)
-        request.httpMethod = "HEAD"
-        do {
-            let (_, response) = try await URLSession.shared.data(for: request)
-            return response.url?.absoluteString
-        } catch {
-            Logger.ingest.error("couldn't follow \(url.host() ?? "a short link", privacy: .public) to the place it points at: \(String(describing: error), privacy: .public)")
-            return nil
-        }
     }
 
     private static func coordinate(in text: String?) -> (latitude: Double, longitude: Double)? {

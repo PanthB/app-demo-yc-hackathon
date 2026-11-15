@@ -22,18 +22,18 @@ struct PlannedDrop {
 }
 
 enum ShareCollector {
-    static func save(_ items: [NSExtensionItem], to inbox: Inbox) async -> [UUID] {
+    static func save(_ items: [NSExtensionItem], to inbox: Inbox) async -> [InboxItem] {
         let scratch = FileManager.default.temporaryDirectory
             .appending(path: "share-\(UUID().uuidString)", directoryHint: .isDirectory)
         defer { try? FileManager.default.removeItem(at: scratch) }
 
         let share = await gather(items, scratch: scratch)
-        var saved: [UUID] = []
+        var saved: [InboxItem] = []
         for drop in plan(share) {
             do {
                 let written = try inbox.write(drop.item, payloads: drop.payloads)
                 Logger.share.info("dropped a \(written.kind.rawValue, privacy: .public) as \(written.id.uuidString, privacy: .public) with \(written.files.count) files")
-                saved.append(written.id)
+                saved.append(written)
             } catch {
                 Logger.share.error("writing a \(drop.item.kind.rawValue, privacy: .public) drop to the inbox failed: \(String(describing: error), privacy: .public)")
             }

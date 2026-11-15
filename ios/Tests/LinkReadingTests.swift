@@ -67,6 +67,12 @@ final class LinkReadingTests: XCTestCase {
         )
     }
 
+    func testAGoogleMapsLinkWithNoPlaceDoesNotTakeTheMapsCenterForOne() {
+        let seen = LinkReading.read("https://www.google.com/maps/place//@45.4600059,-119.5758496,6z?utm_campaign=ml-ni", caption: "Google Maps")
+
+        XCTAssertEqual(seen, LinkReading.Seen())
+    }
+
     func testAGoogleMapsRouteIsNotAPlace() {
         let seen = LinkReading.read("https://www.google.com/maps/dir/Sausalito,+California+94965/257+San+Jose+Ave,+San+Francisco,+CA+94110/@37.8044739,-122.4931306,13061m/data=!3m2!1e3!4b1", caption: nil)
 
