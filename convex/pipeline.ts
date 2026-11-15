@@ -9,16 +9,13 @@ import type { Decision, DropType, Emphasis, Enrichment, Extraction, ObjectKind, 
 import { enrichLink } from "./lib/enrich";
 import {
   choice,
-  hasModels,
+  hasOpenAI,
   hasSupermemory,
   decide,
   noul,
   ProviderUnavailable,
-  clairicRead,
-  CLAIRIC,
   openaiRead,
-  readerSlots,
-  visionRead,
+  readerModel,
   type Image,
   type Question,
   type Reading,
@@ -29,7 +26,6 @@ import {
   isClipLink,
   isMusicLink,
   keywords,
-  localDate,
   localStamp,
   objectKindFor,
   overlap,
@@ -119,7 +115,7 @@ async function loadImages(ctx: ActionCtx, drop: Doc<"drops">, thumbnailUrl: stri
 const text = (s: string | null | undefined) => (s && s.trim() ? s.trim() : undefined);
 const num = (n: number | null | undefined) => (typeof n === "number" && Number.isFinite(n) ? n : undefined);
 
-function fromReading(r: Reading, drop: Doc<"drops">, fallback: Extraction, fieldConfidence?: Record<string, number>): Extraction {
+function fromReading(r: Reading, drop: Doc<"drops">, fallback: Extraction): Extraction {
   const offset = drop.utcOffsetMinutes;
   const dueIn = num(r.due_in_minutes);
   const dueAt = drop.hints?.dueAt ?? (dueIn && dueIn > 0 ? drop.capturedAt + dueIn * 60_000 : undefined);
@@ -148,7 +144,6 @@ function fromReading(r: Reading, drop: Doc<"drops">, fallback: Extraction, field
     vibeWords: (r.vibe_words ?? []).map((w) => w.toLowerCase()),
     minutesThere: num(r.minutes_there),
     confidence: Math.min(1, Math.max(0, num(r.confidence) ?? 0)),
-    fieldConfidence,
   };
 }
 
@@ -201,32 +196,21 @@ export const run = internalAction({
 
       const fallback = ruleExtraction({ text: drop.text, url: drop.url, hints: drop.hints, enrichment, capturedAt: drop.capturedAt, utcOffsetMinutes: drop.utcOffsetMinutes });
       let extraction = fallback;
-      if (!hasModels()) pipeline.extract = rules("no OPENROUTER_API_KEY or OPENAI_API_KEY in the convex env");
+      if (!hasOpenAI()) pipeline.extract = rules("no OPENAI_API_KEY in the convex env");
       else if (isMusicLink(drop.url) && enrichment?.title && !drop.text && drop.imageIds.length === 0) {
         pipeline.extract = rules("a song link is read from the link and deezer, which saves a model call");
       } else {
         const { images, notes } = await loadImages(ctx, drop, enrichment?.thumbnailUrl);
         const input = [`saved_at: ${localStamp(drop.capturedAt, drop.utcOffsetMinutes)} local time`, `shared as: ${drop.kind}`, corpus(drop.text, drop.url, drop.hints, enrichment)].join("\n");
-        const imageNote = [`${images.length} image(s) sent`, ...notes];
-        const failed: string[] = [];
-        let freeCapped = false;
-        for (const { provider, model } of readerSlots()) {
-          if (freeCapped && model.endsWith(":free")) continue;
-          try {
-            if (model === CLAIRIC) {
-              const { reading, fieldConfidence } = await clairicRead(input, localDate(drop.capturedAt, drop.utcOffsetMinutes), images);
-              extraction = fromReading(reading, drop, fallback, fieldConfidence);
-            } else if (provider === "openai") extraction = fromReading(await openaiRead(ctx, input, images, model), drop, fallback);
-            else extraction = fromReading(await visionRead(input, images, model), drop, fallback);
-            pipeline.extract = { ran: "done", by: `${model} via ${provider}`, reason: [...failed, ...imageNote].join("; ") };
-            break;
-          } catch (e) {
-            if (e instanceof ProviderUnavailable && model.endsWith(":free")) freeCapped = true;
-            failed.push(`${model} ${e instanceof ProviderUnavailable ? "skipped" : "failed"}: ${errorText(e)}`);
-          }
+        const model = readerModel();
+        try {
+          extraction = fromReading(await openaiRead(ctx, input, images, model), drop, fallback);
+          pipeline.extract = { ran: "done", by: `${model} via openai`, reason: [`${images.length} image(s) sent`, ...notes].join("; ") };
+        } catch (e) {
+          pipeline.extract = rules(fellBack("reader", e));
         }
-        if (pipeline.extract.ran === "pending") pipeline.extract = rules([...failed, "no reader answered, used rules"].join("; "));
       }
+      if (isClipLink(drop.url) && enrichment?.title) extraction = { ...extraction, title: enrichment.title };
 
       const searchText = summary(drop, extraction, enrichment);
       const mine = keywords(searchText);
@@ -266,10 +250,10 @@ export const run = internalAction({
       let suggestion: string | undefined;
       let jevClusterId: string | undefined;
       const jevFacets: Partial<Record<"mood" | "time" | "setting", string | null>> = {};
-      if (!hasModels()) {
+      if (!hasOpenAI()) {
         related = rulesRelated();
         decision = ruleDecision(drop.kind, drop.url, extraction, searchText, hasImages, drop.capturedAt, drop.utcOffsetMinutes, related.length > 0);
-        pipeline.decide = rules("no OPENROUTER_API_KEY or OPENAI_API_KEY in the convex env");
+        pipeline.decide = rules("no OPENAI_API_KEY in the convex env");
         pipeline.connect = { ran: "rules", by: "keyword overlap on convex search", reason: `${related.length} of ${scored.length} candidates connected` };
       } else {
         const ruled = ruleDecision(drop.kind, drop.url, extraction, searchText, hasImages, drop.capturedAt, drop.utcOffsetMinutes, false);
@@ -365,7 +349,7 @@ export const run = internalAction({
               },
             };
           }
-          const { answers, by, notes } = await decide(ctx, state, questions);
+          const { answers, by } = await decide(ctx, state, questions);
           for (const facet of ["mood", "time", "setting"] as const) {
             const answer = choice(answers[`vibe_${facet}`]);
             if (!answer || (answer.probabilities?.[answer.choice] ?? answer.confidence ?? 0) < 0.5) continue;
@@ -397,8 +381,7 @@ export const run = internalAction({
             zoneProbabilities: zone?.probabilities ?? ruled.zoneProbabilities,
           };
           const missing = ["type", ...(timed ? [] : ["zone"]), "object_kind", "emphasis"].filter((q) => !choice(answers[q]));
-          const decideNotes = [...notes, ...(missing.length ? [`no answer for ${missing.join(", ")}, used rules there`] : [])];
-          pipeline.decide = { ran: "done", by, reason: decideNotes.length ? decideNotes.join("; ") : undefined };
+          pipeline.decide = { ran: "done", by, reason: missing.length ? `no answer for ${missing.join(", ")}, used rules there` : undefined };
           pipeline.connect = { ran: "done", by: `${by} on ${candidateSource}`, reason: `${related.length} of ${candidates.length} candidates above ${CONNECT_THRESHOLD}` };
         } catch (e) {
           related = rulesRelated();
