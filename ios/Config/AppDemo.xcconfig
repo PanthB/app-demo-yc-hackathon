@@ -1,2 +1,5 @@
 // Convex deployment the app talks to. "$()" keeps "//" from starting a comment.
 CONVEX_URL = https:/$()/adorable-coyote-696.convex.cloud
+
+// App group shared by the app and the share extension: entitlements, Info.plist and Swift all read this.
+APP_GROUP_ID = group.com.panthb.appdemo

@@ -7,6 +7,13 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+    EXCLUDED_ARCHS[sdk=iphonesimulator*]: x86_64
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_IDENTITY[sdk=iphonesimulator*]: "-"
 packages:
   ConvexMobile:
     url: https://github.com/convex/convex-swift
@@ -16,26 +23,75 @@ targets:
     type: application
     platform: iOS
     sources:
-      - AppDemo
+      - path: App
+        excludes: ["*.md", "**/*.md"]
+      - path: Shared
+        excludes: ["*.md", "**/*.md"]
+      - path: Board
+        excludes: ["*.md", "**/*.md"]
+      - path: Location
+        excludes: ["*.md", "**/*.md"]
+      - path: Notifications
+        excludes: ["*.md", "**/*.md"]
+      - path: Seed
+        excludes: ["*.md", "**/*.md"]
+      - path: Ingest
+        excludes: ["*.md", "**/*.md"]
+      - path: Sync
+        excludes: ["*.md", "**/*.md"]
+      - path: Assets
+        excludes: ["*.md", "**/*.md"]
     configFiles:
       Debug: Config/AppDemo.xcconfig
       Release: Config/AppDemo.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.panthb.appdemo
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
-        TARGETED_DEVICE_FAMILY: "1"
-        EXCLUDED_ARCHS[sdk=iphonesimulator*]: x86_64
-        INFOPLIST_FILE: Config/Info.plist
+        INFOPLIST_FILE: Config/App-Info.plist
         GENERATE_INFOPLIST_FILE: "YES"
+        CODE_SIGN_ENTITLEMENTS: Config/App.entitlements
         INFOPLIST_KEY_CFBundleDisplayName: Moments
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "your board uses where you are to bring the things you saved nearby a little closer."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "voice notes you share get turned into words on your phone, so the board can find them a spot."
     dependencies:
+      - target: ShareExtension
       - package: ConvexMobile
         product: ConvexMobile
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareExtension
+        excludes: ["*.md", "**/*.md"]
+      - path: Shared
+        excludes: ["*.md", "**/*.md"]
+    configFiles:
+      Debug: Config/AppDemo.xcconfig
+      Release: Config/AppDemo.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.panthb.appdemo.share
+        INFOPLIST_FILE: Config/ShareExtension-Info.plist
+        GENERATE_INFOPLIST_FILE: "YES"
+        CODE_SIGN_ENTITLEMENTS: Config/ShareExtension.entitlements
+        INFOPLIST_KEY_CFBundleDisplayName: Moments
+        APPLICATION_EXTENSION_API_ONLY: "YES"
+        SKIP_INSTALL: "YES"
+  AppDemoTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+        excludes: ["*.md", "**/*.md"]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.panthb.appdemo.tests
+        GENERATE_INFOPLIST_FILE: "YES"
+    dependencies:
+      - target: AppDemo
 schemes:
   AppDemo:
     build:
@@ -43,5 +99,9 @@ schemes:
         AppDemo: all
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - AppDemoTests
     archive:
       config: Release

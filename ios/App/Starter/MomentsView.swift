@@ -1,5 +1,5 @@
-import Combine
 import ConvexMobile
+import os
 import SwiftUI
 
 struct MomentsView: View {
@@ -11,20 +11,33 @@ struct MomentsView: View {
 
     var body: some View {
         NavigationStack {
-            List(moments) { moment in
-                MomentRow(moment: moment)
+            List {
+                #if DEBUG
+                SkeletonCheckSection()
+                #endif
+                Section("moments") {
+                    if isLoading && moments.isEmpty {
+                        ProgressView()
+                    } else if loadFailed {
+                        Button("the board couldn't reach the backend, tap to try again") { attempt += 1 }
+                    } else if moments.isEmpty {
+                        Text("nothing here yet, so tap the pencil to share the first one.")
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(moments) { moment in
+                        MomentRow(moment: moment)
+                    }
+                }
             }
-            .listStyle(.plain)
             .animation(.default, value: moments)
             .accessibilityIdentifier("momentsList")
-            .overlay { placeholder }
-            .navigationTitle("Moments")
+            .navigationTitle("moments")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         isComposing = true
                     } label: {
-                        Label("New moment", systemImage: "square.and.pencil")
+                        Label("new moment", systemImage: "square.and.pencil")
                     }
                     .accessibilityIdentifier("composeButton")
                 }
@@ -38,29 +51,8 @@ struct MomentsView: View {
         }
     }
 
-    @ViewBuilder
-    private var placeholder: some View {
-        if isLoading {
-            ProgressView()
-        } else if loadFailed {
-            ContentUnavailableView {
-                Label("Can't load moments", systemImage: "wifi.exclamationmark")
-            } description: {
-                Text("Check your connection and try again.")
-            } actions: {
-                Button("Try again") { attempt += 1 }
-            }
-        } else if moments.isEmpty {
-            ContentUnavailableView(
-                "No moments yet",
-                systemImage: "sparkles",
-                description: Text("Tap the pencil to share the first one.")
-            )
-        }
-    }
-
     private func subscribe() async {
-        isLoading = moments.isEmpty
+        isLoading = true
         loadFailed = false
         do {
             for try await latest in convex.subscribe(to: "moments:list", yielding: [Moment].self).values {
@@ -68,7 +60,7 @@ struct MomentsView: View {
                 isLoading = false
             }
         } catch {
-            logger.error("moments:list subscription failed: \(String(describing: error), privacy: .public)")
+            Logger.app.error("moments:list subscription failed: \(String(describing: error), privacy: .public)")
             isLoading = false
             loadFailed = true
         }
