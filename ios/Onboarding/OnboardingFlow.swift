@@ -6,14 +6,14 @@ enum GuideStep: Int, CaseIterable {
 
     func title(shared: Bool) -> String {
         switch self {
-        case .welcome: "welcome"
+        case .welcome: "one board for your crew."
         case .share: "share it from any app."
         case .add: "or add it right here."
         case .vibes: shared ? "\(Onboarding.demoBoardName) sorts itself by mood." : "shared boards sort by mood."
         }
     }
 
-    static let welcomeLine = "one board for everything you and your friends share."
+    static let welcomeLine = "keep the songs, places and clips you all share."
 }
 
 /// The first run: an animated welcome with demo and start fresh, the sign-in sheet for start fresh, and a
@@ -43,7 +43,7 @@ struct OnboardingFlow: View {
             VStack(spacing: 0) {
                 topBar
                 ZStack {
-                    WelcomeFan(fanned: fanned, shown: !inGuide, dimmed: welcomeHidden)
+                    WelcomePile(dealt: fanned, shown: !inGuide, dimmed: welcomeHidden)
                     if inGuide {
                         GuideStage(step: step, shared: start == .demo || step == .vibes)
                             .transition(.identity)
@@ -111,16 +111,18 @@ struct OnboardingFlow: View {
                     .transition(.blurReplace)
                     .accessibilityAddTraits(.isHeader)
             } else {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(spacing: 8) {
                     Text(GuideStep.welcome.title(shared: true))
-                        .font(.system(size: 64, weight: .bold))
+                        .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(.white)
                         .textRenderer(RiseInText(progress: titleProgress))
                         .accessibilityAddTraits(.isHeader)
                     if detailsShown {
-                        WordsText(lead: "", rest: GuideStep.welcomeLine, size: 22)
+                        WordsText(lead: "", rest: GuideStep.welcomeLine, size: 18)
                     }
                 }
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
                 .opacity(welcomeHidden ? 0 : 1)
                 .blur(radius: welcomeHidden ? 12 : 0)
                 .transition(.blurReplace)
