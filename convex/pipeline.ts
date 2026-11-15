@@ -27,6 +27,7 @@ import {
   isMusicLink,
   keywords,
   localStamp,
+  namedPlace,
   objectKindFor,
   overlap,
   ruleDecision,
@@ -134,7 +135,7 @@ function fromReading(r: Reading, drop: Doc<"drops">, fallback: Extraction): Extr
   const anchor = dueAt ?? startsAt;
   return {
     title: text(r.title)?.toLowerCase() ?? fallback.title,
-    placeName: drop.hints?.placeName ?? text(r.place_name),
+    placeName: namedPlace(drop.hints?.placeName, text(r.place_name), drop.hints?.linkTitle),
     area: text(r.area),
     startsAt,
     dueAt,
