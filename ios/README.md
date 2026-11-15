@@ -17,11 +17,11 @@ Sources are included by folder, so adding or removing a Swift file needs no chan
 | Folder | Owner | What lives there |
 | - | - | - |
 | `project.yml`, `Config/` | APPD-3 | The spec, xcconfig, Info.plists and entitlements |
-| `App/` | APPD-3 | App entry point, `RootView` (the look switch, the board clock and the DEBUG links), the one `convex` client and the bundled hand font (`Fonts/Caveat.ttf`, OFL) |
-| `Shared/` | APPD-3 | The seam between the board, glass and ingest: the `Drop` model, the shared vocabulary, the app group, the inbox format, the time-word parser, and the board logic both looks use (zone clock, tags, media) |
-| `Board/` | APPD-3 | The paper look's views (the corkboard), and nothing else |
-| `Glass/` | APPD-12 | The glass look's views, entered through `GlassBoardRoot` |
-| `Location/`, `Notifications/`, `Seed/` | APPD-3 | Location and modes, countdown notifications, and DEBUG seed data, shared by both looks |
+| `App/` | APPD-3 | App entry point, `RootView` (the view switch, the board clock, the drop actions and the DEBUG links), the one `convex` client and the bundled hand font (`Fonts/Caveat.ttf`, OFL) |
+| `Shared/` | APPD-3 | The seam between the board, glass and ingest: the `Drop` model, the shared vocabulary, the app group, the inbox format, the time-word parser, and the logic every view uses (sections, drop actions, zone clock, tags, media) |
+| `Board/` | APPD-3 | The board view (the corkboard), and nothing else |
+| `Glass/` | APPD-12 | The cards and list views and the item parts (pill, avatar, card, row, detail) |
+| `Location/`, `Notifications/`, `Seed/` | APPD-3 | Location and modes, countdown notifications, and DEBUG seed data, shared by every view |
 | `ShareExtension/`, `Ingest/`, `Sync/` | share and ingest thread (PAN-5) | The share extension, inbox processing and Convex sync |
 | `Assets/` | APPD-8 owns `Kit.xcassets` | Asset catalogs, bundled as resources by folder |
 | `Tests/` | whoever owns the code under test | XCTest files |
@@ -35,9 +35,9 @@ Sources are included by folder, so adding or removing a Swift file needs no chan
 
 Simulator builds are ad-hoc signed ("Sign to Run Locally", identity `-`, no team), so the app group entitlement is embedded without a certificate. Device builds on a Mac need `CODE_SIGN_STYLE: Automatic` and a `DEVELOPMENT_TEAM`.
 
-## Looks
+## Views
 
-The app has two looks over the same `Drop` records: paper (`ios/Board`) and glass (`ios/Glass`). `Shared/Look.swift` picks one in this order: the launch argument `-look glass` or `-look paper`, then the stored setting (`UserDefaults` key `look`), then paper. `App/RootView.swift` switches on it. Cloud phones can't pass launch arguments, so the app also handles the `appdemo` URL scheme: open `appdemo://look/glass` or `appdemo://look/paper` (with `tools.capy.phone` `action: "open_url"`) to store the setting and switch right away.
+The app shows the same `Drop` records three ways: list, cards (the default) and board (the corkboard in `ios/Board`). `Shared/ViewMode.swift` picks one in this order: the launch argument `-view list`, `-view cards` or `-view board`, then the stored setting (`UserDefaults` key `view`), then cards. `App/RootView.swift` switches on it; until the shell lands, cards and list both open `GlassBoardRoot`. Cloud phones can't pass launch arguments, so the app also handles the `appdemo` URL scheme: open `appdemo://view/list`, `appdemo://view/cards` or `appdemo://view/board` (with `tools.capy.phone` `action: "open_url"`) to store the setting and switch right away.
 
 ### DEBUG switches
 
@@ -45,22 +45,24 @@ DEBUG builds read these from `UserDefaults.standard`, so a launch argument like 
 
 | key | value | effect |
 | - | - | - |
-| `BoardDebugSeed` | `YES` | replaces the board with the sample board on launch |
+| `BoardDebugSeed` | `YES` | replaces the board with the sample board, "sf crew", on launch |
 | `BoardDebugNow` | ISO 8601, like `2026-11-21T18:30:00-08:00` | the board clock's time, so time-based placement can be tested at any hour |
 | `BoardDebugAnchor` | `bottom` | opens the board scrolled to the bottom, so a headless Simulator can screenshot the vibes and done corners |
 
-The links `appdemo://seed` (replace the board with the sample board) and `appdemo://clear` (empty it) do the same from a cloud phone. Seed data and its images (`Seed/SeedImages.xcassets`) are DEBUG only.
+The links `appdemo://seed` (replace the board with the sample board) and `appdemo://clear` (empty it) do the same from a cloud phone. Seeding also makes this device panth (`seed-panth`), so "mine" shows panth's drops. The seed matches the backend's "sf crew" seed drop for drop, with the same client ids; the list is in `handoffs/APPD-3/seed.md` in the Captain's drive. Seed data and its images (`Seed/SeedImages.xcassets`) are DEBUG only.
 
 ## Shared model
 
-- `Drop` (SwiftData) holds identity, raw input, what was read, what it became and what the person did, using the zone, type, objectKind, emphasis and status names from the phase 1 plan. Enum fields are stored as raw strings (`zoneRaw` and friends) so predicates work, with typed accessors on top.
-- `Drop.applyDecidedZone(_:unsure:)` is how the pipeline places a drop. It does nothing once the person moved or pinned the drop. `moveByUser(to:x:y:)` and `undoMove()` are the board's side.
+- `Drop` (SwiftData) holds identity, raw input, what was read, what it became and what the person did, using the zone, type, objectKind, emphasis and status names from the phase 1 plan. The shared-board fields follow the Convex contract: `authorId` (who saved it, renamed from `dropperId` with the old store column kept), `authorName`, `authorColor` (a SwiftUI color name), `boardId`, `pinnedAt` (`isPinned` when it's set) and `suggestion`. Enum fields are stored as raw strings (`zoneRaw` and friends) so predicates work, with typed accessors on top.
+- `Drop.applyDecidedZone(_:unsure:)` is how the pipeline places a drop. It does nothing once the person moved the drop. Pinning doesn't hold a zone: `setPinned(_:)` only sets or clears `pinnedAt`, so an unpinned drop goes back to its section. `moveByUser(to:x:y:)` and `undoMove()` are the person's side.
 - `BoardStore.makeContainer()` opens `Board.store` in the app group container.
 - `DeviceIdentity.personId` and `.boardId` are created on first use and kept in the app group's defaults, so the extension sees the same ids.
 - `Inbox` is a folder per drop at `<app group>/inbox/<uuid>/` holding `drop.json` and the payload files. Writes go to `inbox/.staging/<uuid>/` first and move into place in one step, so a reader never sees half a drop. `Inbox.shared` is the app group inbox.
 - `TimeWords.parse(_:now:calendar:)` turns time words into a `dueAt` (reminders and "in 1 hr" countdowns) or a `startsAt`, a zone hint and a lowercase `whenLabel`.
 - `Drop.artist` is the artist of a song link (APPD-11 fills it from link previews and `enrichment.author`). `Drop.mediaDuration` is a voice note's length in seconds.
-- `ZoneClock` works the zone out again from `startsAt` and `dueAt` with no model call (U6): within 90 minutes or later today before 5pm is now, this evening and the small hours are tonight, Friday 5pm to Sunday night is this weekend. Time only moves a drop toward now, and a drop the person moved or pinned, vibes and done never move. `Drop.boardZone(now:)` is the zone to draw. `BoardContents(drops, now:)` groups drops by it.
+- `ZoneClock` works the zone out again from `startsAt` and `dueAt` with no model call (U6): within 90 minutes or later today before 5pm is now, this evening and the small hours are tonight, Friday 5pm to Sunday night is this weekend. Time only moves a drop toward now, and a drop the person moved, vibes and done never move. `Drop.boardZone(now:)` is the zone to draw. `BoardContents(drops, now:)` groups drops by it.
+- `DropSection.build(_:filter:me:now:)` is what every view lays out: pinned first (newest pin first), then now, tonight, this weekend, someday, vibes and done, with empty sections left out. A pinned drop sits only in pinned until it's done, and an arriving drop leads now. `DropFilter` is everyone or mine (`authorId == me`).
+- `DropActions` (`@Environment(\.dropActions)`) is how any view pins, moves, marks done, undoes and opens a drop. The defaults change SwiftData only. `RootView` installs `open`, and the shell swaps in the sync versions, so views never call ios/Sync directly.
 - `BoardClock` (in the environment from `RootView`) is the `now` both looks lay out with. It ticks when the app comes to the foreground and at the time-of-day boundaries (midnight, 5am, noon, 5pm, 10pm), never on a running timer.
 - `DropFace` formats what an object's front says: the short title (three words at most), the when tag (`7:30pm`, `sat 8pm`, `sometime in march`, or `sometime` when a drop has no time) and the countdown. `MediaStore` saves and caches images under `media/` in the app group. `StableRandom` seeds tilt and placement from a drop's id, so they never change between launches.
 
@@ -98,7 +100,7 @@ open AppDemo.xcodeproj
 xcodebuild test -project AppDemo.xcodeproj -scheme AppDemo -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
 
-`TimeWordsTests`, `InboxTests`, `LookTests` and `ZoneClockTests` cover pure Foundation code, so they also run on Linux with the `swift:6.1` Docker image. Put `Shared/Vocabulary.swift`, `Shared/TimeWords.swift`, `Shared/Inbox.swift`, `Shared/Look.swift`, `Shared/ZoneClock.swift` and `Shared/DropFace.swift` in a SwiftPM target named `AppDemo`, put `Tests/*.swift` in a test target, and run `swift test`.
+`TimeWordsTests`, `InboxTests`, `ViewModeTests` and `ZoneClockTests` cover pure Foundation code, so they also run on Linux with the `swift:6.1` Docker image. Put `Shared/Vocabulary.swift`, `Shared/TimeWords.swift`, `Shared/Inbox.swift`, `Shared/ViewMode.swift`, `Shared/ZoneClock.swift` and `Shared/DropFace.swift` in a SwiftPM target named `AppDemo`, put `Tests/*.swift` in a test target, and run `swift test`.
 
 ## Backend contract
 
