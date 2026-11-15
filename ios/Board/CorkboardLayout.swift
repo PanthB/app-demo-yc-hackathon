@@ -71,7 +71,7 @@ struct CorkboardLayout {
     init(contents: BoardContents, width: CGFloat, minHeight: CGFloat, now: Date) {
         var y: CGFloat = 0
         if !contents.arriving.isEmpty {
-            y = placeObjects(contents.arriving, zone: nil, top: 16, width: width, now: now)
+            y = placeObjects(contents.arriving, zone: nil, top: 18, width: width, now: now) - 18
         }
         for zone in Zone.timeOrder {
             let labelTop = y + (zone == .now ? 24 : 6)
@@ -129,8 +129,10 @@ struct CorkboardLayout {
 
     static func size(for drop: Drop) -> CGSize {
         if drop.showsRawThing {
-            let hasPicture = MediaStore.image(at: drop.thumbnailPath ?? drop.cutoutPath) != nil
-            return CGSize(width: 160, height: hasPicture ? 150 : 96)
+            if MediaStore.image(at: drop.thumbnailPath ?? drop.cutoutPath) != nil {
+                return CGSize(width: 160, height: 150)
+            }
+            return CGSize(width: 160, height: (drop.rawText ?? "").isEmpty ? 56 : 96)
         }
         switch drop.objectKind {
         case .sticky: return CGSize(width: 120, height: 120)
