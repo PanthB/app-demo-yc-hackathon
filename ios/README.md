@@ -47,6 +47,7 @@ DEBUG builds read these from `UserDefaults.standard`, so a launch argument like 
 | - | - | - |
 | `BoardDebugSeed` | `YES` | replaces the board with the sample board on launch |
 | `BoardDebugNow` | ISO 8601, like `2026-11-21T18:30:00-08:00` | the board clock's time, so time-based placement can be tested at any hour |
+| `BoardDebugAnchor` | `bottom` | opens the board scrolled to the bottom, so a headless Simulator can screenshot the vibes and done corners |
 
 The links `appdemo://seed` (replace the board with the sample board) and `appdemo://clear` (empty it) do the same from a cloud phone. Seed data and its images (`Seed/SeedImages.xcassets`) are DEBUG only.
 

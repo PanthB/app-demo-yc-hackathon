@@ -6,6 +6,13 @@ struct PaperBoardRoot: View {
     @Environment(BoardClock.self) private var clock
     private let mood = Mood.sunny
 
+    private static var debugAnchor: UnitPoint? {
+        #if DEBUG
+        if UserDefaults.standard.string(forKey: "BoardDebugAnchor") == "bottom" { return .bottom }
+        #endif
+        return nil
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let contents = BoardContents(drops, now: clock.now)
@@ -15,6 +22,7 @@ struct PaperBoardRoot: View {
                     .background { CorkSurface().padding(.vertical, -240) }
             }
             .scrollIndicators(.hidden)
+            .defaultScrollAnchor(Self.debugAnchor)
             .accessibilityIdentifier("paperBoard")
         }
         .background(mood.board.ignoresSafeArea())
