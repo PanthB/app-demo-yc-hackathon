@@ -22,6 +22,7 @@ struct NightHeader: View {
     let showBoard: (String) -> Void
     let startBoard: () -> Void
     let joinBoard: () -> Void
+    var seeFull: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -40,6 +41,10 @@ struct NightHeader: View {
                 Divider()
                 Button("start a shared board", systemImage: "plus") { startBoard() }
                 Button("join with a code", systemImage: "person.badge.plus") { joinBoard() }
+                if let seeFull {
+                    Divider()
+                    Button("see full", systemImage: "circle.hexagongrid") { seeFull() }
+                }
             } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(boardName)

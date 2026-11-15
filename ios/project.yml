@@ -46,6 +46,8 @@ targets:
         excludes: ["*.md", "**/*.md"]
       - path: Clusters
         excludes: ["*.md", "**/*.md"]
+      - path: Layouts
+        excludes: ["*.md", "**/*.md"]
       - path: Onboarding
         excludes: ["*.md", "**/*.md"]
       - path: Auth
