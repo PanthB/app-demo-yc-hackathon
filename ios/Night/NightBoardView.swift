@@ -7,7 +7,15 @@ struct NightBoardView: View {
     @State private var chosenBoard: String?
     @State private var filter: DropFilter = .everyone
     @State private var path: [UUID] = []
+    @State private var showsStreaks = false
+    @State private var moment = 0
+    @State private var holdsDemoStreak = Self.asksForStreakDemo
     @Namespace private var namespace
+
+    private struct StreakMark: Equatable {
+        let board: String
+        let days: Int
+    }
 
     var body: some View {
         let personal = DeviceIdentity.boardId
@@ -18,6 +26,9 @@ struct NightBoardView: View {
         let isShared = members.count > 1
         let palette = NightPalette.forBoard(current, personal: current == personal)
         let name = choices.first { $0.id == current }?.name ?? "my board"
+        let me = DeviceIdentity.personId
+        let streaks = BoardStreaks(drops: drops, me: me, now: clock.now)
+        let mine = holdsDemoStreak ? DailyStreak(days: max(streaks.mine.days - 1, 0), droppedToday: false) : streaks.mine
 
         NavigationStack(path: $path) {
             ScrollView {
@@ -26,7 +37,7 @@ struct NightBoardView: View {
                         boardName: name,
                         boards: choices,
                         currentBoardId: current,
-                        line: Self.line(drops: drops.count, members: members.count),
+                        line: Self.line(streaks, isShared: isShared),
                         isShared: isShared,
                         filter: $filter
                     ) { id in
@@ -36,7 +47,7 @@ struct NightBoardView: View {
                         }
                     }
                     NightFeed(
-                        sections: DropSection.build(drops, grouping: isShared ? .vibe : .when, filter: filter, me: DeviceIdentity.personId, now: clock.now),
+                        sections: DropSection.build(drops, grouping: isShared ? .vibe : .when, filter: filter, me: me, now: clock.now),
                         namespace: namespace
                     ) { drop in
                         path.append(drop.id)
@@ -54,9 +65,12 @@ struct NightBoardView: View {
                     .allowsHitTesting(false)
             }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NightStreakChip(streak: mine, moment: moment) { showsStreaks = true }
+                }
                 if isShared {
                     ToolbarItem(placement: .topBarTrailing) {
-                        NightMembers(members: members)
+                        NightMembers(members: members, streaks: streaks.members) { showsStreaks = true }
                     }
                     ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 }
@@ -70,6 +84,17 @@ struct NightBoardView: View {
                         .navigationTransition(.zoom(sourceID: id, in: namespace))
                 }
             }
+        }
+        .sheet(isPresented: $showsStreaks) {
+            NightStreakSheet(boardName: name, streaks: streaks, members: members, me: me, isShared: isShared)
+        }
+        .onChange(of: StreakMark(board: current, days: mine.days)) { before, after in
+            if before.board == after.board, after.days > before.days { moment += 1 }
+        }
+        .task {
+            guard holdsDemoStreak else { return }
+            try? await Task.sleep(for: .seconds(2.5))
+            withAnimation(.snappy) { holdsDemoStreak = false }
         }
         .tint(palette.ember)
         .preferredColorScheme(.dark)
@@ -108,9 +133,16 @@ struct NightBoardView: View {
         }
     }
 
-    static func line(drops: Int, members: Int) -> String {
-        let things = drops == 1 ? "one thing" : "\(drops) things"
-        guard members > 1 else { return drops == 0 ? "nothing here yet. share something and it lands here." : "\(things) saved, all yours." }
-        return "\(things) saved by \(members) friends."
+    static func line(_ streaks: BoardStreaks, isShared: Bool) -> String {
+        guard isShared, streaks.mine.isAlive, streaks.crew.days > 1 else { return streaks.headline }
+        return "\(streaks.headline) the crew is on a \(streaks.crew.days) day run."
+    }
+
+    private static var asksForStreakDemo: Bool {
+        #if DEBUG
+        UserDefaults.standard.bool(forKey: "NightStreakDemo")
+        #else
+        false
+        #endif
     }
 }
