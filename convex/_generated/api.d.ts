@@ -9,13 +9,16 @@
  */
 
 import type * as board from "../board.js";
+import type * as boards from "../boards.js";
 import type * as drops from "../drops.js";
 import type * as files from "../files.js";
 import type * as lib_enrich from "../lib/enrich.js";
 import type * as lib_models from "../lib/models.js";
 import type * as lib_rules from "../lib/rules.js";
+import type * as lib_suggest from "../lib/suggest.js";
 import type * as model from "../model.js";
 import type * as moments from "../moments.js";
+import type * as people from "../people.js";
 import type * as pipeline from "../pipeline.js";
 
 import type {
@@ -26,13 +29,16 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   board: typeof board;
+  boards: typeof boards;
   drops: typeof drops;
   files: typeof files;
   "lib/enrich": typeof lib_enrich;
   "lib/models": typeof lib_models;
   "lib/rules": typeof lib_rules;
+  "lib/suggest": typeof lib_suggest;
   model: typeof model;
   moments: typeof moments;
+  people: typeof people;
   pipeline: typeof pipeline;
 }>;
 

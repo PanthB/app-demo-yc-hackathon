@@ -8,6 +8,27 @@ export default defineSchema({
     author: v.string(),
     createdAt: v.number(),
   }).index("by_createdAt", ["createdAt"]),
+  people: defineTable({
+    personId: v.string(),
+    name: v.string(),
+    personalBoardId: v.optional(v.string()),
+  }).index("by_personId", ["personId"]),
+  boards: defineTable({
+    boardId: v.string(),
+    name: v.string(),
+    shared: v.boolean(),
+    inviteCode: v.optional(v.string()),
+    ownerId: v.string(),
+  })
+    .index("by_boardId", ["boardId"])
+    .index("by_inviteCode", ["inviteCode"]),
+  members: defineTable({
+    boardId: v.string(),
+    personId: v.string(),
+    color: v.string(),
+  })
+    .index("by_boardId", ["boardId"])
+    .index("by_personId_and_boardId", ["personId", "boardId"]),
   drops: defineTable(dropFields)
     .index("by_clientId", ["clientId"])
     .index("by_boardId", ["boardId"])

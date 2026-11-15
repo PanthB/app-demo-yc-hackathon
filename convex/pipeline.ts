@@ -36,6 +36,7 @@ import {
   ruleExtraction,
   whenLabelFor,
 } from "./lib/rules";
+import { goesWithLine, nameLabel, sameThing, socialLine } from "./lib/suggest";
 
 const CONNECT_THRESHOLD = 0.75;
 const ZONE_THRESHOLD = 0.5;
@@ -225,6 +226,7 @@ export const run = internalAction({
       const rulesRelated = () => scored.filter((x) => x.score >= RULES_CONNECT).slice(0, 3).map((x) => x.d.clientId);
       let decision: Decision;
       let related: string[];
+      let suggestion: string | undefined;
       if (!hasOpenRouter()) {
         related = rulesRelated();
         decision = ruleDecision(drop.kind, drop.url, extraction, searchText, hasImages, drop.capturedAt, drop.utcOffsetMinutes, related.length > 0);
@@ -233,6 +235,12 @@ export const run = internalAction({
       } else {
         const ruled = ruleDecision(drop.kind, drop.url, extraction, searchText, hasImages, drop.capturedAt, drop.utcOffsetMinutes, false);
         try {
+          const names: Record<string, string> = await ctx.runQuery(internal.boards.names, { personIds: candidates.map((c) => c.authorId) });
+          const fresh = { url: drop.url, hints: drop.hints, extraction };
+          const lines = candidates.map((c) =>
+            c.authorId !== drop.authorId ? socialLine([nameLabel(names[c.authorId])], sameThing(c, fresh)) : goesWithLine(c),
+          );
+          const offered = [...new Set(lines.filter((l): l is string => Boolean(l)))];
           const state = {
             saved_at: localStamp(drop.capturedAt, drop.utcOffsetMinutes),
             new_drop: `shared as: ${drop.kind}${hasImages ? " (with a photo)" : ""}\n${searchText}`,
@@ -284,6 +292,16 @@ export const run = internalAction({
               instructions: `Do new_drop and candidates.c${i} belong to the same plan or outing, so they should be tied together with string on the board? ${UNTRUSTED}`,
             };
           });
+          if (offered.length > 0) {
+            questions.suggestion = {
+              type: "choice",
+              instructions: `Which one line, if any, is worth showing under new_drop to the friends who share this board? Pick none unless the line points to something new_drop really belongs with. ${UNTRUSTED}`,
+              criteria: {
+                none: "show no line, because none of them would help",
+                ...Object.fromEntries(offered.map((line, i) => [`s${i}`, `show "${line}"`])),
+              },
+            };
+          }
           const answers = await jevDecide(state, questions);
           const type = choice(answers.type);
           const zone = choice(answers.zone);
@@ -292,6 +310,9 @@ export const run = internalAction({
           const bestZone = (zone?.choice ?? ruled.zone) as Zone;
           const unsure = zone ? (zone.probabilities?.[bestZone] ?? zone.confidence ?? 0) < ZONE_THRESHOLD : ruled.unsure;
           related = candidates.filter((_, i) => (noul(answers[`connect_c${i}`]) ?? 0) > CONNECT_THRESHOLD).map((c) => c.clientId);
+          const picked = choice(answers.suggestion)?.choice;
+          const line = picked?.startsWith("s") ? offered[Number(picked.slice(1))] : undefined;
+          suggestion = candidates.some((c, i) => line !== undefined && lines[i] === line && related.includes(c.clientId)) ? line : undefined;
           const chosenType = (type?.choice ?? ruled.type) as DropType;
           const finalZone: Zone = unsure ? "someday" : bestZone;
           decision = {
@@ -320,7 +341,7 @@ export const run = internalAction({
           await memory.add(namespaceFor(drop.boardId), {
             content: searchText,
             id: drop.clientId,
-            metadata: { clientId: drop.clientId, personId: drop.personId, kind: drop.kind, type: decision.type, zone: decision.zone },
+            metadata: { clientId: drop.clientId, authorId: drop.authorId, kind: drop.kind, type: decision.type, zone: decision.zone },
             date: new Date(drop.capturedAt).toISOString(),
             dreaming: "instant",
           });
@@ -331,7 +352,7 @@ export const run = internalAction({
       }
 
       pipeline.finishedAt = Date.now();
-      await ctx.runMutation(internal.drops.applyResult, { dropId, enrichment, extraction, decision, relatedClientIds: related, searchText, pipeline });
+      await ctx.runMutation(internal.drops.applyResult, { dropId, enrichment, extraction, decision, suggestion, relatedClientIds: related, searchText, pipeline });
     } catch (e) {
       pipeline.error = errorText(e);
       pipeline.finishedAt = Date.now();

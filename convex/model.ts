@@ -110,9 +110,34 @@ export const decision = v.object({
   zoneProbabilities: v.record(v.string(), v.number()),
 });
 
+export const PALETTE = ["orange", "blue", "green", "pink", "teal", "indigo", "yellow", "red"];
+
+export const member = v.object({
+  personId: v.string(),
+  name: v.string(),
+  color: v.string(),
+  joinedAt: v.number(),
+});
+
+export const boardView = v.object({
+  boardId: v.string(),
+  name: v.string(),
+  shared: v.boolean(),
+  inviteCode: v.optional(v.string()),
+  ownerId: v.string(),
+  members: v.array(member),
+  createdAt: v.number(),
+});
+
+export const personView = v.object({
+  personId: v.string(),
+  name: v.string(),
+  personalBoardId: v.string(),
+});
+
 export const dropFields = {
   boardId: v.string(),
-  personId: v.string(),
+  authorId: v.string(),
   clientId: v.string(),
   kind: sourceKind,
   text: v.optional(v.string()),
@@ -131,6 +156,8 @@ export const dropFields = {
   zoneSetByUser: v.boolean(),
   previousZone: v.optional(zone),
   pinned: v.boolean(),
+  pinnedAt: v.optional(v.number()),
+  suggestion: v.optional(v.string()),
   relatedClientIds: v.array(v.string()),
   pipeline: pipeline,
   searchText: v.optional(v.string()),
@@ -150,6 +177,8 @@ export const dropView = v.object({
   title: v.optional(v.string()),
   thumbnailUrl: v.optional(v.string()),
   imageUrls: v.array(v.string()),
+  authorName: v.optional(v.string()),
+  authorColor: v.optional(v.string()),
 });
 
 export const nullable = <T extends Parameters<typeof v.optional>[0]>(x: T) =>
