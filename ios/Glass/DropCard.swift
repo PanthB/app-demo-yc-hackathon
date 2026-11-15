@@ -10,7 +10,12 @@ struct DropCard: View {
         let now = clock.now
         let face = drop.previewFace(now: now)
         VStack(alignment: .leading, spacing: 0) {
-            DropPreview(face: face, seed: drop.id)
+            DropPreview(face: face, seed: drop.id, pictureRatio: drop.kind == .song ? 1 : nil)
+                .overlay(alignment: .bottomLeading) {
+                    if drop.kind == .video, face.fillsItsFrame {
+                        PlayBadge(length: drop.mediaDuration.map(DropFace.duration)).padding(12)
+                    }
+                }
             VStack(alignment: .leading, spacing: 4) {
                 if let title = drop.cardTitle(beside: face) {
                     Text(title).font(.headline).lineLimit(2)

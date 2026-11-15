@@ -3,7 +3,9 @@ import Foundation
 enum DropKind: String, CaseIterable, Sendable {
     case photo, video, song, place, event, link, note, voice, reminder
 
-    var word: String { rawValue }
+    var word: String {
+        self == .video ? "clip" : rawValue
+    }
 
     var symbol: String {
         switch self {
@@ -19,8 +21,9 @@ enum DropKind: String, CaseIterable, Sendable {
         }
     }
 
-    static func derive(type: DropType?, source: SourceKind, hasDueTime: Bool) -> DropKind {
+    static func derive(type: DropType?, source: SourceKind, hasDueTime: Bool, link: String? = nil) -> DropKind {
         if hasDueTime { return .reminder }
+        if source == .video || isClip(link: link) { return .video }
         switch type {
         case .song: return .song
         case .event: return .event
@@ -34,6 +37,17 @@ enum DropKind: String, CaseIterable, Sendable {
         case .url: return .link
         case .text, .pdf: return .note
         }
+    }
+}
+
+extension DropKind {
+    private static let clipSites = ["tiktok.com", "youtube.com", "youtu.be", "vimeo.com", "instagram.com"]
+
+    static func isClip(link: String?) -> Bool {
+        guard let link, let parts = URLComponents(string: link), let host = parts.host?.lowercased(),
+              let site = clipSites.first(where: { host == $0 || host.hasSuffix(".\($0)") })
+        else { return false }
+        return site != "instagram.com" || parts.path.hasPrefix("/reel") || parts.path.hasPrefix("/tv")
     }
 }
 

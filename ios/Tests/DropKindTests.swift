@@ -9,8 +9,26 @@ final class DropKindTests: XCTestCase {
 
     func testWhatTheReaderFoundWinsOverTheSource() {
         XCTAssertEqual(DropKind.derive(type: .song, source: .url, hasDueTime: false), .song)
-        XCTAssertEqual(DropKind.derive(type: .event, source: .video, hasDueTime: false), .event)
+        XCTAssertEqual(DropKind.derive(type: .event, source: .pdf, hasDueTime: false), .event)
         XCTAssertEqual(DropKind.derive(type: .place, source: .image, hasDueTime: false), .place)
+    }
+
+    func testSomethingThatPlaysIsAClipWhateverItIsAbout() {
+        XCTAssertEqual(DropKind.derive(type: .event, source: .video, hasDueTime: false), .video)
+        XCTAssertEqual(DropKind.derive(type: .place, source: .url, hasDueTime: false, link: "https://www.tiktok.com/@graacciiee/video/7617551860244745503"), .video)
+        XCTAssertEqual(DropKind.derive(type: .place, source: .url, hasDueTime: false, link: "https://www.youtube.com/watch?v=zmIgc0SkVgE"), .video)
+        XCTAssertEqual(DropKind.derive(type: nil, source: .url, hasDueTime: false, link: "https://youtu.be/zmIgc0SkVgE"), .video)
+        XCTAssertEqual(DropKind.derive(type: .mood, source: .url, hasDueTime: false, link: "https://www.instagram.com/reel/DbySW82ILGn/"), .video)
+        XCTAssertEqual(DropKind.video.word, "clip")
+    }
+
+    func testAPostOrAnOrdinaryLinkIsNotAClip() {
+        XCTAssertEqual(DropKind.derive(type: nil, source: .url, hasDueTime: false, link: "https://www.instagram.com/p/DWCN6pbgn3F/"), .link)
+        XCTAssertEqual(DropKind.derive(type: .place, source: .url, hasDueTime: false, link: "https://www.stonemillmatcha.com"), .place)
+        XCTAssertEqual(DropKind.derive(type: .song, source: .url, hasDueTime: false, link: "https://open.spotify.com/track/3xKsf9qdS1CyvXSMEid6g8"), .song)
+        XCTAssertFalse(DropKind.isClip(link: "https://nottiktok.com/video/1"))
+        XCTAssertFalse(DropKind.isClip(link: nil))
+        XCTAssertFalse(DropKind.isClip(link: "not a link"))
     }
 
     func testAnUnreadDropFallsBackToItsSource() {

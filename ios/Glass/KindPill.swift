@@ -29,3 +29,22 @@ struct PinBadge: View {
             .accessibilityLabel("pinned")
     }
 }
+
+struct PlayBadge: View {
+    let length: String?
+    @ScaledMetric(relativeTo: .caption2) private var height: CGFloat = 22
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "play.fill")
+            if let length {
+                Text(length).monospacedDigit()
+            }
+        }
+        .font(.caption2.weight(.semibold))
+        .padding(.horizontal, length == nil ? 0 : 8)
+        .frame(minWidth: height, minHeight: height)
+        .glassEffect(.regular, in: .capsule)
+        .accessibilityHidden(true)
+    }
+}

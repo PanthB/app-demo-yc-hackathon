@@ -38,7 +38,7 @@ enum PreviewFace {
 
 extension Drop {
     var kind: DropKind {
-        DropKind.derive(type: type, source: sourceKind, hasDueTime: dueAt != nil)
+        DropKind.derive(type: type, source: sourceKind, hasDueTime: dueAt != nil, link: url)
     }
 
     var authorLabel: String {

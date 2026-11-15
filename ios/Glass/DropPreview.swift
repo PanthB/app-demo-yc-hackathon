@@ -3,13 +3,14 @@ import SwiftUI
 struct DropPreview: View {
     let face: PreviewFace
     let seed: UUID
+    var pictureRatio: CGFloat?
     @ScaledMetric(relativeTo: .caption2) private var pillHeight: CGFloat = 22
 
     var body: some View {
         switch face {
         case .image(let image):
             Color.clear
-                .aspectRatio(1 / face.ratio, contentMode: .fit)
+                .aspectRatio(1 / (pictureRatio ?? face.ratio), contentMode: .fit)
                 .overlay { Image(uiImage: image).resizable().scaledToFill() }
                 .clipped()
         case .cutout(let image):
