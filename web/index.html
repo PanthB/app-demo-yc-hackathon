@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0b1a" />
+    <meta name="color-scheme" content="dark" />
+    <title>sf crew on moments</title>
+    <meta name="description" content="a live board from moments. friends share anything from any app, and it lands here grouped by mood." />
+    <meta property="og:title" content="sf crew on moments" />
+    <meta property="og:description" content="a live board from moments. friends share anything from any app, and it lands here grouped by mood." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23182a9e'/%3E%3Ccircle cx='16' cy='16' r='6' fill='white'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <div class="backdrop" aria-hidden="true"></div>
+    <header class="top">
+      <span class="brand">moments</span>
+      <a class="glass pill" href="https://github.com/PanthB/app-demo-yc-hackathon" target="_blank" rel="noopener">code and video</a>
+    </header>
+    <main>
+      <section class="intro">
+        <div class="presence">
+          <div class="members" id="members"></div>
+          <span class="live" id="live" hidden><span class="dot"></span>live</span>
+        </div>
+        <h1>sf crew</h1>
+        <p class="lede">a board some friends keep in moments. when one of them saves something on their phone, it shows up here.</p>
+      </section>
+      <div class="switch-row">
+        <div class="glass switch" role="tablist" aria-label="arrange the board">
+          <button type="button" role="tab" data-view="mood" aria-selected="true">by mood</button>
+          <button type="button" role="tab" data-view="when" aria-selected="false">by when</button>
+        </div>
+      </div>
+      <div id="board" class="board">
+        <p class="quiet" id="status">opening the board…</p>
+      </div>
+    </main>
+    <footer class="foot">
+      <p>moments is a native ios app. this page reads the same live board the phones do.</p>
+      <a href="https://github.com/PanthB/app-demo-yc-hackathon" target="_blank" rel="noopener">see the code and the demo video on github</a>
+    </footer>
+    <button type="button" class="glass toast" id="toast" hidden></button>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
