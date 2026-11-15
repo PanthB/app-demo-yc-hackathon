@@ -1,0 +1,47 @@
+name: AppDemo
+options:
+  bundleIdPrefix: com.panthb
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+packages:
+  ConvexMobile:
+    url: https://github.com/convex/convex-swift
+    exactVersion: 0.8.2
+targets:
+  AppDemo:
+    type: application
+    platform: iOS
+    sources:
+      - AppDemo
+    configFiles:
+      Debug: Config/AppDemo.xcconfig
+      Release: Config/AppDemo.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.panthb.appdemo
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"
+        EXCLUDED_ARCHS[sdk=iphonesimulator*]: x86_64
+        INFOPLIST_FILE: Config/Info.plist
+        GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_KEY_CFBundleDisplayName: Moments
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+    dependencies:
+      - package: ConvexMobile
+        product: ConvexMobile
+schemes:
+  AppDemo:
+    build:
+      targets:
+        AppDemo: all
+    run:
+      config: Debug
+    archive:
+      config: Release
