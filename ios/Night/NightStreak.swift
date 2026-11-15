@@ -44,6 +44,8 @@ struct NightStreakSheet: View {
     let members: [NightMember]
     let me: String
     let isShared: Bool
+    var invite: URL?
+    var inviteCode: String?
 
     @State private var contentHeight: CGFloat = 320
 
@@ -65,6 +67,22 @@ struct NightStreakSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 WeekStrip(days: streaks.myWeek, label: "your week in \(boardName)")
+
+                if isShared, let invite, let inviteCode {
+                    HStack(spacing: 12) {
+                        Text("the code is \(inviteCode).")
+                            .font(NightStyle.body)
+                            .foregroundStyle(NightStyle.secondary)
+                            .monospacedDigit()
+                            .textSelection(.enabled)
+                        Spacer(minLength: 0)
+                        ShareLink(item: invite, subject: Text("join \(boardName)"), message: Text("join \(boardName) with me. the code is \(inviteCode).")) {
+                            Text("invite friends")
+                        }
+                        .buttonStyle(NightPrimaryButtonStyle())
+                        .accessibilityIdentifier("nightInvite")
+                    }
+                }
 
                 if isShared {
                     VStack(alignment: .leading, spacing: 16) {

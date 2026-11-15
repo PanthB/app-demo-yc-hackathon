@@ -63,7 +63,6 @@ struct NightBoardView: View {
                 .padding(.bottom, 120)
             }
             .scrollIndicators(.hidden)
-            .scrollEdgeEffectStyle(.hard, for: .top)
             .background { NightBackdrop(palette: palette, isLiving: false) }
             .overlay(alignment: .top) {
                 LinearGradient(stops: [.init(color: NightStyle.ink.opacity(0.95), location: 0), .init(color: NightStyle.ink.opacity(0.75), location: 0.55), .init(color: NightStyle.ink.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
@@ -115,7 +114,7 @@ struct NightBoardView: View {
             }
         }
         .sheet(isPresented: $showsStreaks) {
-            NightStreakSheet(boardName: name, streaks: streaks, members: members, me: me, isShared: isShared)
+            NightStreakSheet(boardName: name, streaks: streaks, members: members, me: me, isShared: isShared, invite: boards.currentBoard?.inviteLink, inviteCode: boards.currentBoard?.inviteCode)
         }
         .onChange(of: StreakMark(board: current, days: mine.days)) { before, after in
             if before.board == after.board, after.days > before.days { moment += 1 }

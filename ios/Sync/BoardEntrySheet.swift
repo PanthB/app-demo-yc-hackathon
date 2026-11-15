@@ -54,7 +54,7 @@ struct BoardEntrySheet: View {
                     }
                 }
             }
-            .navigationTitle(isCreating ? "new shared board" : "join a board")
+            .navigationTitle(isCreating ? "new board" : "join a board")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
