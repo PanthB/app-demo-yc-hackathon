@@ -88,7 +88,7 @@ struct GlassLayout {
         case .thisWeekend: return CGRect(x: 0, y: h * 0.305, width: w, height: h * 0.145)
         case .tonight: return CGRect(x: 0, y: h * 0.45, width: w, height: h * 0.17)
         case .now: return CGRect(x: 0, y: h * 0.62, width: w, height: h * 0.25)
-        case .vibes: return CGRect(x: w * 0.7, y: h * 0.235, width: w * 0.3, height: h * 0.215)
+        case .vibes: return CGRect(x: w * 0.7, y: h * 0.195, width: w * 0.3, height: h * 0.2)
         case .done: return CGRect(x: 0, y: h * 0.9, width: w * 0.42, height: h * 0.1)
         }
     }
@@ -97,7 +97,7 @@ struct GlassLayout {
         switch zone {
         case .someday: size.height * 0.215
         case .thisWeekend: size.height * 0.375
-        case .tonight: size.height * 0.53
+        case .tonight: size.height * 0.54
         case .now: size.height * 0.745
         case .vibes: band(.vibes).midY
         case .done: band(.done).midY
@@ -107,7 +107,7 @@ struct GlassLayout {
     func labelPoint(_ zone: Zone) -> CGPoint {
         switch zone {
         case .now: CGPoint(x: 20, y: band(.now).minY + 4)
-        case .vibes: CGPoint(x: band(.vibes).midX, y: band(.vibes).maxY - 2)
+        case .vibes: CGPoint(x: band(.vibes).midX, y: band(.vibes).maxY + 4)
         default: CGPoint(x: 20, y: rowCenter(zone))
         }
     }
@@ -136,7 +136,7 @@ struct GlassLayout {
         case .now: return Self.edge...max(right, Self.edge)
         case .tonight: return Self.labelColumn...max(right, Self.labelColumn)
         case .thisWeekend: return Self.labelColumn...max(size.width * 0.68, Self.labelColumn)
-        default: return Self.labelColumn...max(size.width * 0.78, Self.labelColumn)
+        default: return Self.labelColumn...max(size.width * 0.72, Self.labelColumn)
         }
     }
 

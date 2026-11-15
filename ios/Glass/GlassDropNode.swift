@@ -44,8 +44,7 @@ struct GlassDropNode: View {
             .shadow(color: GlassCues.now.opacity(0.45 * glow), radius: 18)
             .shadow(color: GlassCues.now.opacity(0.2 * glow), radius: 40)
             .background(alignment: .top) { reflection }
-            .opacity(0.45 + 0.55 * nearness)
-            .brightness(-0.15 * (1 - nearness))
+            .colorMultiply(Color(white: 0.42 + 0.58 * nearness))
             .overlay { if !drop.glassIsSettled { GlassCues.Unsure() } }
             .overlay(alignment: .bottom) {
                 if drop.zoneSetByUser { GlassCues.HandPlaced().offset(y: 11) }
