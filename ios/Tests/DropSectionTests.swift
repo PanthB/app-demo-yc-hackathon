@@ -71,6 +71,41 @@ final class DropSectionTests: XCTestCase {
         XCTAssertEqual(sections.first?.drops.map(\.id), [arriving.id, settled.id])
     }
 
+    private func clustered(_ title: String, _ cluster: String, minutesAgo: Double, pinnedMinutesAgo: Double? = nil) -> Drop {
+        let drop = drop(title, in: .vibes, minutesAgo: minutesAgo, pinnedMinutesAgo: pinnedMinutesAgo)
+        drop.clusterId = cluster
+        drop.clusterLabel = "\(cluster) label"
+        return drop
+    }
+
+    func testByVibeGroupsClustersBiggestFirstThenTheRestThenDone() {
+        let drops = [
+            clustered("dreams", "night", minutesAgo: 30),
+            clustered("ramen", "night", minutesAgo: 5),
+            clustered("dolores", "sunny", minutesAgo: 1),
+            clustered("lands end", "water", minutesAgo: 50, pinnedMinutesAgo: 2),
+            drop("reminder", in: .now),
+            drop("finished", in: .done),
+        ]
+        let sections = DropSection.build(drops, grouping: .vibe, filter: .everyone, me: "me", now: now)
+        XCTAssertEqual(outline(sections), [
+            "pinned: lands end",
+            "cluster-night: ramen, dreams",
+            "cluster-sunny: dolores",
+            "loose: reminder",
+            "done: finished",
+        ])
+        XCTAssertEqual(sections.map(\.title), ["pinned", "night label", "sunny label", "everything else", "done"])
+    }
+
+    func testByVibeBreaksSizeTiesByTheNewestMember() {
+        let drops = [
+            clustered("old", "a", minutesAgo: 90),
+            clustered("new", "b", minutesAgo: 3),
+        ]
+        XCTAssertEqual(DropSection.build(drops, grouping: .vibe, filter: .everyone, me: "me", now: now).map(\.id), ["cluster-b", "cluster-a"])
+    }
+
     func testPinningKeepsTheZoneSoUnpinningGoesBack() {
         let dinner = drop("dinner", in: .thisWeekend)
         dinner.setPinned(true)
