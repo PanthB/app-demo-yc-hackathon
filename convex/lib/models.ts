@@ -9,6 +9,7 @@ const DEFAULT_BUDGET_USD = 100;
 const OPENAI_PRICES: Record<string, { input: number; cached: number; cacheWrite: number; output: number; webSearchCall: number }> = {
   "gpt-6-luna": { input: 0.1, cached: 0.01, cacheWrite: 0.125, output: 0.5, webSearchCall: 0.01 },
   "gpt-6.1-terra": { input: 1, cached: 0.05, cacheWrite: 1.25, output: 5, webSearchCall: 0.01 },
+  "gpt-6.1-sol": { input: 2, cached: 0.1, cacheWrite: 2.5, output: 10, webSearchCall: 0.01 },
   "gpt-5.4-nano": { input: 0.2, cached: 0.02, cacheWrite: 0.2, output: 1.25, webSearchCall: 0.01 },
   "gpt-5.4-mini": { input: 0.75, cached: 0.075, cacheWrite: 0.75, output: 4.5, webSearchCall: 0.01 },
 };
