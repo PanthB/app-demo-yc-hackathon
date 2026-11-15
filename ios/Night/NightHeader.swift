@@ -145,8 +145,9 @@ struct NightViewMenu: View {
             Button("cards", systemImage: "square.grid.2x2") { storedView = ViewMode.cards.rawValue }
             Button("board", systemImage: "rectangle.on.rectangle.angled") { storedView = ViewMode.board.rawValue }
         } label: {
-            Label("switch the view", systemImage: "square.stack.3d.up")
+            Text("views")
         }
+        .accessibilityHint("switches to list, cards or board")
         .accessibilityIdentifier("nightViewMenu")
     }
 }

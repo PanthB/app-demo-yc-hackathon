@@ -55,7 +55,8 @@ enum ArtworkTone {
 
     static func color(of image: UIImage, key: String) -> Color {
         if let cached = cache.object(forKey: key as NSString) { return Color(uiColor: cached) }
-        guard let input = CIImage(image: image),
+        guard let small = image.preparingThumbnail(of: CGSize(width: 32, height: 32)),
+              let input = CIImage(image: small),
               let filter = CIFilter(name: "CIAreaAverage", parameters: [kCIInputImageKey: input, kCIInputExtentKey: CIVector(cgRect: input.extent)]),
               let output = filter.outputImage
         else { return NightStyle.surface }

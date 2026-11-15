@@ -62,7 +62,7 @@ struct NightBoardView: View {
             }
             .scrollIndicators(.hidden)
             .scrollEdgeEffectStyle(.hard, for: .top)
-            .background { NightBackdrop(palette: palette) }
+            .background { NightBackdrop(palette: palette, isLiving: false) }
             .overlay(alignment: .top) {
                 LinearGradient(stops: [.init(color: NightStyle.ink.opacity(0.95), location: 0), .init(color: NightStyle.ink.opacity(0.75), location: 0.55), .init(color: NightStyle.ink.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
                     .frame(height: 120)
