@@ -26,6 +26,10 @@ struct GlassBoardRoot: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .tint(Color(red: 1.0, green: 0.42, blue: 0.29))
+        .tint(Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 1, green: 0.42, blue: 0.29, alpha: 1)
+                : UIColor(red: 0.79, green: 0.28, blue: 0.17, alpha: 1)
+        }))
     }
 }

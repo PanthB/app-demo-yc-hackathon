@@ -12,16 +12,14 @@ struct DropCard: View {
         VStack(alignment: .leading, spacing: 0) {
             DropPreview(face: face, seed: drop.id, pictureRatio: drop.kind == .song ? 1 : nil)
                 .overlay(alignment: .bottomLeading) {
-                    if drop.kind == .video, face.fillsItsFrame {
-                        ClipBadge(length: drop.mediaDuration.map(DropFace.duration)).padding(12)
-                    }
+                    drop.playBadge(on: face).padding(12)
                 }
             VStack(alignment: .leading, spacing: 4) {
                 if let title = drop.cardTitle(beside: face) {
                     Text(title).font(.headline).lineLimit(2)
                 }
                 if let meta = drop.cardMeta(now: now, beside: face) {
-                    Text(meta).font(.footnote).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
+                    Text(meta).font(.footnote).foregroundStyle(.secondary).monospacedDigit().lineLimit(2)
                 }
                 if let suggestion = drop.liveSuggestion(now: now) {
                     SuggestionLine(suggestion: suggestion)
@@ -39,10 +37,10 @@ struct DropCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .overlay(alignment: .topLeading) {
-            KindPill(kind: drop.kind).padding(12)
+            KindPill(kind: drop.kind, onPicture: face.isPicture).padding(12)
         }
         .overlay(alignment: .topTrailing) {
-            if drop.isPinned { PinBadge().padding(12) }
+            if drop.isPinned { PinBadge(onPicture: face.isPicture).padding(12) }
         }
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(Self.shape)

@@ -15,6 +15,18 @@ enum PreviewFace {
         return nil
     }
 
+    var isPicture: Bool {
+        if case .image = self { return true }
+        return false
+    }
+
+    var drawsSmall: Bool {
+        switch self {
+        case .image, .cutout, .date, .countdown, .waveform: true
+        case .words, .plain: false
+        }
+    }
+
     var fillsItsFrame: Bool {
         switch self {
         case .image, .cutout: true
@@ -38,7 +50,7 @@ enum PreviewFace {
 
 extension Drop {
     var kind: DropKind {
-        DropKind.derive(type: type, source: sourceKind, hasDueTime: dueAt != nil, link: url)
+        DropKind.derive(type: type, source: sourceKind, hasDueTime: dueAt != nil, link: url, hasLength: mediaDuration != nil)
     }
 
     var authorLabel: String {
@@ -65,12 +77,11 @@ extension Drop {
             return .waveform(length: mediaDuration.map(DropFace.duration))
         case .note:
             if let words = CardWords.clean(rawText) ?? CardWords.clean(title) { return .words(words) }
-        case .link:
-            if CardWords.clean(title) == nil, let host = linkHost { return .words(host) }
-        case .photo, .video, .song, .place:
+        case .link, .photo, .video, .song, .place:
             break
         }
-        return .plain
+        if cardTitle(beside: .plain) != nil { return .plain }
+        return .words(CardWords.unread(kind, from: authorId == DeviceIdentity.personId ? nil : authorLabel))
     }
 
     func cardTitle(beside face: PreviewFace) -> String? {
@@ -79,8 +90,18 @@ extension Drop {
 
     func cardMeta(now: Date, beside face: PreviewFace, calendar: Calendar = .current) -> String? {
         let when = dueAt.map { DropFace.dateTag($0, now: now, calendar: calendar) } ?? tag(now: now, calendar: calendar)
-        let place = kind == .song ? artist : placeName ?? (kind == .link ? linkHost : nil)
-        return CardWords.meta([when, place], hiding: [face.words, cardTitle(beside: face)])
+        let from: [String?] = switch kind {
+        case .song: [artist, CardWords.clean(genre) ?? Vibes.genre(in: vibes)]
+        case .video: [artist ?? placeName, DropKind.clipSite(link: url, hasLength: mediaDuration != nil)]
+        case .link: [placeName ?? linkHost]
+        default: [placeName, Vibes.neighborhood(in: vibes)]
+        }
+        return CardWords.meta([when] + from, hiding: [face.words, cardTitle(beside: face)])
+    }
+
+    func playBadge(on face: PreviewFace) -> ClipBadge? {
+        guard face.fillsItsFrame, kind == .video || (kind == .song && mediaDuration != nil) else { return nil }
+        return ClipBadge(length: mediaDuration.map(DropFace.duration))
     }
 
     func liveSuggestion(now: Date) -> DropSuggestion? {
@@ -88,7 +109,7 @@ extension Drop {
         guard zone != .done else { return nil }
         if dueAt == nil, let startsAt {
             let wait = startsAt.timeIntervalSince(now)
-            if wait > 60 && wait <= ZoneClock.soonWindow { return .startsSoon(startsAt) }
+            if wait > 60 && wait <= ZoneClock.soonWindow { return .soon(startsAt, lead: kind == .place ? "that's" : "starts") }
         }
         return CardWords.clean(suggestion).map(DropSuggestion.words)
     }
