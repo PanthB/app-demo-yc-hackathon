@@ -27,6 +27,10 @@ const MUSIC_HOSTS = /(^|\.)(spotify\.com|music\.apple\.com|soundcloud\.com|bandc
 
 export const isMusicLink = (url?: string) => MUSIC_HOSTS.test(hostOf(url) ?? "");
 
+const STREET = /^\d*\s*[a-z0-9 .'-]+\s(st|street|ave|avenue|blvd|boulevard|rd|road|way|dr|drive|ln|lane|pl|ct|court|ter|terrace|hwy|highway)\.?$/i;
+export const namedPlace = (hint: string | undefined, ...others: (string | undefined)[]) =>
+  hint && STREET.test(hint.trim()) ? (others.find((o) => o && !STREET.test(o.trim())) ?? hint) : (hint ?? others.find(Boolean));
+
 const CLIP_HOSTS = /(^|\.)(tiktok\.com|instagram\.com|youtube\.com|youtu\.be)$/;
 export const isClipLink = (url?: string) => CLIP_HOSTS.test(hostOf(url) ?? "");
 
@@ -160,7 +164,7 @@ export function ruleExtraction(args: {
   const title = hints?.linkTitle ?? enrichment?.title ?? (firstLine ? firstLine.slice(0, 80) : undefined);
   return {
     title,
-    placeName: hints?.placeName ?? placeMatch?.[1],
+    placeName: namedPlace(hints?.placeName, placeMatch?.[1], hints?.linkTitle),
     startsAt,
     dueAt,
     whenLabel,
