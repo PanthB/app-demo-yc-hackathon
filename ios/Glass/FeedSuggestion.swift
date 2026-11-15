@@ -107,7 +107,64 @@ extension FeedSuggestion {
     }
 }
 
+struct SearchLines: Equatable {
+    static let patience: TimeInterval = 90
+
+    private(set) var deadlines: [String: Date] = [:]
+    private(set) var askedUntil: Date?
+    private var answered = false
+
+    func shows(_ id: String, now: Date) -> Bool {
+        deadlines[id].map { now < $0 } ?? false
+    }
+
+    func isAsking(now: Date) -> Bool {
+        askedUntil.map { now < $0 } ?? false
+    }
+
+    func next(after now: Date) -> Date? {
+        (deadlines.values + [askedUntil].compactMap { $0 }).filter { $0 > now }.min()
+    }
+
+    mutating func ask(for ids: [String], now: Date) {
+        let until = now.addingTimeInterval(Self.patience)
+        askedUntil = until
+        answered = false
+        for id in ids { deadlines[id] = until }
+    }
+
+    mutating func take(_ groups: [FeedGroup], now: Date) {
+        let searching = Set(groups.filter(\.searching).map(\.clusterId))
+        if isAsking(now: now), searching.isEmpty, !answered { return }
+        if searching.isEmpty {
+            askedUntil = nil
+            answered = false
+        } else if askedUntil != nil {
+            answered = true
+        }
+        deadlines = deadlines.filter { searching.contains($0.key) }
+        for id in searching where deadlines[id] == nil {
+            deadlines[id] = now.addingTimeInterval(Self.patience)
+        }
+    }
+
+    mutating func giveUp(_ groups: [FeedGroup], now: Date) {
+        askedUntil = nil
+        answered = false
+        take(groups, now: now)
+    }
+}
+
 #if DEBUG
+extension FeedSuggestion {
+    static let sampleArrival = FeedSuggestion(
+        id: "sample-arrival", kind: "place", title: "dandelion chocolate", place: "dandelion chocolate, mission",
+        url: "https://www.dandelionchocolate.com", reason: "because maya saved tartine morning bun.",
+        description: "hot chocolate and a pastry on valencia.",
+        inspiredBy: [Source(clientId: "5EED0002-0000-4000-8000-000000000002", title: "tartine morning bun")]
+    )
+}
+
 extension FeedGroup {
     static func sample(_ name: String) -> [FeedGroup] {
         guard name != "empty" else { return [] }

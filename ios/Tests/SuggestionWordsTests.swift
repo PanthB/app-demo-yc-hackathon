@@ -70,6 +70,63 @@ final class SuggestionWordsTests: XCTestCase {
         XCTAssertEqual(suggestion().site, "example.com")
     }
 
+    private func group(_ id: String, searching: Bool) -> FeedGroup {
+        FeedGroup(clusterId: id, clusterLabel: id, searching: searching, suggestions: [])
+    }
+
+    func testARefreshShowsEveryGroupLookingUntilTheBackendAnswersOrNinetySecondsPass() {
+        let start = at(2026, 11, 15, 15)
+        var lines = SearchLines()
+        lines.ask(for: ["a", "b", "c"], now: start)
+        XCTAssertTrue(lines.isAsking(now: start.addingTimeInterval(5)))
+        lines.take([group("a", searching: false), group("b", searching: false), group("c", searching: false)], now: start.addingTimeInterval(1))
+        XCTAssertTrue(lines.shows("a", now: start.addingTimeInterval(2)))
+        XCTAssertTrue(lines.shows("c", now: start.addingTimeInterval(89)))
+        XCTAssertFalse(lines.shows("c", now: start.addingTimeInterval(91)))
+        XCTAssertFalse(lines.isAsking(now: start.addingTimeInterval(91)))
+        XCTAssertEqual(lines.next(after: start), start.addingTimeInterval(90))
+        XCTAssertNil(lines.next(after: start.addingTimeInterval(91)))
+    }
+
+    func testOnceTheBackendSaysWhichGroupsItSearchesOnlyThoseKeepTheLine() {
+        let start = at(2026, 11, 15, 15)
+        var lines = SearchLines()
+        lines.ask(for: ["a", "b", "c"], now: start)
+        lines.take([group("a", searching: true), group("b", searching: true), group("c", searching: false)], now: start.addingTimeInterval(1))
+        XCTAssertTrue(lines.shows("a", now: start.addingTimeInterval(2)))
+        XCTAssertFalse(lines.shows("c", now: start.addingTimeInterval(2)))
+        lines.take([group("a", searching: false), group("b", searching: true), group("c", searching: false)], now: start.addingTimeInterval(20))
+        XCTAssertFalse(lines.shows("a", now: start.addingTimeInterval(21)))
+        XCTAssertTrue(lines.shows("b", now: start.addingTimeInterval(21)))
+        XCTAssertTrue(lines.isAsking(now: start.addingTimeInterval(21)))
+        lines.take([group("a", searching: false), group("b", searching: false), group("c", searching: false)], now: start.addingTimeInterval(40))
+        XCTAssertFalse(lines.shows("b", now: start.addingTimeInterval(41)))
+        XCTAssertFalse(lines.isAsking(now: start.addingTimeInterval(41)))
+    }
+
+    func testASearchTheBackendNeverFinishesStopsShowingAfterNinetySeconds() {
+        let start = at(2026, 11, 15, 15)
+        var lines = SearchLines()
+        lines.take([group("a", searching: true)], now: start)
+        XCTAssertTrue(lines.shows("a", now: start.addingTimeInterval(60)))
+        lines.take([group("a", searching: true)], now: start.addingTimeInterval(120))
+        XCTAssertFalse(lines.shows("a", now: start.addingTimeInterval(121)))
+        lines.take([group("a", searching: false)], now: start.addingTimeInterval(130))
+        lines.take([group("a", searching: true)], now: start.addingTimeInterval(140))
+        XCTAssertTrue(lines.shows("a", now: start.addingTimeInterval(141)))
+    }
+
+    func testARefreshTheBackendTurnsDownKeepsOnlyWhatItIsAlreadySearching() {
+        let start = at(2026, 11, 15, 15)
+        var lines = SearchLines()
+        lines.take([group("a", searching: true), group("b", searching: false)], now: start)
+        lines.ask(for: ["a", "b"], now: start.addingTimeInterval(10))
+        lines.giveUp([group("a", searching: true), group("b", searching: false)], now: start.addingTimeInterval(11))
+        XCTAssertFalse(lines.isAsking(now: start.addingTimeInterval(12)))
+        XCTAssertTrue(lines.shows("a", now: start.addingTimeInterval(12)))
+        XCTAssertFalse(lines.shows("b", now: start.addingTimeInterval(12)))
+    }
+
     func testAGroupReadsWhatTheBackendSendsAndSkipsWhatItCant() throws {
         let json = """
         [{"clusterId":"late-night","clusterLabel":"late night","searching":true,"suggestions":[
