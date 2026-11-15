@@ -34,7 +34,7 @@ enum ViewMode: String, CaseIterable, Sendable {
         switch self {
         case .list: "list.bullet"
         case .cards: "square.grid.2x2"
-        case .board: "pin"
+        case .board: "rectangle.on.rectangle.angled"
         case .night: "moon"
         }
     }
