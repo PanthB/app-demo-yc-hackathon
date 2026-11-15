@@ -110,7 +110,7 @@ private struct Polaroid: View {
     let image: UIImage
 
     private var isVideo: Bool {
-        drop.sourceKind == .video || ["tiktok.com", "instagram.com", "youtube.com", "youtu.be"].contains { drop.linkHost?.hasSuffix($0) == true }
+        drop.kind == .video
     }
 
     var body: some View {
@@ -412,7 +412,7 @@ private struct Postcard: View {
                     Text(drop.frontTitle ?? drop.linkHost ?? "")
                         .font(mood.ui(15, weight: .medium))
                         .foregroundStyle(mood.ink)
-                        .lineLimit(2)
+                        .lineLimit(3)
                         .minimumScaleFactor(0.85)
                         .padding(.top, 4)
                     Spacer(minLength: 6)
