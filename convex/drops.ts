@@ -26,7 +26,7 @@ import {
 
 export const FOUND_NAME = "found for you";
 
-const freshPipeline = (): Pipeline => ({
+export const freshPipeline = (): Pipeline => ({
   enrich: { ran: "pending" },
   extract: { ran: "pending" },
   remember: { ran: "pending" },

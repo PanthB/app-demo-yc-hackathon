@@ -34,6 +34,7 @@ type Env = {
   readonly OPENAI_BUDGET_USD: string | undefined;
   readonly OPENAI_DECIDER_MODEL: string | undefined;
   readonly OPENAI_READER_MODEL: string | undefined;
+  readonly OPENAI_SUGGESTIONS_MODEL: string | undefined;
   readonly SCRAPECREATORS_API_KEY: string | undefined;
   readonly SUPERMEMORY_API_KEY: string | undefined;
 };

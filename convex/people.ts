@@ -1,7 +1,10 @@
 import { ConvexError, v } from "convex/values";
 import { mutation } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { nullable, personView } from "./model";
 import { ensurePerson, ensurePersonalBoard, personById } from "./boards";
+
+const prefs = (p: Doc<"people">) => ({ recsMedia: p.recsMedia ?? true, recsEvents: p.recsEvents ?? true });
 
 export const upsert = mutation({
   args: { personId: v.string(), personalBoardId: v.string(), name: nullable(v.string()) },
@@ -12,6 +15,7 @@ export const upsert = mutation({
       personId,
       name: person.name,
       personalBoardId: await ensurePersonalBoard(ctx, person, personalBoardId),
+      ...prefs(person),
     };
   },
 });
@@ -29,7 +33,7 @@ export const link = mutation({
       .unique();
     if (linked && linked.personId !== personId) {
       const person = await ensurePerson(ctx, linked.personId, tokenName);
-      return { personId: person.personId, name: person.name, personalBoardId: await ensurePersonalBoard(ctx, person, personalBoardId) };
+      return { personId: person.personId, name: person.name, personalBoardId: await ensurePersonalBoard(ctx, person, personalBoardId), ...prefs(person) };
     }
     const existing = await personById(ctx, personId);
     if (existing?.tokenIdentifier && existing.tokenIdentifier !== identity.tokenIdentifier) {
@@ -37,6 +41,18 @@ export const link = mutation({
     }
     const person = await ensurePerson(ctx, personId, tokenName ?? name);
     if (!person.tokenIdentifier) await ctx.db.patch("people", person._id, { tokenIdentifier: identity.tokenIdentifier });
-    return { personId, name: person.name, personalBoardId: await ensurePersonalBoard(ctx, person, personalBoardId) };
+    return { personId, name: person.name, personalBoardId: await ensurePersonalBoard(ctx, person, personalBoardId), ...prefs(person) };
+  },
+});
+
+export const setPrefs = mutation({
+  args: { personId: v.string(), recsMedia: nullable(v.boolean()), recsEvents: nullable(v.boolean()) },
+  returns: v.object({ recsMedia: v.boolean(), recsEvents: v.boolean() }),
+  handler: async (ctx, { personId, recsMedia, recsEvents }) => {
+    const person = await personById(ctx, personId);
+    if (!person) throw new ConvexError("this person isn't set up yet.");
+    const patch = { recsMedia: recsMedia ?? person.recsMedia, recsEvents: recsEvents ?? person.recsEvents };
+    await ctx.db.patch("people", person._id, patch);
+    return prefs({ ...person, ...patch });
   },
 });

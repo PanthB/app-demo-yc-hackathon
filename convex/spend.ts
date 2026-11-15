@@ -24,7 +24,7 @@ export const openai = internalQuery({
 export const recordOpenAI = internalMutation({
   args: {
     model: v.string(),
-    route: v.union(v.literal("reader"), v.literal("decisions"), v.literal("events")),
+    route: v.union(v.literal("reader"), v.literal("decisions"), v.literal("suggestions")),
     inputTokens: v.number(),
     cachedTokens: v.number(),
     cacheWriteTokens: v.number(),

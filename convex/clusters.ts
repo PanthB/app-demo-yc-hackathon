@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { clusterBoard } from "./lib/vibes";
+import { membersByCluster, scheduleSearches } from "./suggestions";
 
 export const recompute = internalMutation({
   args: { boardId: v.string() },
@@ -25,6 +26,7 @@ export const recompute = internalMutation({
         JSON.stringify(next.neighbors) === JSON.stringify(d.neighbors ?? []);
       if (!same) await ctx.db.patch("drops", d._id, { ...next, updatedAt: Date.now() });
     }
+    await scheduleSearches(ctx, boardId, membersByCluster(drops, (d) => placed.get(d.clientId)?.clusterId));
     return null;
   },
 });

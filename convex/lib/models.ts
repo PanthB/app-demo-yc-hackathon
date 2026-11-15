@@ -3,8 +3,8 @@ import { internal } from "../_generated/api";
 
 const OPENAI = "https://api.openai.com";
 const OPENAI_MODEL = "gpt-6-luna";
-const MAX_WEB_SEARCHES = 5;
-const DEFAULT_BUDGET_USD = 20;
+const MAX_WEB_SEARCHES = 4;
+const DEFAULT_BUDGET_USD = 100;
 
 const OPENAI_PRICES: Record<string, { input: number; cached: number; cacheWrite: number; output: number; webSearchCall: number }> = {
   "gpt-6-luna": { input: 0.1, cached: 0.01, cacheWrite: 0.125, output: 0.5, webSearchCall: 0.01 },
@@ -15,6 +15,7 @@ const OPENAI_PRICES: Record<string, { input: number; cached: number; cacheWrite:
 
 export const readerModel = () => env.OPENAI_READER_MODEL?.trim() || OPENAI_MODEL;
 const deciderModel = () => env.OPENAI_DECIDER_MODEL?.trim() || OPENAI_MODEL;
+const suggestionsModel = () => env.OPENAI_SUGGESTIONS_MODEL?.trim() || "gpt-6.1-terra";
 export const openaiBudgetUsd = () => {
   const budget = Number(env.OPENAI_BUDGET_USD);
   return Number.isFinite(budget) && budget >= 0 && env.OPENAI_BUDGET_USD?.trim() ? budget : DEFAULT_BUDGET_USD;
@@ -97,7 +98,7 @@ type Usage = {
   prompt_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
 };
 
-async function openaiPost(ctx: ActionCtx, route: "reader" | "decisions" | "events", path: string, body: { model: string } & Record<string, unknown>, timeoutMs: number) {
+async function openaiPost(ctx: ActionCtx, route: "reader" | "decisions" | "suggestions", path: string, body: { model: string } & Record<string, unknown>, timeoutMs: number) {
   const price = OPENAI_PRICES[body.model];
   if (!price) throw new ProviderUnavailable(`no listed price for ${body.model}, so it can't be held to the budget`);
   const budget = openaiBudgetUsd();
@@ -198,54 +199,58 @@ export async function openaiRead(ctx: ActionCtx, text: string, images: Image[], 
   return parseReading(result, model);
 }
 
-export type FoundEvent = {
+export type Found = {
+  kind: "event" | "song" | "watch" | "place";
   title: string;
-  venue: string;
+  by: string | null;
+  place: string | null;
   neighborhood: string | null;
-  starts_at: string;
+  starts_at: string | null;
   url: string;
   price_usd: number | null;
   description: string;
   inspired_by: string[];
 };
 
-const EVENTS_SCHEMA = {
+const SUGGESTIONS_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["events"],
+  required: ["suggestions"],
   properties: {
-    events: {
+    suggestions: {
       type: "array",
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["title", "venue", "neighborhood", "starts_at", "url", "price_usd", "description", "inspired_by"],
+        required: ["kind", "title", "by", "place", "neighborhood", "starts_at", "url", "price_usd", "description", "inspired_by"],
         properties: {
-          title: { type: "string", description: "the event's own name, lowercase, without deal or listing prefixes like '$2 off:'" },
-          venue: { type: "string", description: "the venue's name, lowercase" },
-          neighborhood: nullableString("the san francisco neighborhood the venue is in, lowercase"),
-          starts_at: { type: "string", description: "local start time in san francisco, YYYY-MM-DDTHH:MM, from the event's page" },
-          url: { type: "string", description: "the event's own page (venue, ticketing or listing) that you found in this search" },
-          price_usd: nullableNumber("the lowest ticket price in US dollars, 0 when free, null when the page doesn't say"),
+          kind: { type: "string", enum: ["event", "song", "watch", "place"], description: "event: happens at a set time in sf; song: a track; watch: a movie or a show; place: somewhere in sf to go" },
+          title: { type: "string", description: "its own name, lowercase, without deal or listing prefixes like '$2 off:'" },
+          by: nullableString("a song's artist, or a movie's director or a show's network, lowercase"),
+          place: nullableString("for an event, the venue; for a place, its name; lowercase"),
+          neighborhood: nullableString("the san francisco neighborhood, lowercase"),
+          starts_at: nullableString("events only: local start time in san francisco, YYYY-MM-DDTHH:MM, from its page"),
+          url: { type: "string", description: "its own page that you found in this search: the venue's or ticketing page, the spotify or apple music track, the imdb or streaming page, the place's site or maps page" },
+          price_usd: nullableNumber("events only: the lowest ticket price in US dollars, 0 when free, null when the page doesn't say"),
           description: { type: "string", description: "one short lowercase sentence on what it is" },
-          inspired_by: { type: "array", items: { type: "string" }, description: "one or two drop refs (like d3) that this event fits best, best first" },
+          inspired_by: { type: "array", items: { type: "string" }, description: "one or two drop refs (like d3) it fits best, best first" },
         },
       },
     },
   },
 };
 
-export async function findEvents(ctx: ActionCtx, instructions: string, board: string) {
-  const model = OPENAI_MODEL;
+export async function findSuggestions(ctx: ActionCtx, instructions: string, input: string) {
+  const model = suggestionsModel();
   const { result, usd, webSearchCalls } = await openaiPost(
     ctx,
-    "events",
+    "suggestions",
     "/v1/responses",
     {
       model,
       reasoning: { effort: "medium" },
       instructions,
-      input: board,
+      input,
       tools: [
         {
           type: "web_search",
@@ -256,7 +261,7 @@ export async function findEvents(ctx: ActionCtx, instructions: string, board: st
       tool_choice: "required",
       max_tool_calls: MAX_WEB_SEARCHES,
       include: ["web_search_call.action.sources"],
-      text: { format: { type: "json_schema", name: "found_events", strict: true, schema: EVENTS_SCHEMA } },
+      text: { format: { type: "json_schema", name: "suggestions", strict: true, schema: SUGGESTIONS_SCHEMA } },
       max_output_tokens: 6000,
     },
     120_000,
@@ -277,9 +282,9 @@ export async function findEvents(ctx: ActionCtx, instructions: string, board: st
       for (const a of part.annotations ?? []) if (a.url) sources.add(a.url);
     }
   }
-  if (!text) throw new Error(`${model} returned no events (${String(result.status)})`);
-  const { events } = JSON.parse(text) as { events: FoundEvent[] };
-  return { events, sources: [...sources], usd, webSearchCalls, by: `${model} web search via openai` };
+  if (!text) throw new Error(`${model} returned no suggestions (${String(result.status)})`);
+  const { suggestions } = JSON.parse(text) as { suggestions: Found[] };
+  return { suggestions, sources: [...sources], usd, webSearchCalls, by: `${model} web search via openai` };
 }
 
 export function choice(answer: DecisionAnswer | undefined) {
