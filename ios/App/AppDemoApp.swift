@@ -7,7 +7,7 @@ struct AppDemoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MomentsView()
+            RootView()
         }
         .modelContainer(container)
     }

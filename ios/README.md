@@ -1,12 +1,12 @@
 # iOS app
 
-Native Swift and SwiftUI app (iOS 17+) with a share extension, a SwiftData board store in an app group, and the Convex backend through [ConvexMobile](https://github.com/convex/convex-swift). The Xcode project is generated from `project.yml` by [XcodeGen](https://github.com/yonaskolb/XcodeGen). Only the spec is committed, never `AppDemo.xcodeproj`.
+Native Swift and SwiftUI app (iOS 26+) with a share extension, a SwiftData board store in an app group, and the Convex backend through [ConvexMobile](https://github.com/convex/convex-swift). The Xcode project is generated from `project.yml` by [XcodeGen](https://github.com/yonaskolb/XcodeGen). Only the spec is committed, never `AppDemo.xcodeproj`.
 
 ## Targets
 
 | Target | Bundle id | Compiles |
 | - | - | - |
-| `AppDemo` (app, scheme `AppDemo`) | `com.panthb.appdemo` | `App`, `Shared`, `Board`, `Location`, `Notifications`, `Seed`, `Ingest`, `Sync`, plus `Assets` as resources, plus ConvexMobile 0.8.2 |
+| `AppDemo` (app, scheme `AppDemo`) | `com.panthb.appdemo` | `App`, `Shared`, `Board`, `Glass`, `Location`, `Notifications`, `Seed`, `Ingest`, `Sync`, plus `Assets` as resources, plus ConvexMobile 0.8.2 |
 | `ShareExtension` (share extension, embedded in the app) | `com.panthb.appdemo.share` | `ShareExtension`, `Shared` |
 | `AppDemoTests` (unit tests, hosted in the app) | `com.panthb.appdemo.tests` | `Tests` |
 
@@ -19,7 +19,9 @@ Sources are included by folder, so adding or removing a Swift file needs no chan
 | `project.yml`, `Config/` | APPD-3 | The spec, xcconfig, Info.plists and entitlements |
 | `App/` | APPD-3 | App entry point and the one `convex` client. `App/Starter/` is the throwaway moments screen and a DEBUG skeleton check, and the board replaces it |
 | `Shared/` | APPD-3 | The seam between the board and ingest: the `Drop` model, the shared vocabulary, the app group, the inbox format and the time-word parser |
-| `Board/`, `Location/`, `Notifications/`, `Seed/` | APPD-3 | The board, its location modes, countdown notifications, and DEBUG seed data |
+| `Board/` | APPD-3 | The paper look's views (the corkboard), and nothing else |
+| `Glass/` | APPD-12 | The glass look's views, entered through `GlassBoardRoot` |
+| `Location/`, `Notifications/`, `Seed/` | APPD-3 | Location and modes, countdown notifications, and DEBUG seed data, shared by both looks |
 | `ShareExtension/`, `Ingest/`, `Sync/` | share and ingest thread (PAN-5) | The share extension, inbox processing and Convex sync |
 | `Assets/` | APPD-8 owns `Kit.xcassets` | Asset catalogs, bundled as resources by folder |
 | `Tests/` | whoever owns the code under test | XCTest files |
@@ -32,6 +34,10 @@ Sources are included by folder, so adding or removing a Swift file needs no chan
 - `APP_GROUP_ID` (`group.com.panthb.appdemo`) feeds both entitlements files and the `APP_GROUP_ID` Info.plist key that `Shared/AppGroup.swift` reads.
 
 Simulator builds are ad-hoc signed ("Sign to Run Locally", identity `-`, no team), so the app group entitlement is embedded without a certificate. Device builds on a Mac need `CODE_SIGN_STYLE: Automatic` and a `DEVELOPMENT_TEAM`.
+
+## Looks
+
+The app has two looks over the same `Drop` records: paper (`ios/Board`) and glass (`ios/Glass`). `Shared/Look.swift` picks one in this order: the launch argument `-look glass` or `-look paper`, then the stored setting (`UserDefaults` key `look`), then paper. `App/RootView.swift` switches on it. Cloud phones can't pass launch arguments, so the app also handles the `appdemo` URL scheme: open `appdemo://look/glass` or `appdemo://look/paper` (with `tools.capy.phone` `action: "open_url"`) to store the setting and switch right away.
 
 ## Shared model
 
