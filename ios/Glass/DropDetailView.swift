@@ -63,8 +63,8 @@ struct DropDetailView: View {
                     } label: {
                         Label(drop.isPinned ? "unpin" : "pin", systemImage: drop.isPinned ? "pin.slash" : "pin")
                             .frame(width: 24, height: 24)
-                            .foregroundStyle(.primary)
                     }
+                    .foregroundStyle(.primary)
                     .buttonStyle(.glass)
                     .buttonBorderShape(.circle)
                     Menu {
@@ -72,8 +72,8 @@ struct DropDetailView: View {
                     } label: {
                         Label("move to", systemImage: "arrow.right")
                             .frame(width: 24, height: 24)
-                            .foregroundStyle(.primary)
                     }
+                    .foregroundStyle(.primary)
                     .buttonStyle(.glass)
                     .buttonBorderShape(.circle)
                     if drop.url != nil {
