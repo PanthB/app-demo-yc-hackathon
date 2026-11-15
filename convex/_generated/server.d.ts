@@ -30,6 +30,7 @@ import type { DataModel } from "./dataModel.js";
 type Env = {
   readonly CONVEX_CLOUD_URL: string;
   readonly CONVEX_SITE_URL: string;
+  readonly DECIDER_MODEL: string | undefined;
   readonly OPENROUTER_API_KEY: string | undefined;
   readonly READER_MODEL: string | undefined;
   readonly SCRAPECREATORS_API_KEY: string | undefined;

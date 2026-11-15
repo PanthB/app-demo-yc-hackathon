@@ -11,14 +11,15 @@ import {
   choice,
   hasOpenRouter,
   hasSupermemory,
-  jevDecide,
-  JEV_MODEL,
+  decide,
+  deciderModel,
   noul,
   ProviderUnavailable,
   clairicRead,
   CLAIRIC,
+  FREE_READER,
+  FREE_READER_BACKUP,
   readerModel,
-  VISION_STAND_IN,
   visionRead,
   type Image,
   type Reading,
@@ -26,6 +27,7 @@ import {
 import {
   corpus,
   fromLocalIso,
+  isMusicLink,
   keywords,
   localDate,
   localStamp,
@@ -190,30 +192,32 @@ export const run = internalAction({
       const fallback = ruleExtraction({ text: drop.text, url: drop.url, hints: drop.hints, enrichment, capturedAt: drop.capturedAt, utcOffsetMinutes: drop.utcOffsetMinutes });
       let extraction = fallback;
       if (!hasOpenRouter()) pipeline.extract = rules("no OPENROUTER_API_KEY in the convex env");
-      else {
+      else if (isMusicLink(drop.url) && enrichment?.title && !drop.text && drop.imageIds.length === 0) {
+        pipeline.extract = rules("a song link is read from the link and deezer, which saves a model call");
+      } else {
         const { images, notes } = await loadImages(ctx, drop, enrichment?.thumbnailUrl);
         const input = [`saved_at: ${localStamp(drop.capturedAt, drop.utcOffsetMinutes)} local time`, `shared as: ${drop.kind}`, corpus(drop.text, drop.url, drop.hints, enrichment)].join("\n");
         const imageNote = [`${images.length} image(s) sent`, ...notes];
         const reader = readerModel();
-        let visionModel = reader;
-        if (reader === CLAIRIC) {
+        const readers = reader === CLAIRIC ? [CLAIRIC, FREE_READER] : reader === FREE_READER ? [FREE_READER, FREE_READER_BACKUP] : [reader];
+        const failed: string[] = [];
+        for (const model of readers) {
           try {
-            const { reading, fieldConfidence } = await clairicRead(input, localDate(drop.capturedAt, drop.utcOffsetMinutes), images);
-            extraction = fromReading(reading, drop, fallback, fieldConfidence);
-            pipeline.extract = { ran: "done", by: `${CLAIRIC} via openrouter`, reason: imageNote.join("; ") };
+            if (model === CLAIRIC) {
+              const { reading, fieldConfidence } = await clairicRead(input, localDate(drop.capturedAt, drop.utcOffsetMinutes), images);
+              extraction = fromReading(reading, drop, fallback, fieldConfidence);
+            } else extraction = fromReading(await visionRead(input, images, model), drop, fallback);
+            pipeline.extract = { ran: "done", by: `${model} via openrouter`, reason: [...failed, ...imageNote].join("; ") };
+            break;
           } catch (e) {
-            imageNote.unshift(`clairic failed: ${errorText(e)}`);
-            visionModel = VISION_STAND_IN;
+            if (e instanceof ProviderUnavailable && model.endsWith(":free")) {
+              pipeline.extract = rules([...failed, fellBack(`reader ${model}`, e)].join("; "));
+              break;
+            }
+            failed.push(`${model} failed: ${errorText(e)}`);
           }
         }
-        if (pipeline.extract.ran === "pending") {
-          try {
-            extraction = fromReading(await visionRead(input, images, visionModel), drop, fallback);
-            pipeline.extract = { ran: "done", by: `${visionModel} via openrouter`, reason: imageNote.join("; ") };
-          } catch (e) {
-            pipeline.extract = rules([...imageNote.filter((n) => n.startsWith("clairic")), fellBack(`reader ${visionModel}`, e)].join("; "));
-          }
-        }
+        if (pipeline.extract.ran === "pending") pipeline.extract = rules([...failed, "no reader answered, used rules"].join("; "));
       }
 
       const searchText = summary(drop, extraction, enrichment);
@@ -350,7 +354,7 @@ export const run = internalAction({
               },
             };
           }
-          const answers = await jevDecide(state, questions);
+          const answers = await decide(state, questions);
           for (const facet of ["mood", "time", "setting"] as const) {
             const answer = choice(answers[`vibe_${facet}`]);
             if (!answer || (answer.probabilities?.[answer.choice] ?? answer.confidence ?? 0) < 0.5) continue;
@@ -382,13 +386,13 @@ export const run = internalAction({
             zoneProbabilities: zone?.probabilities ?? ruled.zoneProbabilities,
           };
           const missing = ["type", "zone", "object_kind", "emphasis"].filter((q) => !choice(answers[q]));
-          pipeline.decide = { ran: "done", by: JEV_MODEL, reason: missing.length ? `no answer for ${missing.join(", ")}, used rules there` : undefined };
-          pipeline.connect = { ran: "done", by: `${JEV_MODEL} on ${candidateSource}`, reason: `${related.length} of ${candidates.length} candidates above ${CONNECT_THRESHOLD}` };
+          pipeline.decide = { ran: "done", by: deciderModel(), reason: missing.length ? `no answer for ${missing.join(", ")}, used rules there` : undefined };
+          pipeline.connect = { ran: "done", by: `${deciderModel()} on ${candidateSource}`, reason: `${related.length} of ${candidates.length} candidates above ${CONNECT_THRESHOLD}` };
         } catch (e) {
           related = rulesRelated();
           decision = { ...ruled, emphasis: ruleEmphasis(ruled.zone, related.length > 0) };
-          pipeline.decide = rules(fellBack("jev", e));
-          pipeline.connect = { ran: "rules", by: "keyword overlap on convex search", reason: fellBack("jev", e) };
+          pipeline.decide = rules(fellBack(`decider ${deciderModel()}`, e));
+          pipeline.connect = { ran: "rules", by: "keyword overlap on convex search", reason: fellBack(`decider ${deciderModel()}`, e) };
         }
       }
 

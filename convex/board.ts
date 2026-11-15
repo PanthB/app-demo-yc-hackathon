@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { action, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { mode, nullable, type Mode } from "./model";
-import { choice, hasOpenRouter, jevDecide, JEV_MODEL } from "./lib/models";
+import { choice, decide, deciderModel, hasOpenRouter } from "./lib/models";
 
 const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 const NEAR_MINUTES = 20;
@@ -57,7 +57,7 @@ export const decideMode = action({
     });
     if (!hasOpenRouter()) return ruledResult("rules", "no OPENROUTER_API_KEY in the convex env");
     try {
-      const answers = await jevDecide(
+      const answers = await decide(
         {
           local_time: `${WEEKDAYS[context.weekday - 1] ?? "unknown day"}, ${context.localHour}:00`,
           at_home: context.atHome,
@@ -76,11 +76,11 @@ export const decideMode = action({
         },
       );
       const picked = choice(answers.mode);
-      if (!picked) return ruledResult("rules", "jev returned no mode");
+      if (!picked) return ruledResult("rules", "the decider returned no mode");
       const chosen = picked.choice as Mode;
-      return { mode: chosen, probabilities: picked.probabilities ?? {}, bringForward: bringForwardFor(chosen), decidedBy: JEV_MODEL };
+      return { mode: chosen, probabilities: picked.probabilities ?? {}, bringForward: bringForwardFor(chosen), decidedBy: deciderModel() };
     } catch (e) {
-      return ruledResult("rules", `jev failed: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`);
+      return ruledResult("rules", `decider failed: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`);
     }
   },
 });
