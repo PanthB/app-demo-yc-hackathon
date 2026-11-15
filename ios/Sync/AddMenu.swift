@@ -26,7 +26,7 @@ struct AddMenu: View {
             Button {
                 isPickingPhotos = true
             } label: {
-                Label("photo", systemImage: "photo")
+                Label("choose a photo", systemImage: "photo")
             }
             Button {
                 words = UIPasteboard.general.hasURLs ? (UIPasteboard.general.url?.absoluteString ?? "") : ""
