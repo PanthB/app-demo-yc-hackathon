@@ -77,6 +77,7 @@ struct NightBoardView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         NightMembers(members: members, streaks: streaks.members) { showsStreaks = true }
                     }
+                    .sharedBackgroundVisibility(.hidden)
                     ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -161,7 +162,7 @@ struct NightBoardView: View {
     }
 
     private func shownStreaks(_ drops: [Drop], me: String) -> BoardStreaks {
-        var streaks = BoardStreaks(drops: drops, me: me, now: clock.now)
+        var streaks = BoardStreaks(drops: drops, me: me, now: BoardStreaks.now(clock: clock.now, drops: drops.map(\.createdAt)))
         if holdsDemoStreak {
             streaks.mine = DailyStreak(days: max(streaks.mine.days - 1, 0), droppedToday: false)
         }

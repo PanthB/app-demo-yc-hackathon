@@ -61,6 +61,10 @@ struct BoardStreaks: Equatable, Sendable {
         self.init(drops.map { Entry(authorId: $0.authorId, createdAt: $0.createdAt) }, me: me, now: now, calendar: calendar)
     }
 
+    static func now(clock: Date, drops: [Date], realNow: Date = .now) -> Date {
+        max(clock, drops.filter { $0 <= realNow }.max() ?? clock)
+    }
+
     var headline: String {
         switch (mine.days, mine.droppedToday) {
         case (0, _):
