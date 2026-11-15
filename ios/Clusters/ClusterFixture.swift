@@ -127,9 +127,9 @@ enum ClusterFixture {
     @MainActor
     static func playArrival(_ context: ModelContext) async {
         try? await Task.sleep(for: .seconds(2.5))
-        let drop = Drop(id: arrivalId, createdAt: .now, authorId: SeedBoard.panth.id, boardId: SeedBoard.crewBoardId, sourceKind: .url, url: "https://open.spotify.com/track/6MpCaSIOfqBqbMED4kXgNY")
-        drop.authorName = SeedBoard.panth.name
-        drop.authorColor = SeedBoard.panth.color
+        let drop = Drop(id: arrivalId, createdAt: .now, authorId: SeedBoard.maya.id, boardId: SeedBoard.crewBoardId, sourceKind: .url, url: "https://open.spotify.com/track/6MpCaSIOfqBqbMED4kXgNY")
+        drop.authorName = SeedBoard.maya.name
+        drop.authorColor = SeedBoard.maya.color
         context.insert(drop)
         save(context)
         Logger.app.info("cluster fixture: prom queen landed")
