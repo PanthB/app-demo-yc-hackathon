@@ -40,6 +40,13 @@ async function pageMeta(url: string, userAgent = UA) {
   }
   const title = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1];
   if (title) meta["html:title"] = decode(title);
+  for (const key of ["og:image", "twitter:image"]) {
+    try {
+      if (meta[key]) meta[key] = new URL(meta[key], response.url || url).href;
+    } catch {
+      delete meta[key];
+    }
+  }
   return meta;
 }
 
