@@ -9,7 +9,7 @@ final class SuggestionsFeedUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-view", "cards", "-BoardDebugSeed", "YES", "-BoardDebugSuggestions", board, "-BoardDebugSuggestionsSample", "YES"] + extra
         app.launch()
-        let back = app.buttons["recsBackOn"]
+        let back = app.buttons["turn them back on"]
         if back.waitForExistence(timeout: 2) { back.tap() }
         return app
     }
@@ -59,11 +59,16 @@ final class SuggestionsFeedUITests: XCTestCase {
     func testSavingAndDismissingTakeACardAway() {
         let app = launch()
         XCTAssertTrue(saves(app).firstMatch.waitForExistence(timeout: 10))
-        let before = saves(app).count
+        let titles = app.staticTexts.matching(identifier: "suggestionTitle")
+        let saved = titles.firstMatch.label
         saves(app).firstMatch.tap()
-        XCTAssertTrue(settles(saves(app), at: before - 1), "saving left the card in the feed")
+        XCTAssertTrue(app.staticTexts["suggestionSaved"].waitForExistence(timeout: 3), "saving said nothing")
+        attach("feed-saved")
+        XCTAssertTrue(settles(app.staticTexts.matching(NSPredicate(format: "label == %@", saved)), at: 0), "saving left the card in the feed")
+        let dismissed = titles.firstMatch.label
+        XCTAssertNotEqual(dismissed, saved)
         app.buttons.matching(identifier: "suggestionDismiss").firstMatch.tap()
-        XCTAssertTrue(settles(saves(app), at: before - 2), "dismissing left the card in the feed")
+        XCTAssertTrue(settles(app.staticTexts.matching(NSPredicate(format: "label == %@", dismissed)), at: 0), "dismissing left the card in the feed")
         attach("feed-after-save-and-dismiss")
     }
 
@@ -86,7 +91,7 @@ final class SuggestionsFeedUITests: XCTestCase {
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)).tap()
         }
         XCTAssertTrue(off.waitForExistence(timeout: 5))
-        let back = app.buttons["recsBackOn"]
+        let back = app.buttons["turn them back on"]
         if !back.isHittable {
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)).tap()
         }
@@ -104,7 +109,14 @@ final class SuggestionsFeedUITests: XCTestCase {
     func testCardsFitTheLargestTextSize() {
         let app = launch(extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
         XCTAssertTrue(saves(app).firstMatch.waitForExistence(timeout: 10))
-        attach("feed-largest-text")
-        XCTAssertTrue(app.buttons.matching(identifier: "suggestionDismiss").firstMatch.isHittable)
+        attach("feed-largest-text-1")
+        let dismiss = app.buttons.matching(identifier: "suggestionDismiss").firstMatch
+        var page = 1
+        while !dismiss.isHittable, page < 8 {
+            app.swipeUp(velocity: .slow)
+            page += 1
+            attach("feed-largest-text-\(page)")
+        }
+        XCTAssertTrue(dismiss.isHittable, "the card's buttons never came into reach at the largest text size")
     }
 }

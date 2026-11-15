@@ -145,6 +145,7 @@ struct SuggestionsFeed: View {
     @AppStorage("recsEvents") private var events = true
     @State private var model = SuggestionsModel()
     @State private var saves = 0
+    @State private var note: String?
 
     private var groups: [FeedGroup] {
         guard media || events else { return [] }
@@ -172,6 +173,7 @@ struct SuggestionsFeed: View {
                     ForEach(group.suggestions) { suggestion in
                         SuggestionCard(suggestion: suggestion, drops: known) {
                             saves += 1
+                            note = "saved to \(boards.boards.first { $0.boardId == boardId }?.name ?? "the board")."
                             model.save(suggestion, as: boards.personId)
                         } dismiss: {
                             model.dismiss(suggestion)
@@ -219,6 +221,26 @@ struct SuggestionsFeed: View {
                 }
             }
         }
+        .overlay(alignment: .bottom) {
+            if let note {
+                Text(note)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .glassEffect(.regular, in: .capsule)
+                    .padding(.bottom, 12)
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .bottom)))
+                    .accessibilityIdentifier("suggestionSaved")
+            }
+        }
+        .animation(reduceMotion ? nil : .snappy, value: note)
+        .task(id: saves) {
+            guard let said = note else { return }
+            AccessibilityNotification.Announcement(said).post()
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            note = nil
+        }
         .navigationTitle("suggestions")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -249,7 +271,6 @@ struct SuggestionsFeed: View {
             Task { await model.prefs(for: boards.personId, events: on) }
         }
         .onDisappear { model.stop() }
-        .accessibilityIdentifier("suggestionsFeed")
     }
 
     @ViewBuilder
@@ -274,7 +295,7 @@ struct SuggestionsFeed: View {
 
     private func looking(_ words: String) -> some View {
         HStack(spacing: 8) {
-            ProgressView().controlSize(.small)
+            ProgressView().controlSize(.small).tint(.secondary)
             Text(words).font(.footnote).foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)

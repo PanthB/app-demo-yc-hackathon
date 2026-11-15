@@ -72,7 +72,17 @@ extension FeedSuggestion {
 
     var cost: String? {
         guard let price else { return nil }
-        return price == 0 ? "free" : price.formatted(.currency(code: "USD").precision(.fractionLength(0...2)))
+        return price == 0 ? "free" : "$" + price.formatted(.number.precision(.fractionLength(0...2)))
+    }
+
+    var spot: String? {
+        guard let place = CardWords.clean(place) else { return nil }
+        guard let name = CardWords.clean(title), place.hasPrefix(name + ", ") else { return place }
+        return String(place.dropFirst(name.count + 2))
+    }
+
+    var blurb: String? {
+        CardWords.clean(description?.replacingOccurrences(of: #"\s*\(?\[[^\]]*\]\([^)]*\)\)?"#, with: "", options: .regularExpression))
     }
 
     func starts(now: Date, calendar: Calendar = .current) -> String? {
@@ -96,13 +106,13 @@ extension FeedSuggestion {
     }
 
     func meta(now: Date, calendar: Calendar = .current) -> String? {
-        CardWords.meta([by, starts(now: now, calendar: calendar), place, cost], hiding: [title])
+        CardWords.meta([by, starts(now: now, calendar: calendar), spot, cost], hiding: [title])
     }
 }
 
 #if DEBUG
 extension FeedGroup {
-    static func sample(for boardId: String, now: Date = .now) -> [FeedGroup] {
+    static func sample(for boardId: String) -> [FeedGroup] {
         guard boardId == SeedBoard.crewBoardId else { return [] }
         func drop(_ number: String, _ title: String) -> FeedSuggestion.Source {
             FeedSuggestion.Source(clientId: "5EED0002-0000-4000-8000-00000000000\(number)", title: title)
@@ -112,7 +122,6 @@ extension FeedGroup {
         let song = drop("4", "san francisco (be sure to wear flowers in your hair)")
         let tour = drop("6", "mission district food tour")
         let chapel = drop("A", "the chapel")
-        let saturday = now.addingTimeInterval(3 * 86_400).timeIntervalSince1970 * 1000
         return [
             FeedGroup(clusterId: "sunny-afternoons", clusterLabel: "upbeat, in the mission", searching: false, suggestions: [
                 FeedSuggestion(
@@ -136,7 +145,7 @@ extension FeedGroup {
             ]),
             FeedGroup(clusterId: "late-night", clusterLabel: "late night", searching: true, suggestions: [
                 FeedSuggestion(
-                    id: "sample-dj-phleck", kind: "event", title: "dj phleck", startsAt: saturday,
+                    id: "sample-dj-phleck", kind: "event", title: "dj phleck", when: "saturday at 10pm",
                     place: "casements bar, mission", url: "https://casementsbar.com/events", price: 0,
                     reason: "because alex saved mission district food tour.",
                     description: "a late-night mission dj set blending funk, disco, new wave, house, and italo.",

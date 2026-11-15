@@ -5,28 +5,32 @@ struct SuggestionCard: View {
     let drops: [UUID: Drop]
     let save: () -> Void
     let dismiss: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let pill = suggestion.pill
+        let top = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
+            top {
                 FeedThumb(picture: nil, link: suggestion.thumbnailUrl, symbol: pill.symbol)
                 VStack(alignment: .leading, spacing: 4) {
                     KindPill(symbol: pill.symbol, word: pill.word, onPicture: false)
                         .padding(.bottom, 2)
-                    Text(suggestion.title).font(.headline).lineLimit(3)
+                    Text(suggestion.title).font(.headline).lineLimit(3).accessibilityIdentifier("suggestionTitle")
                     if let meta = suggestion.meta(now: .now) {
                         Text(meta).font(.footnote).foregroundStyle(.secondary).monospacedDigit().lineLimit(3)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            if let words = CardWords.clean(suggestion.description) {
+            if let words = suggestion.blurb {
                 Text(words).font(.subheadline).foregroundStyle(.secondary)
             }
             Divider()
             VStack(alignment: .leading, spacing: 8) {
-                Text(suggestion.reason).font(.subheadline)
+                Text(suggestion.reason).font(.subheadline).lineLimit(3)
                 ForEach(suggestion.inspiredBy ?? [], id: \.clientId) { source in
                     let drop = drops[DropKey.id(for: source.clientId)]
                     HStack(spacing: 8) {
@@ -61,12 +65,14 @@ struct SuggestionCard: View {
             .accessibilityIdentifier("suggestionSave")
         Button("dismiss", action: dismiss)
             .buttonStyle(.bordered)
+            .tint(.primary)
             .accessibilityIdentifier("suggestionDismiss")
         if let link = suggestion.link {
             Link(destination: link) {
                 Label("open", systemImage: "arrow.up.right")
             }
             .buttonStyle(.bordered)
+            .tint(.primary)
             .accessibilityLabel("open \(suggestion.site ?? "the link")")
             .accessibilityIdentifier("suggestionLink")
         }
