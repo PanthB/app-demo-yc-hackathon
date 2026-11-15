@@ -25,17 +25,17 @@ final class SuggestionsModel {
     @ObservationIgnored private var retry: Task<Void, Never>?
     @ObservationIgnored private var following: (boardId: String, personId: String)?
 
-    static let usesSample: Bool = {
+    static let sample: String? = {
         #if DEBUG
-        return UserDefaults.standard.bool(forKey: "BoardDebugSuggestionsSample")
+        return UserDefaults.standard.string(forKey: "BoardDebugSuggestionsSample")
         #else
-        return false
+        return nil
         #endif
     }()
 
     static let keepsWritesLocal: Bool = {
         #if DEBUG
-        return usesSample || UserDefaults.standard.bool(forKey: "BoardDebugSeed")
+        return sample != nil || UserDefaults.standard.bool(forKey: "BoardDebugSeed")
         #else
         return false
         #endif
@@ -47,8 +47,8 @@ final class SuggestionsModel {
         hidden = []
         problem = nil
         #if DEBUG
-        if Self.usesSample {
-            groups = FeedGroup.sample(for: boardId)
+        if let sample = Self.sample {
+            groups = FeedGroup.sample(sample)
             return
         }
         #endif

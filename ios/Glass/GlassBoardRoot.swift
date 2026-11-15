@@ -18,26 +18,6 @@ struct GlassBoardRoot: View {
     }
 
     var body: some View {
-        Group {
-            #if DEBUG
-            if let feed = UserDefaults.standard.string(forKey: "BoardDebugSuggestions") {
-                NavigationStack { SuggestionsFeed(boardId: feed) }
-            } else {
-                board
-            }
-            #else
-            board
-            #endif
-        }
-        .tint(Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 1, green: 0.42, blue: 0.29, alpha: 1)
-                : UIColor(red: 0.79, green: 0.28, blue: 0.17, alpha: 1)
-        }))
-    }
-
-    @ViewBuilder
-    private var board: some View {
         let boardId = boardId
         let isCurrent = boardId == boards.currentBoardId
         let shared = (isCurrent ? boards.currentBoard?.shared : nil) ?? (boardId != BoardKeys.personalBoard)
@@ -64,5 +44,10 @@ struct GlassBoardRoot: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+        .tint(Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 1, green: 0.42, blue: 0.29, alpha: 1)
+                : UIColor(red: 0.79, green: 0.28, blue: 0.17, alpha: 1)
+        }))
     }
 }
