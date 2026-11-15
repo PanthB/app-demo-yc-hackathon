@@ -218,11 +218,10 @@ struct ClusterLabelSlip: View {
     let text: String
 
     var body: some View {
-        Text(text)
+        Text(mood.handLabel(text))
             .font(mood.handwriting ? mood.hand(26) : mood.ui(19, weight: .bold))
             .foregroundStyle(mood.ink)
             .lineLimit(1)
-            .padding(.trailing, mood.handwriting ? 4 : 0)
             .fixedSize()
             .padding(.horizontal, 14)
             .frame(height: ClusterLayout.labelHeight)
@@ -257,9 +256,8 @@ struct ClusterReasonNote: View {
     let text: String
 
     var body: some View {
-        Text(text)
+        Text(mood.handLabel(text))
             .font(mood.handwriting ? mood.hand(22) : mood.ui(15, weight: .semibold))
-            .fontWeight(.semibold)
             .foregroundStyle(mood.ink)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)

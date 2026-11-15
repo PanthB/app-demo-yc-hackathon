@@ -12,6 +12,7 @@ struct ClusterBoardView: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(BoardClock.self) private var clock
     @AppStorage(Mood.handwritingKey) private var handwriting = true
+    @AppStorage("BoardLines") private var lines = false
     @State private var known: Set<UUID>?
     @State private var held: [UUID: Hold] = [:]
     @State private var readySince: [UUID: Date] = [:]
@@ -19,6 +20,7 @@ struct ClusterBoardView: View {
     @State private var lastDeparture: Date = .distantPast
     @State private var committed: Committed?
     @State private var visible = Visible()
+    @State private var viewport = Viewport()
     @State private var touching = false
     @State private var boardWidth: CGFloat = 0
     @State private var chosenLink: String?
@@ -71,6 +73,10 @@ struct ClusterBoardView: View {
             let low = rect.minY + top
             return low...max(low, rect.maxY - bottom)
         }
+    }
+
+    private final class Viewport {
+        var visible = Visible()
     }
 
     private struct Ghost: Identifiable {
@@ -140,7 +146,10 @@ struct ClusterBoardView: View {
             }
             .task(id: plan.snapshot) { await settle(plan) }
             .onScrollGeometryChange(for: Visible.self, of: { Visible(rect: $0.visibleRect, top: $0.contentInsets.top, bottom: $0.contentInsets.bottom) }) { _, new in
-                visible = new
+                viewport.visible = new
+                if !held.isEmpty || new.rect.size != visible.rect.size || new.top != visible.top || new.bottom != visible.bottom {
+                    visible = new
+                }
             }
             .onScrollPhaseChange { _, phase in
                 touching = phase == .tracking || phase == .interacting || phase == .decelerating
@@ -159,9 +168,10 @@ struct ClusterBoardView: View {
     private func board(_ plan: Plan, holds: [UUID: CGPoint], width: CGFloat) -> some View {
         let shown = Set(drops.filter(isShown).map(\.id))
         let calm = Set(holds.keys).union(flights.keys)
-        let chosen = plan.layout.links.first { $0.id == chosenLink }
+        let links = lines ? plan.layout.links : []
+        let chosen = links.first { $0.id == chosenLink }
         return ZStack(alignment: .topLeading) {
-            ForEach(plan.layout.links) { link in
+            ForEach(links) { link in
                 let live = shown.contains(link.first) && shown.contains(link.second)
                     && !calm.contains(link.first) && !calm.contains(link.second)
                 strand(link, chosen: link.id == chosenLink)
@@ -337,6 +347,7 @@ struct ClusterBoardView: View {
     }
 
     private func follow(_ rect: CGRect, height: CGFloat, animation: Animation) {
+        let visible = viewport.visible
         guard !touching, !reduceMotion, visible.rect.height > 0 else { return }
         let band = visible.band
         let room = band.upperBound - band.lowerBound
@@ -348,6 +359,7 @@ struct ClusterBoardView: View {
     }
 
     private func landingPoint(_ slot: Int, width: CGFloat) -> CGPoint {
+        let visible = viewport.visible
         let band = visible.rect.height > 0 ? visible.band : 0...700
         let lane: CGFloat = [0, -1, 1][slot % 3]
         let x = min(max(width / 2 + lane * width * 0.27, 92), width - 92)

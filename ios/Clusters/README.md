@@ -1,6 +1,6 @@
 # Clusters
 
-Owner: APPD-16. The board arranged by mood: drops in soft clusters with strings between close neighbors, entered through `ClusterBoardView`.
+Owner: APPD-16. The board arranged by mood: drops in soft clusters set apart by spacing, entered through `ClusterBoardView`. Strings between close neighbors show only while `@AppStorage("BoardLines")` is on, and it's off by default.
 
 Compiled into the app target by folder (see `ios/project.yml`), so a new file here needs no project edit. Markdown files are excluded from the build.
 
@@ -20,7 +20,7 @@ Pure Swift, no views. Recompute it whenever the drops change. APPD-22's constell
 
 - **A new drop.** It lands where you're looking and floats there, even while you scroll. Once it has been read it flies into its cluster while the cluster makes room. Several drops landing together fan out and leave 0.45s apart.
 - **Groups changing.** A relabel morphs the label in place, a merged group's label drifts into the group that took it, and a split buds off its parent. Drops move one after another.
-- **Following.** When you aren't touching the board, it follows a change or an arrival to wherever it lands.
+- **Following.** When you aren't touching the board, it follows your own drop to wherever it lands. A friend's drop leaves toward its cluster while the board stays where you are, and merges and splits never move it.
 - **Font and dark mode.** Labels use the handwriting font while `Mood.handwritingKey` is on, and the upright rounded font when it's off. In dark mode the cork dims and the paper stays paper.
 
 DEBUG only: `ClusterPlayground` shows the seeded sf crew board. Launch arguments:

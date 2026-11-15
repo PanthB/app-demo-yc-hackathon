@@ -62,7 +62,7 @@ struct ClusterLayout {
     static let columnGap: CGFloat = 20
     static let rowGap: CGFloat = 30
     static let stagger: CGFloat = 6
-    static let groupGap: CGFloat = 56
+    static let groupGap: CGFloat = 80
     static let maxTilt = 1.4
     static let stringRoom: CGFloat = 12
 
