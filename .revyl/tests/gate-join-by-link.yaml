@@ -1,0 +1,55 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 520dac6e-da94-4d3e-9a2c-5aeb36d9256e
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T21:58:11Z"
+    checksum: 60abd76e94d4176243d6935b422e08eac03d93964e1ee582be38ade08953c6f0
+test:
+    metadata:
+        name: gate-join-by-link
+        platform: ios
+        tags:
+            - gate
+            - shared
+    build:
+        name: app-demo-yc-hackathon
+    variables:
+        invite-code: SFCREW
+        person-name: revyl gate
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: if
+          condition: Is the app showing a welcome or first-run screen instead of a board?
+          then:
+            - type: instructions
+              step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://join/{{invite-code}}
+        - type: if
+          condition: Is a dialog asking whether to open this in the app visible?
+          then:
+            - type: instructions
+              step_description: Tap Open.
+        - type: validation
+          step_description: A sheet titled join a board is showing, and the invite code field already reads {{invite-code}}.
+        - type: if
+          condition: Is the sheet asking for your name?
+          then:
+            - type: instructions
+              step_description: Type {{person-name}} in the your name field.
+        - type: instructions
+          step_description: Tap join at the top right of the sheet.
+        - type: manual
+          step_type: wait
+          step_description: "4"
+        - type: validation
+          step_description: The sheet is gone and drops saved by panth, maya, sam and alex are showing, including the pinned dolores park on a sunny day clip and lands end trail.

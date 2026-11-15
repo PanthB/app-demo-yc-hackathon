@@ -1,0 +1,67 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: fe93067f-ad8b-42a7-b319-01414b45d79d
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T21:58:13Z"
+    checksum: d467d45a40787e0352b486cfe2a6444beec73e9a9359cbd8214d7398f7db1e7f
+test:
+    metadata:
+        name: gate-night-streaks
+        platform: ios
+        tags:
+            - gate
+            - night
+            - streaks
+    build:
+        name: app-demo-yc-hackathon
+    variables:
+        invite-code: SFCREW
+        person-name: revyl gate
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: if
+          condition: Is the app showing a welcome or first-run screen instead of a board?
+          then:
+            - type: instructions
+              step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://join/{{invite-code}}
+        - type: if
+          condition: Is a dialog asking whether to open this in the app visible?
+          then:
+            - type: instructions
+              step_description: Tap Open.
+        - type: if
+          condition: Is the sheet asking for your name?
+          then:
+            - type: instructions
+              step_description: Type {{person-name}} in the your name field.
+        - type: instructions
+          step_description: Tap join at the top right of the sheet.
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://view/night
+        - type: manual
+          step_type: wait
+          step_description: "3"
+        - type: instructions
+          step_description: Tap the board name at the top (it opens on my board) and choose sf crew.
+        - type: extraction
+          step_description: What does the line under the board name say? Answer with the exact text.
+          variable_name: crew-line
+        - type: instructions
+          step_description: Tap the round avatars at the top right to open the streak sheet.
+        - type: extraction
+          step_description: List each person in the sheet with their number of days, as name=days separated by commas.
+          variable_name: member-streaks
+        - type: validation
+          step_description: The sheet says the crew is on a run of some number of days and lists panth, maya, alex and sam with a day count each.

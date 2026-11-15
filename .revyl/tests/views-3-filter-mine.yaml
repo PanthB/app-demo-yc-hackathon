@@ -5,6 +5,7 @@ test:
     tags:
       - views
       - shared
+      - offline-seed
   build:
     name: app-demo-yc-hackathon
   blocks:
@@ -15,23 +16,19 @@ test:
       then:
         - type: instructions
           step_description: Tap the button that allows it (Allow While Using App, or Allow).
-    - type: manual
-      step_type: navigate
-      step_description: "appdemo://seed"
     - type: if
-      condition: Is a dialog asking whether to open this in the app visible?
+      condition: Is the app showing a welcome or first-run screen instead of a board?
       then:
         - type: instructions
-          step_description: Tap Open.
-    - type: manual
-      step_type: wait
-      step_description: "2"
+          step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
+    - type: instructions
+      step_description: Tap the title my board at the top to open the board menu, and choose sf crew.
     - type: validation
-      step_description: Under the title, a segmented control has everyone selected, and the drops carry the avatars of several different people.
+      step_description: The title reads sf crew. Under it, a segmented control has everyone selected, and the drops carry the avatars of several different people.
     - type: instructions
       step_description: Tap mine in the segmented control under the title.
     - type: validation
-      step_description: Only the current person's drops are showing. Every visible drop carries the same avatar, and drops by maya, sam and alex are gone. If the person has no drops, a friendly full-sentence line says so instead of a blank screen.
+      step_description: Only one person's drops are showing. Every visible drop carries the same avatar or says it's yours, and none is by maya, sam or alex.
     - type: instructions
       step_description: Tap everyone in the segmented control under the title.
     - type: validation

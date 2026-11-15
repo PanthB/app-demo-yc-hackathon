@@ -4,7 +4,7 @@ test:
     platform: ios
     tags:
       - views
-      - shared
+      - offline-seed
   build:
     name: app-demo-yc-hackathon
   blocks:
@@ -15,31 +15,25 @@ test:
       then:
         - type: instructions
           step_description: Tap the button that allows it (Allow While Using App, or Allow).
-    - type: manual
-      step_type: navigate
-      step_description: "appdemo://seed"
     - type: if
-      condition: Is a dialog asking whether to open this in the app visible?
+      condition: Is the app showing a welcome or first-run screen instead of a board?
       then:
         - type: instructions
-          step_description: Tap Open.
-    - type: manual
-      step_type: wait
-      step_description: "2"
+          step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
     - type: extraction
       step_description: What is the title of the first drop that is not in the pinned section? Answer with just the title.
       variable_name: drop-title
     - type: instructions
       step_description: Long-press the {{drop-title}} card and choose pin from the menu.
     - type: validation
-      step_description: "{{drop-title}} is now in the pinned section at the top, and its card shows a pin glyph."
+      step_description: "{{drop-title}} is now in the pinned section at the top."
     - type: instructions
-      step_description: In the floating bar at the bottom, tap the list view icon in the view switch.
+      step_description: In the glass bar at the bottom, tap the list (the bulleted list icon) button in the view switch on the left.
     - type: validation
       step_description: In the list view, {{drop-title}} is in the pinned section at the top.
     - type: instructions
-      step_description: Unpin {{drop-title}}, either by swiping its row from the leading edge or by long-pressing it and choosing unpin.
+      step_description: Long-press the {{drop-title}} row and choose unpin from the menu.
     - type: validation
       step_description: "{{drop-title}} is no longer in the pinned section."
     - type: instructions
-      step_description: In the floating bar at the bottom, tap the cards view icon in the view switch.
+      step_description: In the glass bar at the bottom, tap the cards (the four-squares icon) button in the view switch on the left.

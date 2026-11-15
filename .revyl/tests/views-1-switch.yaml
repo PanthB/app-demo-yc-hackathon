@@ -4,6 +4,7 @@ test:
     platform: ios
     tags:
       - views
+      - offline-seed
   build:
     name: app-demo-yc-hackathon
   blocks:
@@ -14,31 +15,25 @@ test:
       then:
         - type: instructions
           step_description: Tap the button that allows it (Allow While Using App, or Allow).
-    - type: manual
-      step_type: navigate
-      step_description: "appdemo://seed"
     - type: if
-      condition: Is a dialog asking whether to open this in the app visible?
+      condition: Is the app showing a welcome or first-run screen instead of a board?
       then:
         - type: instructions
-          step_description: Tap Open.
-    - type: manual
-      step_type: wait
-      step_description: "2"
+          step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
     - type: validation
-      step_description: The cards view is showing. Drops are cards in a two-column grid under lowercase section headers such as pinned, now and someday, and every card has a small type pill in its top leading corner.
+      step_description: The title at the top reads my board, and the cards view is showing. Drops are cards in a grid under lowercase section headers such as pinned, now and someday, and every card has a small type pill.
     - type: extraction
       step_description: What is the title of the first drop in the pinned section? Answer with just the title.
       variable_name: pinned-title
     - type: instructions
-      step_description: In the floating bar at the bottom, tap the list view icon in the view switch.
+      step_description: In the glass bar at the bottom, tap the list (the bulleted list icon) button in the view switch on the left.
     - type: validation
-      step_description: The list view is showing. Drops are rows with a small square thumbnail, a title and one meta line, under the same section headers, and {{pinned-title}} is still in the pinned section at the top.
+      step_description: The list view is showing. Drops are rows with a small thumbnail, a title and one meta line, under the same section headers, and {{pinned-title}} is in the pinned section at the top.
     - type: instructions
-      step_description: In the floating bar at the bottom, tap the board view icon in the view switch.
+      step_description: In the glass bar at the bottom, tap the board (the pin icon) button in the view switch on the left.
     - type: validation
-      step_description: The board view is showing. Drops are objects on a corkboard, lined up by section rather than scattered, each with a type pill, and {{pinned-title}} is with the pinned ones at the top.
+      step_description: The board view is showing. Drops are objects on a corkboard, lined up in rows by section, and {{pinned-title}} is with the pinned ones at the top.
     - type: instructions
-      step_description: In the floating bar at the bottom, tap the cards view icon in the view switch.
+      step_description: In the glass bar at the bottom, tap the cards (the four-squares icon) button in the view switch on the left.
     - type: validation
       step_description: The cards view is showing again, with {{pinned-title}} in the pinned section at the top.
