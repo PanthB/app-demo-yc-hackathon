@@ -15,6 +15,7 @@ const OPENAI_PRICES: Record<string, { input: number; cached: number; cacheWrite:
 
 export const readerModel = () => env.OPENAI_READER_MODEL?.trim() || OPENAI_MODEL;
 const deciderModel = () => env.OPENAI_DECIDER_MODEL?.trim() || OPENAI_MODEL;
+const suggestionsModel = () => env.OPENAI_SUGGESTIONS_MODEL?.trim() || "gpt-6.1-terra";
 export const openaiBudgetUsd = () => {
   const budget = Number(env.OPENAI_BUDGET_USD);
   return Number.isFinite(budget) && budget >= 0 && env.OPENAI_BUDGET_USD?.trim() ? budget : DEFAULT_BUDGET_USD;
@@ -240,7 +241,7 @@ const SUGGESTIONS_SCHEMA = {
 };
 
 export async function findSuggestions(ctx: ActionCtx, instructions: string, input: string) {
-  const model = OPENAI_MODEL;
+  const model = suggestionsModel();
   const { result, usd, webSearchCalls } = await openaiPost(
     ctx,
     "suggestions",

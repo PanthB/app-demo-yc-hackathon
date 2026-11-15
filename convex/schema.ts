@@ -13,6 +13,8 @@ export default defineSchema({
     name: v.string(),
     personalBoardId: v.optional(v.string()),
     tokenIdentifier: v.optional(v.string()),
+    recsMedia: v.optional(v.boolean()),
+    recsEvents: v.optional(v.boolean()),
   })
     .index("by_personId", ["personId"])
     .index("by_tokenIdentifier", ["tokenIdentifier"]),

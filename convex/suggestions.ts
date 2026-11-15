@@ -2,9 +2,9 @@ import { ConvexError, v } from "convex/values";
 import { internalAction, internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
-import { boardById, personById } from "./boards";
+import { boardById, membersOf, personById } from "./boards";
 import { freshPipeline } from "./drops";
-import { dropDoc } from "./model";
+import { dropDoc, nullable } from "./model";
 import { enrichLink } from "./lib/enrich";
 import { findSuggestions } from "./lib/models";
 import { fromLocalIso, localStamp, whenLabelFor } from "./lib/rules";
@@ -23,6 +23,11 @@ const SF_OFFSET = -480;
 const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
 
 const kind = v.union(v.literal("event"), v.literal("song"), v.literal("watch"), v.literal("place"));
+type Kind = Doc<"suggestions">["kind"];
+const wantedKinds = (people: Doc<"people">[]): Kind[] => [
+  ...(people.length === 0 || people.some((p) => p.recsEvents ?? true) ? (["event", "place"] as const) : []),
+  ...(people.length === 0 || people.some((p) => p.recsMedia ?? true) ? (["song", "watch"] as const) : []),
+];
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 300);
 const isSaved = (d: Doc<"drops">) => !d.found && d.status === "processed" && d.zone !== "done";
 const titleOf = (d: Doc<"drops">) => (d.extraction?.title ?? d.hints?.linkTitle ?? d.enrichment?.title ?? "").trim();
@@ -114,10 +119,13 @@ const suggestionView = v.object({
 });
 
 export const list = query({
-  args: { boardId: v.string() },
+  args: { boardId: v.string(), personId: nullable(v.string()) },
   returns: v.array(v.object({ clusterId: v.string(), clusterLabel: v.string(), searching: v.boolean(), suggestions: v.array(suggestionView) })),
-  handler: async (ctx, { boardId }) => {
+  handler: async (ctx, { boardId, personId }) => {
     const now = Date.now();
+    const person = personId ? await personById(ctx, personId) : null;
+    const kinds = wantedKinds(person ? [person] : []);
+    if (kinds.length === 0) return [];
     const drops = await boardDrops(ctx, boardId);
     const byClientId = new Map(drops.map((d) => [d.clientId, d]));
     const names = savedNames(drops);
@@ -140,7 +148,7 @@ export const list = query({
         .order("desc")
         .take(200)
     )
-      .filter((s) => !s.savedAt && !s.dismissedAt && (s.startsAt === undefined || s.startsAt > now - HOUR) && !alreadySaved(s, names))
+      .filter((s) => !s.savedAt && !s.dismissedAt && (s.startsAt === undefined || s.startsAt > now - HOUR) && kinds.includes(s.kind) && !alreadySaved(s, names))
       .sort((a, b) => b.foundAt - a.foundAt || a._creationTime - b._creationTime);
     const thumbnailOf = async (d: Doc<"drops">) => {
       const stored = d.imageIds[0] ? await ctx.storage.getUrl(d.imageIds[0]) : null;
@@ -238,11 +246,18 @@ export const start = internalMutation({
       drops: v.array(dropDoc),
       names: v.record(v.string(), v.string()),
       known: v.array(v.object({ title: v.string(), url: v.string(), place: v.optional(v.string()) })),
+      kinds: v.array(kind),
     }),
   ),
   handler: async (ctx, { searchId }) => {
     const search = await ctx.db.get("suggestionSearches", searchId);
     if (!search || search.status !== "scheduled") return null;
+    const members = await membersOf(ctx, search.boardId);
+    const kinds = wantedKinds((await Promise.all(members.map((m) => personById(ctx, m.personId)))).filter((p) => p !== null));
+    if (kinds.length === 0) {
+      await ctx.db.patch("suggestionSearches", searchId, { status: "done", finishedAt: Date.now(), added: 0, note: "everyone here turned suggestions off" });
+      return null;
+    }
     await ctx.db.patch("suggestionSearches", searchId, { status: "searching", startedAt: Date.now() });
     const board = await boardById(ctx, search.boardId);
     const drops = await boardDrops(ctx, search.boardId);
@@ -261,6 +276,7 @@ export const start = internalMutation({
       drops,
       names,
       known: known.map((s) => ({ title: s.title, url: s.url, place: s.place })),
+      kinds,
     };
   },
 });
@@ -290,14 +306,19 @@ function describe(ref: string, d: Doc<"drops">, names: Record<string, string>) {
     .join(" ");
 }
 
-const instructions = (label: string, from: string, to: string) =>
+const instructions = (label: string, from: string, to: string, kinds: Kind[]) =>
   [
     `You suggest things for a group of friends in San Francisco to watch or go to, for one cluster of their shared board: drops that share a vibe, "${label}".`,
-    "Search the web and suggest up to 4 that match that vibe and those drops, mixing kinds when they fit:",
-    `event, a real event in San Francisco between ${from} and ${to} with a date and a start time;`,
-    "song, another track by a saved artist or one that sounds like the saved songs;",
-    "watch, a movie or a show with the same feel;",
-    "place, a real place in San Francisco to go, near or like the saved places.",
+    "Search the web and suggest up to 4 that match that vibe and those drops, mixing kinds when they fit, and only of these kinds:",
+    ...kinds.map(
+      (k) =>
+        ({
+          event: `event, a real event in San Francisco between ${from} and ${to} with a date and a start time;`,
+          song: "song, another track by a saved artist or one that sounds like the saved songs;",
+          watch: "watch, a movie or a show with the same feel;",
+          place: "place, a real place in San Francisco to go, near or like the saved places;",
+        })[k],
+    ),
     "They already saved every drop listed, so never suggest one of those again, not the same song, movie, place or title from another page: each suggestion is something new to them.",
     "Each one needs its own page that you found in this search, such as the event's venue or ticketing page, the song's Spotify or Apple Music page, the movie's IMDb or streaming page, or the place's own site. Copy the URL exactly.",
     "Never invent anything, a date, a price or a URL. When fewer fit, return fewer, or none. At most one per venue or place.",
@@ -327,7 +348,7 @@ export const search = internalAction({
       ]
         .filter(Boolean)
         .join("\n");
-      const result = await findSuggestions(ctx, instructions(label, localStamp(now, offset), localStamp(now + WINDOW, offset)), input);
+      const result = await findSuggestions(ctx, instructions(label, localStamp(now, offset), localStamp(now + WINDOW, offset), job.kinds), input);
       usd = result.usd;
       const seen = new Set(result.sources.map(linkKey));
       const takenLinks = new Set([...job.drops.map((d) => linkKey(d.url)), ...job.known.map((k) => linkKey(k.url))].filter(Boolean));
@@ -345,6 +366,7 @@ export const search = internalAction({
         const startsAt = s.kind === "event" && s.starts_at ? fromLocalIso(s.starts_at, offset) : undefined;
         const named = s.inspired_by.map((ref) => refs.get(ref)).filter((d): d is Doc<"drops"> => d !== undefined).slice(0, 2);
         if (!key || !real[i]) skip("no page that names it");
+        else if (!job.kinds.includes(s.kind)) skip("a kind nobody here wants");
         else if (s.kind === "event" && (startsAt === undefined || startsAt < now - HOUR / 2 || startsAt > now + WINDOW)) skip("not in the next two weeks");
         else if (takenLinks.has(key) || alreadySaved(s, names)) skip("already on the board or suggested");
         else if (place && takenPlaces.has(place)) skip("same place as another suggestion");

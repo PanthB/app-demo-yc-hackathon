@@ -138,6 +138,8 @@ export const personView = v.object({
   personId: v.string(),
   name: v.string(),
   personalBoardId: v.string(),
+  recsMedia: v.boolean(),
+  recsEvents: v.boolean(),
 });
 
 export const dropFields = {
