@@ -37,6 +37,23 @@ final class ShellUITests: XCTestCase {
         XCTAssertTrue(drop(app, saying: "nights like this").waitForExistence(timeout: 15))
     }
 
+    func testASharedBoardsTitleMenuInvitesFriends() {
+        let app = launch()
+        XCTAssertTrue(element(app, "cardsView").waitForExistence(timeout: 20))
+        let home = title(app, "my board")
+        XCTAssertTrue(home.waitForExistence(timeout: 10))
+        home.tap()
+        XCTAssertFalse(app.buttons["invite friends"].exists)
+        let crew = app.buttons["sf crew"]
+        XCTAssertTrue(crew.waitForExistence(timeout: 5))
+        crew.tap()
+        let shared = title(app, "sf crew")
+        XCTAssertTrue(shared.waitForExistence(timeout: 5))
+        pause()
+        shared.tap()
+        XCTAssertTrue(app.buttons["invite friends"].waitForExistence(timeout: 5))
+    }
+
     func testIdeasOpensTheSuggestions() {
         let app = launch()
         let button = element(app, "ideasButton")

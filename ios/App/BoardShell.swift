@@ -160,6 +160,11 @@ struct BoardShell: View {
             }
         }
         Divider()
+        if let board = known.first(where: { $0.boardId == current }), let link = board.inviteLink, let code = board.inviteCode {
+            ShareLink(item: link, subject: Text(board.name), message: Text("come join \(board.name) with me. the code is \(code).")) {
+                Label("invite friends", systemImage: "person.badge.plus")
+            }
+        }
         Button("start a shared board", systemImage: "person.2") { boards.entry = .create }
         Button("join with a code", systemImage: "number") { boards.entry = .join(code: nil) }
     }
