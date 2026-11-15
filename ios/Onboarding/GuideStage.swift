@@ -462,33 +462,22 @@ struct GuideSlip: View {
     }
 }
 
-/// The board's bottom bar: the view switch with the cards view picked, and add.
+/// Night's add buttons at the foot of the board: the camera, and add.
 struct GuideBottomBar: View {
     var body: some View {
-        HStack {
-            HStack(spacing: 4) {
-                ForEach(["list.bullet", "square.grid.2x2.fill", "rectangle.3.group.fill"], id: \.self) { symbol in
-                    Image(systemName: symbol)
-                        .foregroundStyle(symbol == "square.grid.2x2.fill" ? Color.white : Color.secondary)
-                        .frame(width: 36, height: 30)
-                        .background {
-                            if symbol == "square.grid.2x2.fill" {
-                                Capsule().fill(.white.opacity(0.16))
-                            }
-                        }
-                }
-            }
-            .font(.system(size: 14, weight: .semibold))
-            .padding(4)
-            .glassEffect(.regular, in: .capsule)
-            Spacer()
+        HStack(spacing: 14) {
+            Image(systemName: "camera")
+                .font(.system(size: 15, weight: .semibold))
+                .frame(width: 36, height: 36)
+                .glassEffect(.regular, in: .circle)
             Image(systemName: "plus")
                 .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(.white)
                 .frame(width: 42, height: 42)
-                .glassEffect(.regular.tint(Color.onboardingTint), in: .circle)
+                .glassEffect(.regular, in: .circle)
                 .guideTarget(.plus)
         }
+        .foregroundStyle(.white)
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 }
 
@@ -497,9 +486,6 @@ struct GuideArrow: View {
     let target: CGRect
     let hint: GuideHint
     let bounds: CGSize
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var drawn: CGFloat = 0
 
     var body: some View {
         let start = CGPoint(
@@ -522,14 +508,8 @@ struct GuideArrow: View {
             path.move(to: tip)
             path.addLine(to: CGPoint(x: tip.x - 9 * cos(angle + 0.5), y: tip.y - 9 * sin(angle + 0.5)))
         }
-        .trim(from: 0, to: drawn)
         .stroke(.white, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
         .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
         .allowsHitTesting(false)
-        .onAppear {
-            withAnimation(reduceMotion ? .easeInOut(duration: 0.25) : .easeOut(duration: 0.35).delay(0.2)) {
-                drawn = 1
-            }
-        }
     }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The welcome's hero: drops from sf crew of five kinds (a song, a link, a place, a photo and a clip) land one by one
-/// on a loose pile, each with its kind pill, and a small note under the pile's corner says where they went.
+/// on a loose pile, each with a solid kind pill in night's type, and a small note under the pile's corner says where they went.
 struct WelcomePile: View {
     let dealt: Bool
     let shown: Bool
@@ -37,9 +37,8 @@ struct WelcomePile: View {
                     }
                 }
                 .overlay(alignment: .topLeading) {
-                    NightKindTag(kind: slot.kind)
-                        .scaleEffect(0.85, anchor: .topLeading)
-                        .padding(9)
+                    PileTag(kind: slot.kind)
+                        .padding(13)
                 }
                     .scaleEffect(dealt ? (shown ? 1 : 0.94) : 1.08)
                     .rotationEffect(.degrees(dealt ? slot.tilt : slot.tilt + 14))
@@ -50,7 +49,7 @@ struct WelcomePile: View {
                     .animation(leave, value: shown)
             }
             DroppedNote()
-                .offset(x: -58, y: 164)
+                .offset(y: 164)
                 .opacity(dealt && shown ? 1 : 0)
                 .offset(y: dealt ? 0 : 8)
                 .blur(radius: dealt && shown ? 0 : 6)
@@ -125,5 +124,23 @@ private struct PageTile: View {
         }
         .shadow(color: .black.opacity(0.5), radius: 16, y: 10)
         .environment(\.colorScheme, .dark)
+    }
+}
+
+private struct PileTag: View {
+    let kind: DropKind
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: kind.symbol)
+                .font(.system(size: 10, weight: .semibold))
+            Text(kind.word)
+                .font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 9)
+        .frame(height: 22)
+        .background(Color(white: 0.1).opacity(0.84), in: .capsule)
+        .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1))
     }
 }
