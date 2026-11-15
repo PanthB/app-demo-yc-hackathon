@@ -22,6 +22,7 @@ import type * as model from "../model.js";
 import type * as moments from "../moments.js";
 import type * as people from "../people.js";
 import type * as pipeline from "../pipeline.js";
+import type * as seed from "../seed.js";
 import type * as spend from "../spend.js";
 
 import type {
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   moments: typeof moments;
   people: typeof people;
   pipeline: typeof pipeline;
+  seed: typeof seed;
   spend: typeof spend;
 }>;
 
