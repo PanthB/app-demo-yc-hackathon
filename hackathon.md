@@ -10,9 +10,9 @@
 - **Components:** none
 - **Convex features:** schema, tables, indexes, full-text search, queries, mutations, actions, internal functions, scheduled functions, file storage, realtime subscriptions, typed environment variables, auth (OIDC)
 - **Auth:** Sign in with Apple links an account to its person, and guests stay anonymous person ids; access checks are next, so functions still trust the person id the app sends
-- **AI models:** gpt-6-luna through OpenAI only: Chat Completions reads drops and the Decisions API decides, under a $20 cap
+- **AI models:** gpt-6-luna through OpenAI only: Chat Completions reads drops, the Decisions API decides, and the Responses API's web search finds events, all under a $20 cap
 - **Started:** 2026-11-15T18:36:06Z
-- **Last updated:** 2026-11-15T21:16:00Z
+- **Last updated:** 2026-11-15T21:34:00Z
 
 ## Log
 
@@ -157,3 +157,14 @@ the $20 cap, with rules as the fallback. A clip's title now comes from its
 caption instead of the share sheet's link title. Sign in with Apple is now the
 only sign-in provider (`convex/lib/models.ts`, `convex/pipeline.ts`,
 `convex/auth.config.ts`).
+
+### 2026-11-15 - 01402ff
+A board can find things to do: gpt-6-luna searches the web through the
+Responses API for up to five real SF events in the next two weeks that fit the
+board's artists, places and moods. Each one is added as a "found for you" drop
+with a reason like "because maya saved otis redding.", lands in the cluster of
+the drop that inspired it, and is kept only when its page turned up in the
+search or names the event. One search per board an hour, five finds a day, and
+every web search is counted against the $20 cap at $0.01 a call. Convex
+features: mutations, internal actions, scheduled functions, tables, indexes
+(`convex/events.ts`, `convex/lib/models.ts`, `convex/lib/vibes.ts`).
