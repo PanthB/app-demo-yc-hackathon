@@ -1,0 +1,75 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: a558e1cd-5d7d-4379-bc34-b697298fde55
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T22:27:18Z"
+    checksum: 5a13de9c50edf93b69b3e22b46501c30ab82380499e7b431ffccc9f8d889c3b3
+test:
+    metadata:
+        name: gate-relaunch-keeps-board
+        platform: ios
+        tags:
+            - gate
+            - sync
+            - qa-board
+    build:
+        name: app-demo-yc-hackathon
+    variables:
+        person-name: revyl gate
+        pinned-title: tacos
+        qa-code: <qa board code>
+        qa-name: <qa board name>
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: if
+          condition: Is the app showing a welcome or first-run screen instead of a board?
+          then:
+            - type: instructions
+              step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://join/{{qa-code}}
+        - type: if
+          condition: Is a dialog asking whether to open this in the app visible?
+          then:
+            - type: instructions
+              step_description: Tap Open.
+        - type: if
+          condition: Is the sheet asking for your name?
+          then:
+            - type: instructions
+              step_description: Type {{person-name}} in the your name field.
+        - type: instructions
+          step_description: Tap join at the top right of the sheet.
+        - type: manual
+          step_type: wait
+          step_description: "3"
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://view/cards
+        - type: instructions
+          step_description: Long-press the {{pinned-title}} card and choose pin from the menu.
+        - type: validation
+          step_description: The title reads {{qa-name}} and {{pinned-title}} is under pinned.
+        - type: manual
+          step_type: kill_app
+        - type: manual
+          step_type: open_app
+        - type: manual
+          step_type: wait
+          step_description: "3"
+        - type: validation
+          step_description: The title still reads {{qa-name}}, {{pinned-title}} is still under pinned, and the picnic and learn to surf cards are still there.
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://view/night
+        - type: validation
+          step_description: The night view is showing {{qa-name}}.

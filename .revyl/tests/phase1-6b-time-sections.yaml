@@ -1,31 +1,39 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: f2d9aab0-5bb9-4332-a035-8927f9d9d3ba
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T22:27:05Z"
+    checksum: 392401889011f0564d2118b169b411daa84b3d295494afcc6da17545de957e77
 test:
-  metadata:
-    name: phase1-6b-time-sections
-    platform: ios
-    tags:
-      - phase1
-      - time
-  build:
-    name: app-demo-yc-hackathon
-  blocks:
-    - type: manual
-      step_type: open_app
-    - type: if
-      condition: Is a system permission prompt (location or notifications) visible?
-      then:
+    metadata:
+        name: phase1-6b-time-sections
+        platform: ios
+        tags:
+            - phase1
+            - time
+    build:
+        name: app-demo-yc-hackathon
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: if
+          condition: Is the app showing a welcome or first-run screen instead of a board?
+          then:
+            - type: instructions
+              step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
         - type: instructions
-          step_description: Tap the button that allows it (Allow While Using App, or Allow).
-    - type: if
-      condition: Is the app showing a welcome or first-run screen instead of a board?
-      then:
+          step_description: Tap the plus button at the bottom right of the glass bar, choose note, type "coffee in 20 minutes" in the write a note box, and tap add it.
         - type: instructions
-          step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
-    - type: instructions
-      step_description: "Tap the plus button at the bottom right of the glass bar, choose note, type \"coffee in 20 minutes\" in the write a note box, and tap add it."
-    - type: instructions
-      step_description: "Tap the plus button at the bottom right of the glass bar, choose note, type \"movie at 10pm\" in the write a note box, and tap add it."
-    - type: manual
-      step_type: wait
-      step_description: "15"
-    - type: validation
-      step_description: The coffee note is under the now section, and the movie note is under the tonight section.
+          step_description: Tap the plus button at the bottom right of the glass bar, choose note, type "movie at 10pm" in the write a note box, and tap add it.
+        - type: manual
+          step_type: wait
+          step_description: "15"
+        - type: validation
+          step_description: The coffee note is under the now section, and the movie note is under the tonight section.

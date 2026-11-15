@@ -1,0 +1,63 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: d1c6ab04-55ca-4849-aee3-fe92ddb1d371
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T22:27:15Z"
+    checksum: eb5439fefe2ee8929b585bd629d2967741b9081c429d73e63302ec5cd61949af
+test:
+    metadata:
+        name: gate-friend-drop-arrives-live
+        platform: ios
+        tags:
+            - gate
+            - sync
+            - qa-board
+    build:
+        name: app-demo-yc-hackathon
+    variables:
+        person-name: revyl gate
+        qa-code: <qa board code>
+        qa-name: <qa board name>
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: if
+          condition: Is the app showing a welcome or first-run screen instead of a board?
+          then:
+            - type: instructions
+              step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://join/{{qa-code}}
+        - type: if
+          condition: Is a dialog asking whether to open this in the app visible?
+          then:
+            - type: instructions
+              step_description: Tap Open.
+        - type: if
+          condition: Is the sheet asking for your name?
+          then:
+            - type: instructions
+              step_description: Type {{person-name}} in the your name field.
+        - type: instructions
+          step_description: Tap join at the top right of the sheet.
+        - type: manual
+          step_type: wait
+          step_description: "3"
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://view/cards
+        - type: validation
+          step_description: The title reads {{qa-name}}, and no song card titled never gonna give you up is showing.
+        - type: manual
+          step_type: wait
+          step_description: "45"
+        - type: validation
+          step_description: A song card titled never gonna give you up, saved by qa friend, is showing without reopening the app, and the title still reads {{qa-name}}.

@@ -1,39 +1,47 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 3fcc20b7-d669-489d-8577-83c167bd95c5
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T22:26:58Z"
+    checksum: 837e8b604554aa92ab01507e8ee9ed123e6ce32965e3a156b58ebccf061bacc1
 test:
-  metadata:
-    name: views-2-pin
-    platform: ios
-    tags:
-      - views
-      - offline-seed
-  build:
-    name: app-demo-yc-hackathon
-  blocks:
-    - type: manual
-      step_type: open_app
-    - type: if
-      condition: Is a system permission prompt (location or notifications) visible?
-      then:
+    metadata:
+        name: views-2-pin
+        platform: ios
+        tags:
+            - views
+            - offline-seed
+    build:
+        name: app-demo-yc-hackathon
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: if
+          condition: Is the app showing a welcome or first-run screen instead of a board?
+          then:
+            - type: instructions
+              step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
+        - type: extraction
+          step_description: What is the title of the first drop that is not in the pinned section? Answer with just the title.
+          variable_name: drop-title
         - type: instructions
-          step_description: Tap the button that allows it (Allow While Using App, or Allow).
-    - type: if
-      condition: Is the app showing a welcome or first-run screen instead of a board?
-      then:
+          step_description: Long-press the {{drop-title}} card and choose pin from the menu.
+        - type: validation
+          step_description: '{{drop-title}} is now in the pinned section at the top.'
         - type: instructions
-          step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
-    - type: extraction
-      step_description: What is the title of the first drop that is not in the pinned section? Answer with just the title.
-      variable_name: drop-title
-    - type: instructions
-      step_description: Long-press the {{drop-title}} card and choose pin from the menu.
-    - type: validation
-      step_description: "{{drop-title}} is now in the pinned section at the top."
-    - type: instructions
-      step_description: In the glass bar at the bottom, tap the list (the bulleted list icon) button in the view switch on the left.
-    - type: validation
-      step_description: In the list view, {{drop-title}} is in the pinned section at the top.
-    - type: instructions
-      step_description: Long-press the {{drop-title}} row and choose unpin from the menu.
-    - type: validation
-      step_description: "{{drop-title}} is no longer in the pinned section."
-    - type: instructions
-      step_description: In the glass bar at the bottom, tap the cards (the four-squares icon) button in the view switch on the left.
+          step_description: In the glass bar at the bottom, tap the list (the bulleted list icon) button in the view switch on the left.
+        - type: validation
+          step_description: In the list view, {{drop-title}} is in the pinned section at the top.
+        - type: instructions
+          step_description: Long-press the {{drop-title}} row and choose unpin from the menu.
+        - type: validation
+          step_description: '{{drop-title}} is no longer in the pinned section.'
+        - type: instructions
+          step_description: In the glass bar at the bottom, tap the cards (the four-squares icon) button in the view switch on the left.
