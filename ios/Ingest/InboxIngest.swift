@@ -10,14 +10,17 @@ extension Logger {
 struct InboxIngest {
     var inbox: Inbox
     var container: URL
-    var dropperId: String
+    var authorId: String
+    var boardId: (UUID) -> String
 
     static var appGroup: InboxIngest? {
         guard let inbox = Inbox.shared, let container = AppGroup.containerURL else {
             Logger.ingest.fault("app group is missing, so shared drops can't reach the board")
             return nil
         }
-        return InboxIngest(inbox: inbox, container: container, dropperId: DeviceIdentity.personId)
+        return InboxIngest(inbox: inbox, container: container, authorId: DeviceIdentity.personId) { id in
+            AppGroup.defaults.string(forKey: BoardKeys.inboxBoard(id)) ?? BoardKeys.currentBoard
+        }
     }
 
     nonisolated static func mediaFolder(for id: UUID) -> String {
@@ -33,7 +36,8 @@ struct InboxIngest {
                     let drop = Drop(
                         id: item.id,
                         createdAt: item.createdAt,
-                        authorId: dropperId,
+                        authorId: authorId,
+                        boardId: boardId(item.id),
                         sourceKind: item.kind,
                         rawText: item.text,
                         url: item.url,
@@ -57,6 +61,7 @@ struct InboxIngest {
             }
             do {
                 try inbox.remove(item.id)
+                AppGroup.defaults.removeObject(forKey: BoardKeys.inboxBoard(item.id))
             } catch {
                 Logger.ingest.error("\(item.id.uuidString, privacy: .public) is on the board but its inbox folder is still there: \(String(describing: error), privacy: .public)")
             }

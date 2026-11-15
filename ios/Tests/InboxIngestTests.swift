@@ -12,7 +12,7 @@ final class InboxIngestTests: XCTestCase {
     override func setUpWithError() throws {
         root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
         inbox = Inbox(root: root.appending(path: "inbox", directoryHint: .isDirectory))
-        ingest = InboxIngest(inbox: inbox, container: root, dropperId: "me")
+        ingest = InboxIngest(inbox: inbox, container: root, authorId: "me") { _ in "sf-crew" }
         context = ModelContext(BoardStore.makeInMemoryContainer())
     }
 
@@ -37,6 +37,7 @@ final class InboxIngestTests: XCTestCase {
         XCTAssertEqual(drop.status, .pending)
         XCTAssertEqual(drop.objectKind, .postcard)
         XCTAssertEqual(drop.authorId, "me")
+        XCTAssertEqual(drop.boardId, "sf-crew")
         XCTAssertEqual(inbox.pending(), [])
     }
 
