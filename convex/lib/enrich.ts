@@ -1,3 +1,4 @@
+import { env } from "../_generated/server";
 import type { Enrichment } from "../model";
 import { hostOf } from "./rules";
 
@@ -75,17 +76,65 @@ export function instagramPost(meta: Record<string, string>) {
   };
 }
 
+async function scrapeCreators(path: string, url: string, extra = "") {
+  if (!env.SCRAPECREATORS_API_KEY) return undefined;
+  const response = await fetch(`https://api.scrapecreators.com${path}?url=${encodeURIComponent(url)}&cache_max_age=30d${extra}`, {
+    headers: { "x-api-key": env.SCRAPECREATORS_API_KEY },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw new Error(`scrapecreators ${response.status}`);
+  return (await response.json()) as Record<string, any>;
+}
+
+const captionTitle = (caption?: string) =>
+  caption
+    ?.split("\n")
+    .map((line) => line.replace(/[#@][\w.]+/g, "").replace(/\s+/g, " ").trim())
+    .find(Boolean)
+    ?.slice(0, 100);
+
 export async function enrichLink(url: string): Promise<Enrichment> {
   const host = hostOf(url) ?? "";
   if (/(^|\.)instagram\.com$/.test(host)) {
-    const meta = await pageMeta(url, CRAWLER_UA).catch((): Record<string, string> => ({}));
+    const [scraped, meta] = await Promise.all([
+      scrapeCreators("/v1/instagram/post", url).catch(() => undefined),
+      pageMeta(url, CRAWLER_UA).catch((): Record<string, string> => ({})),
+    ]);
+    const media = scraped?.data?.xdt_shortcode_media;
+    const caption = str(media?.edge_media_to_caption?.edges?.[0]?.node?.text);
+    if (caption) {
+      return {
+        provider: "instagram scrapecreators + og tags",
+        title: captionTitle(caption),
+        description: caption,
+        author: str(media.owner?.full_name) ?? str(media.owner?.username),
+        siteName: "Instagram",
+        thumbnailUrl: meta["og:image"] ?? str(media.display_url),
+        durationSec: media.is_video && typeof media.video_duration === "number" ? Math.round(media.video_duration * 10) / 10 : undefined,
+      };
+    }
     return { provider: "instagram og tags", ...instagramPost(meta), siteName: "Instagram", thumbnailUrl: meta["og:image"] };
   }
   if (/(^|\.)tiktok\.com$/.test(host)) {
-    const [o, meta] = await Promise.all([
-      getJson(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`).catch((): Record<string, unknown> => ({})),
+    const [scraped, meta] = await Promise.all([
+      scrapeCreators("/v2/tiktok/video", url, "&trim=true").catch(() => undefined),
       pageMeta(url, CRAWLER_UA).catch((): Record<string, string> => ({})),
     ]);
+    const video = scraped?.aweme_detail;
+    const caption = str(video?.desc);
+    if (caption) {
+      const ms = video.video?.duration;
+      return {
+        provider: "tiktok scrapecreators + og tags",
+        title: captionTitle(caption),
+        description: caption,
+        author: str(video.author?.nickname) ?? str(video.author?.unique_id),
+        siteName: "TikTok",
+        thumbnailUrl: meta["og:image"],
+        durationSec: typeof ms === "number" && ms > 0 ? Math.round(ms / 100) / 10 : undefined,
+      };
+    }
+    const o = await getJson(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`).catch((): Record<string, unknown> => ({}));
     return {
       provider: "tiktok oembed + og tags",
       title: str(o.title),
