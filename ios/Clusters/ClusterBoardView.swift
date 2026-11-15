@@ -33,7 +33,7 @@ struct ClusterBoardView: View {
     }
 
     private static let night = Mood(
-        board: Color(hex: 0x3A2E24),
+        board: Color(hex: 0x5A4535),
         paper: Color(hex: 0xF3E8D8),
         stickerWhite: Color(hex: 0xF6EEE0),
         ink: Color(hex: 0x2B2420),
@@ -44,7 +44,7 @@ struct ClusterBoardView: View {
         mint: Color(hex: 0x8FDDB0),
         lilac: Color(hex: 0xBFA2FF),
         shade: Color(hex: 0x0A0604),
-        speckle: 0.3,
+        speckle: 0.24,
         tilt: Mood.sunny.tilt,
         land: Mood.sunny.land,
         move: Mood.sunny.move
