@@ -9,6 +9,8 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
+import { membersOf, personById } from "./boards";
+import { nameLabel, sameThing, socialLine } from "./lib/suggest";
 import {
   decision,
   dropDoc,
@@ -52,14 +54,32 @@ async function byClientId(ctx: QueryCtx, boardId: string, clientId: string) {
   return drop?.boardId === boardId ? drop : null;
 }
 
-async function toView(ctx: QueryCtx, d: Doc<"drops">) {
+async function toView(
+  ctx: QueryCtx,
+  d: Doc<"drops">,
+  dropsByClientId: Map<string, Doc<"drops">>,
+  names: Map<string, string>,
+  colors: Map<string, string>,
+) {
   const urls = await Promise.all(d.imageIds.map((id) => ctx.storage.getUrl(id)));
   const imageUrls = urls.filter((u): u is string => u !== null);
+  const fromOthers = d.relatedClientIds
+    .map((id) => dropsByClientId.get(id))
+    .filter((o): o is Doc<"drops"> => o !== undefined && o.authorId !== d.authorId);
+  const social = fromOthers.length
+    ? socialLine(
+        fromOthers.map((o) => nameLabel(names.get(o.authorId))),
+        fromOthers.some((o) => sameThing(o, d)),
+      )
+    : undefined;
   return {
     ...d,
     title: d.extraction?.title ?? d.hints?.linkTitle ?? d.enrichment?.title,
     thumbnailUrl: imageUrls[0] ?? d.enrichment?.thumbnailUrl,
     imageUrls,
+    authorName: names.get(d.authorId),
+    authorColor: colors.get(d.authorId),
+    suggestion: d.suggestion ?? social,
   };
 }
 
@@ -91,7 +111,7 @@ export const submit = mutation({
     if (existing) return existing._id;
     const dropId = await ctx.db.insert("drops", {
       boardId: args.boardId,
-      personId: args.personId,
+      authorId: args.personId,
       clientId: args.clientId,
       kind: args.kind,
       text: args.text ?? undefined,
@@ -123,7 +143,29 @@ export const list = query({
       .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
       .order("desc")
       .take(300);
-    return await Promise.all(drops.map((d) => toView(ctx, d)));
+    const members = await membersOf(ctx, boardId);
+    const colors = new Map(members.map((m) => [m.personId, m.color]));
+    const authorIds = [...new Set([...members.map((m) => m.personId), ...drops.map((d) => d.authorId)])];
+    const people = await Promise.all(authorIds.slice(0, 100).map((id) => personById(ctx, id)));
+    const names = new Map(people.filter((p) => p !== null).map((p) => [p.personId, p.name]));
+    const dropsByClientId = new Map(drops.map((d) => [d.clientId, d]));
+    return await Promise.all(drops.map((d) => toView(ctx, d, dropsByClientId, names, colors)));
+  },
+});
+
+export const setPinned = mutation({
+  args: { boardId: v.string(), clientId: v.string(), pinned: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, { boardId, clientId, pinned }) => {
+    const drop = await byClientId(ctx, boardId, clientId);
+    if (!drop) throw new ConvexError("drop not found on this board");
+    if (drop.pinned === pinned) return null;
+    await ctx.db.patch("drops", drop._id, {
+      pinned,
+      pinnedAt: pinned ? Date.now() : undefined,
+      updatedAt: Date.now(),
+    });
+    return null;
   },
 });
 
@@ -132,17 +174,15 @@ export const setZone = mutation({
     boardId: v.string(),
     clientId: v.string(),
     zone,
-    pinned: nullable(v.boolean()),
   },
   returns: v.null(),
-  handler: async (ctx, { boardId, clientId, zone, pinned }) => {
+  handler: async (ctx, { boardId, clientId, zone }) => {
     const drop = await byClientId(ctx, boardId, clientId);
     if (!drop) throw new ConvexError("drop not found on this board");
     await ctx.db.patch("drops", drop._id, {
       zone,
       previousZone: drop.zone,
       zoneSetByUser: true,
-      pinned: pinned ?? drop.pinned,
       updatedAt: Date.now(),
     });
     return null;
@@ -201,6 +241,7 @@ export const applyResult = internalMutation({
     enrichment: v.optional(enrichment),
     extraction: v.optional(extraction),
     decision: v.optional(decision),
+    suggestion: v.optional(v.string()),
     relatedClientIds: v.array(v.string()),
     searchText: v.string(),
     pipeline,
@@ -215,6 +256,7 @@ export const applyResult = internalMutation({
       enrichment: args.enrichment,
       extraction: args.extraction,
       decision: args.decision,
+      suggestion: args.suggestion,
       zone: drop.zoneSetByUser ? drop.zone : (args.decision?.zone ?? drop.zone),
       relatedClientIds: related,
       searchText: args.searchText,
