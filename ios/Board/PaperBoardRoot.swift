@@ -1,8 +1,9 @@
-import SwiftData
 import SwiftUI
 
 struct PaperBoardRoot: View {
-    @Query(sort: \Drop.createdAt) private var drops: [Drop]
+    let sections: [DropSection]
+    let namespace: Namespace.ID
+    let select: (Drop) -> Void
     @Environment(BoardClock.self) private var clock
     @AppStorage(Mood.handwritingKey) private var handwriting = true
 
@@ -17,16 +18,9 @@ struct PaperBoardRoot: View {
         var mood = Mood.sunny
         mood.handwriting = handwriting
         return GeometryReader { proxy in
-            let home = DeviceIdentity.boardId
-            let sections = DropSection.build(
-                drops.filter { $0.boardId == home || $0.boardId.isEmpty },
-                filter: .everyone,
-                me: DeviceIdentity.personId,
-                now: clock.now
-            )
             let layout = CorkboardLayout(sections: sections, width: proxy.size.width, minHeight: proxy.size.height)
             ScrollView(.vertical) {
-                Corkboard(layout: layout, width: proxy.size.width)
+                Corkboard(layout: layout, width: proxy.size.width, namespace: namespace, select: select)
                     .background { CorkSurface().padding(.vertical, -240) }
                     .environment(\.colorScheme, .light)
             }
@@ -44,6 +38,8 @@ private struct Corkboard: View {
     @Environment(\.mood) private var mood
     let layout: CorkboardLayout
     let width: CGFloat
+    let namespace: Namespace.ID
+    let select: (Drop) -> Void
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -68,8 +64,12 @@ private struct Corkboard: View {
 
             ForEach(layout.items) { item in
                 BoardItem(item: item)
+                    .matchedTransitionSource(id: item.drop.id, in: namespace)
+                    .contentShape(.rect)
+                    .onTapGesture { select(item.drop) }
                     .contextMenu { DropMenu(drop: item.drop) }
                     .accessibilityElement(children: .ignore)
+                    .accessibilityAddTraits(.isButton)
                     .accessibilityLabel(spokenName(for: item))
                     .accessibilityIdentifier("drop-\(item.drop.showsRawThing ? "raw" : item.drop.objectKind.rawValue)")
                     .accessibilitySortPriority(-Double(item.order))

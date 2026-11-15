@@ -33,11 +33,17 @@ Sources are included by folder, so adding or removing a Swift file needs no chan
 - `CONVEX_URL` is the Convex deployment, surfaced to Swift through the `CONVEX_URL` Info.plist key. Write it as `https:/$()/<name>.convex.cloud`, because `//` starts a comment in xcconfig files.
 - `APP_GROUP_ID` (`group.com.panthb.appdemo`) feeds both entitlements files and the `APP_GROUP_ID` Info.plist key that `Shared/AppGroup.swift` reads.
 
-Simulator builds are ad-hoc signed ("Sign to Run Locally", identity `-`, no team), so the app group entitlement is embedded without a certificate. Device builds on a Mac need `CODE_SIGN_STYLE: Automatic` and a `DEVELOPMENT_TEAM`.
+Simulator builds are ad-hoc signed ("Sign to Run Locally", identity `-`, no team), so the app group entitlement is embedded without a certificate. Device builds sign automatically with the Skan Beauty team (`JD9H683DWQ`); build them with `-allowProvisioningUpdates` the first time so Xcode makes the team profiles.
 
 ## Views
 
-The app shows the same `Drop` records three ways: list, cards (the default) and board (the corkboard in `ios/Board`). A fourth, night (`ios/Night`, APPD-20), is a dark-only variant that RootView shows full screen with its own header and menu. `Shared/ViewMode.swift` picks one in this order: the launch argument `-view list`, `-view cards` or `-view board`, then the stored setting (`UserDefaults` key `view`), then cards. `App/RootView.swift` switches on it; until the shell lands, cards and list both open `GlassBoardRoot`. Cloud phones can't pass launch arguments, so the app also handles the `appdemo` URL scheme: open `appdemo://view/list`, `appdemo://view/cards` or `appdemo://view/board` (with `tools.capy.phone` `action: "open_url"`) to store the setting and switch right away.
+The app shows the same `Drop` records three ways: list, cards (the default) and board (the corkboard in `ios/Board`, or `ios/Clusters` when the board is arranged by mood). A fourth, night (`ios/Night`, APPD-20), is a dark-only variant that RootView shows full screen with its own header and menu, and none of the shell.
+
+`App/BoardShell.swift` hosts the other three in one NavigationStack for the current board from `BoardsStore`. The inline title is the board menu (switch boards, start a shared board, join with a code). The arrange menu picks "by when" or "by mood" per board (personal boards start by when, shared boards by mood) and, on the corkboard, turns the handwritten notes on or off. Shared boards add the everyone and mine control under the title and the members' avatars, which open the invite sheet. The bottom glass bar switches views and holds `AddMenu`. A tapped drop opens `DropDetailView` with the zoom transition, using the one namespace every view gets.
+
+On first launch `RootView` lays APPD-17's `OnboardingFlow` over the shell and removes it with `.onboardingExit`. Demo ends on sf crew by mood in the board view, and start fresh ends on the person's own board in cards.
+
+The stored view lives in `UserDefaults` key `viewMode`. The launch argument `-view list`, `-view cards`, `-view board` or `-view night` sets it once at launch, so the bar still switches views in a test run. Cloud phones can't pass launch arguments, so the app also handles the `appdemo` URL scheme: open `appdemo://view/list`, `appdemo://view/cards`, `appdemo://view/board` or `appdemo://view/night` (with `tools.capy.phone` `action: "open_url"`) to store the setting and switch right away.
 
 ### DEBUG switches
 
@@ -45,11 +51,12 @@ DEBUG builds read these from `UserDefaults.standard`, so a launch argument like 
 
 | key | value | effect |
 | - | - | - |
-| `BoardDebugSeed` | `YES` | replaces the board with the sample board, "sf crew", on launch |
+| `BoardDebugSeed` | `YES` | replaces the boards with the two sample boards on launch and opens "my board"; sync stays offline, and onboarding is skipped unless `OnboardingReset` is also `YES` |
 | `BoardDebugNow` | ISO 8601, like `2026-11-21T18:30:00-08:00` | the board clock's time, so time-based placement can be tested at any hour |
-| `BoardDebugAnchor` | `bottom` | opens the board scrolled to the bottom, so a headless Simulator can screenshot the vibes and done corners |
+| `BoardDebugAnchor` | `bottom` | opens the board scrolled to the bottom, so a headless Simulator can screenshot the vibes and done rows |
+| `Handwriting` | `NO` | sets the corkboard's headers and notes in the rounded system font instead of Caveat (also in the arrange menu as "handwritten notes") |
 
-The links `appdemo://seed` (replace the board with the sample board) and `appdemo://clear` (empty it) do the same from a cloud phone. The seed is two boards: panth's personal "my board" (`seed-panth-board`), the time-based set, and the shared "sf crew" (`sf-crew`), 15 places, clips and songs in three mood clusters with their vibes, labels and neighbors. Seeding makes this device panth (`seed-panth`, with `seed-panth-board` as its personal board), so "mine" shows panth's drops. Both match the backend's seed drop for drop, with the same client ids; the list is in `handoffs/APPD-3/seed.md` in the Captain's drive. Until the shell picks a board, the board view shows only the personal board. Seed data and its images (`Seed/SeedImages.xcassets`) are DEBUG only.
+The links `appdemo://seed` (replace the board with the sample board) and `appdemo://clear` (empty it) do the same from a cloud phone. The seed is two boards: panth's personal "my board" (`seed-panth-board`), the time-based set, and the shared "sf crew" (`sf-crew`), 15 places, clips and songs in three mood clusters with their vibes, labels and neighbors. Seeding makes this device panth (`seed-panth`, with `seed-panth-board` as its personal board), so "mine" shows panth's drops. Both match the backend's seed drop for drop, with the same client ids; the list is in `handoffs/APPD-3/seed.md` in the Captain's drive. The title menu lists both seeded boards even while sync is offline. Seed data and its images (`Seed/SeedImages.xcassets`) are DEBUG only.
 
 ## Shared model
 

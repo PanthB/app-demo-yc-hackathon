@@ -16,6 +16,13 @@ final class ViewModeTests: XCTestCase {
         XCTAssertEqual(ViewMode.resolve(arguments: ["AppDemo", "-view", "grid"], stored: nil), .cards)
     }
 
+    func testTheStoredModeIsReadWithoutTheLaunchArgument() {
+        XCTAssertNotEqual(ViewMode.storageKey, "view")
+        XCTAssertEqual(ViewMode(stored: "night"), .night)
+        XCTAssertEqual(ViewMode(stored: "glass"), .cards)
+        XCTAssertEqual(ViewMode(stored: nil), .cards)
+    }
+
     func testDeepLinks() {
         XCTAssertEqual(ViewMode(url: URL(string: "appdemo://view/list")!), .list)
         XCTAssertEqual(ViewMode(url: URL(string: "appdemo://view/cards")!), .cards)

@@ -7,19 +7,30 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var context
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(BoardSync.self) private var sync
+    @Environment(BoardsStore.self) private var boards
     @State private var clock = BoardClock()
+    @State private var onboarding = RootView.needsOnboarding
 
     var body: some View {
-        Group {
-            switch ViewMode.resolve(stored: storedView) {
-            case .board:
-                PaperBoardRoot()
-            case .cards, .list:
-                GlassBoardRoot()
-            case .night:
+        ZStack {
+            if ViewMode(stored: storedView) == .night {
                 NightBoardView()
                     .environment(\.colorScheme, .dark)
+                    .transition(.opacity)
+            } else {
+                BoardShell()
+                    .tint(ShellTint.accent)
+                    .transition(.opacity)
+            }
+            if onboarding {
+                OnboardingFlow { result in
+                    storedView = (result.start == .demo ? ViewMode.board : ViewMode.cards).rawValue
+                    withAnimation(.smooth(duration: 0.45)) { onboarding = false }
+                }
+                .transition(.onboardingExit)
+                .zIndex(1)
             }
         }
         .environment(clock)
@@ -38,9 +49,7 @@ struct RootView: View {
         ))
         #if DEBUG
         .task {
-            if UserDefaults.standard.bool(forKey: "BoardDebugSeed") {
-                SeedBoard.replace(in: context)
-            }
+            if UserDefaults.standard.bool(forKey: "BoardDebugSeed") { seed() }
         }
         #endif
         .onChange(of: scenePhase) { _, phase in
@@ -53,16 +62,17 @@ struct RootView: View {
             clock.tick()
         }
         .onOpenURL { url in
+            guard BoardsStore.inviteCode(in: url) == nil else { return }
             if let mode = ViewMode(url: url) {
                 Logger.app.info("switching to the \(mode.rawValue, privacy: .public) view")
-                storedView = mode.rawValue
+                withAnimation(reduceMotion ? nil : .smooth(duration: 0.45)) { storedView = mode.rawValue }
                 return
             }
             #if DEBUG
             switch url.host()?.lowercased() {
             case "seed":
-                Logger.app.info("loading the sf crew sample board")
-                SeedBoard.replace(in: context)
+                Logger.app.info("loading the sample boards")
+                seed()
                 return
             case "clear":
                 Logger.app.info("clearing the board")
@@ -75,4 +85,19 @@ struct RootView: View {
             Logger.app.error("ignored a link the app doesn't handle: \(url.absoluteString, privacy: .public)")
         }
     }
+
+    private static var needsOnboarding: Bool {
+        #if DEBUG
+        let defaults = UserDefaults.standard
+        if defaults.bool(forKey: "BoardDebugSeed"), !defaults.bool(forKey: "OnboardingReset") { return false }
+        #endif
+        return Onboarding.isNeeded
+    }
+
+    #if DEBUG
+    private func seed() {
+        SeedBoard.replace(in: context)
+        boards.show(SeedBoard.homeBoardId)
+    }
+    #endif
 }

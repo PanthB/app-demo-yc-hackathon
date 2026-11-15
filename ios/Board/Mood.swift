@@ -27,6 +27,10 @@ struct Mood {
             : .system(size: (size * 0.75).rounded(), weight: .semibold, design: .rounded)
     }
 
+    func handLabel(_ text: String) -> String {
+        handwriting ? text + "\u{00A0}" : text
+    }
+
     func ui(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .rounded)
     }

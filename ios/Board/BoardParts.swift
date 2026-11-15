@@ -78,7 +78,7 @@ struct ZoneLabel: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(title)
+            Text(mood.handLabel(title))
                 .font(mood.hand(isNow ? 40 : 28))
                 .fontWeight(.bold)
                 .foregroundStyle(mood.ink)
@@ -119,7 +119,7 @@ struct CornerLabel: View {
     let text: String
 
     var body: some View {
-        Text(text)
+        Text(mood.handLabel(text))
             .font(mood.hand(20))
             .fontWeight(.bold)
             .foregroundStyle(mood.ink)
