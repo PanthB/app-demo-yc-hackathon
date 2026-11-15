@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { action, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { mode, nullable, type Mode } from "./model";
-import { choice, decide, hasModels } from "./lib/models";
+import { choice, decide, hasOpenAI } from "./lib/models";
 
 const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 const NEAR_MINUTES = 20;
@@ -55,7 +55,7 @@ export const decideMode = action({
       decidedBy,
       reason,
     });
-    if (!hasModels()) return ruledResult("rules", "no OPENROUTER_API_KEY or OPENAI_API_KEY in the convex env");
+    if (!hasOpenAI()) return ruledResult("rules", "no OPENAI_API_KEY in the convex env");
     try {
       const { answers, by } = await decide(
         ctx,

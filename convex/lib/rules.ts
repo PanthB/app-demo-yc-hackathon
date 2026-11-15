@@ -51,9 +51,6 @@ export function localStamp(t: number, offset: number) {
   return `${iso} (${WEEKDAYS[d.getUTCDay()]})`;
 }
 
-export const localDate = (t: number, offset: number) =>
-  local(t, offset).toISOString().slice(0, 10);
-
 export function fromLocalIso(value: string, offset: number) {
   if (/[zZ]|[+-]\d\d:?\d\d$/.test(value)) return Date.parse(value);
   const [date, time = "00:00:00"] = value.split("T");

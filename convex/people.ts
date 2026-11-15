@@ -21,7 +21,7 @@ export const link = mutation({
   returns: personView,
   handler: async (ctx, { personId, personalBoardId, name }) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError("sign in with apple or google first.");
+    if (!identity) throw new ConvexError("sign in with apple first.");
     const tokenName = identity.name ?? identity.givenName;
     const linked = await ctx.db
       .query("people")
