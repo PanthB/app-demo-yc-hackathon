@@ -8,7 +8,15 @@
  * @module
  */
 
+import type * as board from "../board.js";
+import type * as drops from "../drops.js";
+import type * as files from "../files.js";
+import type * as lib_enrich from "../lib/enrich.js";
+import type * as lib_models from "../lib/models.js";
+import type * as lib_rules from "../lib/rules.js";
+import type * as model from "../model.js";
 import type * as moments from "../moments.js";
+import type * as pipeline from "../pipeline.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +25,15 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  board: typeof board;
+  drops: typeof drops;
+  files: typeof files;
+  "lib/enrich": typeof lib_enrich;
+  "lib/models": typeof lib_models;
+  "lib/rules": typeof lib_rules;
+  model: typeof model;
   moments: typeof moments;
+  pipeline: typeof pipeline;
 }>;
 
 /**
