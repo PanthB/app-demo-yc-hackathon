@@ -15,7 +15,8 @@ struct PaperBoardRoot: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let contents = BoardContents(drops, now: clock.now)
+            let home = DeviceIdentity.boardId
+            let contents = BoardContents(drops.filter { $0.boardId == home || $0.boardId.isEmpty }, now: clock.now)
             let layout = CorkboardLayout(contents: contents, width: proxy.size.width, minHeight: proxy.size.height, now: clock.now)
             ScrollView(.vertical) {
                 Corkboard(contents: contents, layout: layout, width: proxy.size.width)

@@ -36,8 +36,9 @@ enum DeviceIdentity {
     static var boardId: String { storedId(for: "boardId") }
 
     #if DEBUG
-    static func adopt(personId: String) {
+    static func adopt(personId: String, boardId: String) {
         AppGroup.defaults.set(personId, forKey: "personId")
+        AppGroup.defaults.set(boardId, forKey: "boardId")
     }
     #endif
 

@@ -1,6 +1,11 @@
 import Foundation
 import SwiftData
 
+struct DropNeighbor: Codable, Hashable, Sendable {
+    var clientId: String
+    var reason: String
+}
+
 @Model
 final class Drop {
     @Attribute(.unique) var id: UUID
@@ -44,6 +49,11 @@ final class Drop {
     var relatedDropIds: [UUID] = []
     var planId: UUID?
     var suggestion: String?
+    var genre: String?
+    var vibes: [String] = []
+    var clusterId: String?
+    var clusterLabel: String?
+    var neighbors: [DropNeighbor] = []
 
     var zoneSetByUser: Bool = false
     var pinnedAt: Date?
