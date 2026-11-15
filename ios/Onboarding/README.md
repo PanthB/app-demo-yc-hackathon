@@ -28,7 +28,7 @@ ZStack {
 
 - `OnboardingFlow`: one screen on `NightBackdrop(palette: .astral)` from ios/Night. The top bar (back, skip), the words, the dots and the bottom button stay put; steps change only what's in them.
 - Demo goes straight into the guide. Start fresh offers `SignInSheet` first, at a fixed height, with the welcome faded out behind it. It has the three ways in: continue with apple (linked to this phone's person through `PeopleLink`), continue as a guest, and the sf crew demo.
-- `WelcomePile`: five example drops (a song, a link, a place, a photo and a clip, each with night's kind pill) that land one by one on a loose pile, with a small "dropped it in sf crew." note under its corner.
+- `WelcomePile`: five example drops (a song, a link, a place, a photo and a clip, each with a solid kind pill in night's type) that land one by one on a loose pile, with a small "dropped it in sf crew." note under its corner.
 - `RiseInText` draws "welcome" glyph by glyph; `WordsText` fades each step's words in.
 - `GuideStage` and `GuideScreen`: the guide's phone, taller than the stage and fading out behind the words, and the drops that pile up beside it, deal onto its board and settle into two mood clusters, grouped by space alone. Each step has one plain line, and wordless arrows point at what to tap. The lines between drops show only with `@AppStorage("BoardLines")` on (default off). Step 3 shows sf crew on both paths, as the example of a shared board.
 - `Onboarding.xcassets`: the guide's example photos and artwork, generated for this guide, so they ship in every build.

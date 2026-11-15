@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The welcome's hero: drops from sf crew of five kinds (a song, a link, a place, a photo and a clip) land one by one
-/// on a loose pile, each with its kind pill, and a small note under the pile's corner says where they went.
+/// on a loose pile, each with a solid kind pill in night's type, and a small note under the pile's corner says where they went.
 struct WelcomePile: View {
     let dealt: Bool
     let shown: Bool
@@ -37,8 +37,7 @@ struct WelcomePile: View {
                     }
                 }
                 .overlay(alignment: .topLeading) {
-                    NightKindTag(kind: slot.kind)
-                        .background(Color(white: 0.08).opacity(0.72), in: .capsule)
+                    PileTag(kind: slot.kind)
                         .scaleEffect(0.85, anchor: .topLeading)
                         .padding(9)
                 }
@@ -126,5 +125,23 @@ private struct PageTile: View {
         }
         .shadow(color: .black.opacity(0.5), radius: 16, y: 10)
         .environment(\.colorScheme, .dark)
+    }
+}
+
+private struct PileTag: View {
+    let kind: DropKind
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: kind.symbol).fontWeight(NightStyle.symbolWeight)
+            Text(kind.word)
+        }
+        .font(NightStyle.caption)
+        .foregroundStyle(.white)
+        .padding(.horizontal, 8)
+        .frame(height: NightStyle.pillHeight)
+        .background(Color(white: 0.1).opacity(0.84), in: .capsule)
+        .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1))
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
     }
 }
