@@ -37,7 +37,7 @@ Simulator builds are ad-hoc signed ("Sign to Run Locally", identity `-`, no team
 
 ## Views
 
-The app shows the same `Drop` records three ways: list, cards (the default) and board (the corkboard in `ios/Board`). `Shared/ViewMode.swift` picks one in this order: the launch argument `-view list`, `-view cards` or `-view board`, then the stored setting (`UserDefaults` key `view`), then cards. `App/RootView.swift` switches on it; until the shell lands, cards and list both open `GlassBoardRoot`. Cloud phones can't pass launch arguments, so the app also handles the `appdemo` URL scheme: open `appdemo://view/list`, `appdemo://view/cards` or `appdemo://view/board` (with `tools.capy.phone` `action: "open_url"`) to store the setting and switch right away.
+The app shows the same `Drop` records three ways: list, cards (the default) and board (the corkboard in `ios/Board`). A fourth, night (`ios/Night`, APPD-20), is a dark-only variant that RootView shows full screen with its own header and menu. `Shared/ViewMode.swift` picks one in this order: the launch argument `-view list`, `-view cards` or `-view board`, then the stored setting (`UserDefaults` key `view`), then cards. `App/RootView.swift` switches on it; until the shell lands, cards and list both open `GlassBoardRoot`. Cloud phones can't pass launch arguments, so the app also handles the `appdemo` URL scheme: open `appdemo://view/list`, `appdemo://view/cards` or `appdemo://view/board` (with `tools.capy.phone` `action: "open_url"`) to store the setting and switch right away.
 
 ### DEBUG switches
 

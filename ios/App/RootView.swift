@@ -16,6 +16,9 @@ struct RootView: View {
                 PaperBoardRoot()
             case .cards, .list:
                 GlassBoardRoot()
+            case .night:
+                NightBoardView()
+                    .environment(\.colorScheme, .dark)
             }
         }
         .environment(clock)
