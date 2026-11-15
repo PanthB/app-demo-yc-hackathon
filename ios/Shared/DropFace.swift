@@ -29,11 +29,13 @@ enum DropFace {
     }
 
     static func dateTag(_ date: Date, now: Date, calendar: Calendar = .current) -> String {
-        let clock = clockText(date, calendar: calendar)
-        if calendar.isDate(date, inSameDayAs: now) { return clock }
+        let hasTime = calendar.component(.hour, from: date) != 0 || calendar.component(.minute, from: date) != 0
+        let clock = hasTime ? clockText(date, calendar: calendar) : nil
+        if calendar.isDate(date, inSameDayAs: now) { return clock ?? "today" }
         let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: date)).day ?? 0
         if (0...6).contains(days) {
-            return "\(weekdayNames[calendar.component(.weekday, from: date) - 1]) \(clock)"
+            let weekday = weekdayNames[calendar.component(.weekday, from: date) - 1]
+            return clock.map { "\(weekday) \($0)" } ?? weekday
         }
         return "\(monthNames[calendar.component(.month, from: date) - 1]) \(calendar.component(.day, from: date))"
     }
