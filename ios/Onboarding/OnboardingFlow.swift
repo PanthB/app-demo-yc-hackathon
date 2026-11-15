@@ -13,7 +13,7 @@ enum GuideStep: Int, CaseIterable {
         }
     }
 
-    static let welcomeLine = "keep the songs, places and clips you all share."
+    static let welcomeLine = "keep the songs, links, places and clips you all share."
 }
 
 /// The first run: an animated welcome with demo and start fresh, the sign-in sheet for start fresh, and a

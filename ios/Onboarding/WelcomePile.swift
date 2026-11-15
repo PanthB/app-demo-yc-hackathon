@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The welcome's hero: drops from sf crew land one by one on a loose pile, like photos tossed on a table, and a
-/// small note under the pile's corner says where they went.
+/// The welcome's hero: drops from sf crew of five kinds (a song, a link, a place, a photo and a clip) land one by one
+/// on a loose pile, each with its kind pill, and a small note under the pile's corner says where they went.
 struct WelcomePile: View {
     let dealt: Bool
     let shown: Bool
@@ -10,7 +10,8 @@ struct WelcomePile: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private struct Slot {
-        let sample: GuideSample
+        let kind: DropKind
+        let sample: GuideSample?
         let width: CGFloat
         let x: CGFloat
         let y: CGFloat
@@ -18,18 +19,28 @@ struct WelcomePile: View {
     }
 
     private let slots: [Slot] = [
-        Slot(sample: .ramen, width: 160, x: -44, y: 34, tilt: -8),
-        Slot(sample: .bridge, width: 126, x: 58, y: -26, tilt: 9),
-        Slot(sample: .night, width: 134, x: -50, y: -40, tilt: -4),
-        Slot(sample: .song, width: 140, x: 46, y: 40, tilt: 6),
-        Slot(sample: .place, width: 168, x: -10, y: 8, tilt: -3),
-        Slot(sample: .clip, width: 128, x: 22, y: -14, tilt: 4),
+        Slot(kind: .song, sample: .song, width: 124, x: -68, y: -98, tilt: -7),
+        Slot(kind: .photo, sample: .bridge, width: 112, x: 54, y: -60, tilt: 6),
+        Slot(kind: .place, sample: .ramen, width: 146, x: -62, y: -33, tilt: 4),
+        Slot(kind: .link, sample: nil, width: 148, x: 74, y: 22, tilt: -4),
+        Slot(kind: .video, sample: .clip, width: 110, x: -50, y: 64, tilt: 3),
     ]
 
     var body: some View {
         ZStack {
             ForEach(Array(slots.enumerated()), id: \.offset) { index, slot in
-                GuideTile(sample: slot.sample, width: slot.width)
+                Group {
+                    if let sample = slot.sample {
+                        GuideTile(sample: sample, width: slot.width)
+                    } else {
+                        PageTile(width: slot.width)
+                    }
+                }
+                .overlay(alignment: .topLeading) {
+                    NightKindTag(kind: slot.kind)
+                        .scaleEffect(0.85, anchor: .topLeading)
+                        .padding(9)
+                }
                     .scaleEffect(dealt ? (shown ? 1 : 0.94) : 1.08)
                     .rotationEffect(.degrees(dealt ? slot.tilt : slot.tilt + 14))
                     .offset(x: dealt ? slot.x : slot.x + 150, y: dealt ? slot.y : slot.y - 240)
@@ -39,7 +50,7 @@ struct WelcomePile: View {
                     .animation(leave, value: shown)
             }
             DroppedNote()
-                .offset(x: -58, y: 156)
+                .offset(x: -58, y: 164)
                 .opacity(dealt && shown ? 1 : 0)
                 .offset(y: dealt ? 0 : 8)
                 .blur(radius: dealt && shown ? 0 : 6)
@@ -84,6 +95,35 @@ private struct DroppedNote: View {
         .padding(.trailing, 10)
         .frame(height: 34)
         .glassEffect(.regular, in: .capsule)
+        .environment(\.colorScheme, .dark)
+    }
+}
+
+private struct PageTile: View {
+    let width: CGFloat
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Spacer(minLength: 0)
+            Text("the best tacos in the mission")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(2)
+            HStack(spacing: 4) {
+                Image(systemName: "globe")
+                Text("timeout.com")
+            }
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.white.opacity(0.6))
+        }
+        .padding(14)
+        .frame(width: width, height: width * 0.75, alignment: .leading)
+        .background(Color(red: 0.16, green: 0.17, blue: 0.26), in: .rect(cornerRadius: width * 0.2, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: width * 0.2, style: .continuous)
+                .strokeBorder(.white.opacity(0.14), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.5), radius: 16, y: 10)
         .environment(\.colorScheme, .dark)
     }
 }
