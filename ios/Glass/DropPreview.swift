@@ -3,40 +3,26 @@ import SwiftUI
 struct DropPreview: View {
     let face: PreviewFace
     let seed: UUID
-    var ratio: CGFloat?
+    var pictureRatio: CGFloat?
     @ScaledMetric(relativeTo: .caption2) private var pillHeight: CGFloat = 22
 
     var body: some View {
         switch face {
         case .image(let image):
-            framed(ratio ?? face.ratio) {
-                Image(uiImage: image).resizable().scaledToFill()
-            }
+            Color.clear
+                .aspectRatio(1 / (pictureRatio ?? face.ratio), contentMode: .fit)
+                .overlay { Image(uiImage: image).resizable().scaledToFill() }
+                .clipped()
         case .cutout(let image):
-            framed(ratio ?? face.ratio) {
-                Image(uiImage: image).resizable().scaledToFit().padding(12)
-            }
-        case .words, .date, .countdown, .waveform, .symbol:
-            if let ratio {
-                framed(ratio) {
-                    Color.clear.overlay(alignment: .bottomLeading) {
-                        hero.padding(.horizontal, 12)
-                    }
-                }
-            } else {
-                hero
-                    .padding(.horizontal, 12)
-                    .padding(.top, pillHeight + 28)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            Color.clear
+                .aspectRatio(1 / (pictureRatio ?? face.ratio), contentMode: .fit)
+                .overlay { Image(uiImage: image).resizable().scaledToFit().padding(12) }
+        case .words, .date, .countdown, .waveform, .plain:
+            hero
+                .padding(.horizontal, 12)
+                .padding(.top, pillHeight + 28)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-
-    private func framed(_ ratio: CGFloat, @ViewBuilder _ content: () -> some View) -> some View {
-        Color.clear
-            .aspectRatio(1 / ratio, contentMode: .fit)
-            .overlay { content() }
-            .clipped()
     }
 
     @ViewBuilder
@@ -44,6 +30,8 @@ struct DropPreview: View {
         switch face {
         case .image, .cutout:
             EmptyView()
+        case .plain:
+            Color.clear.frame(height: 0)
         case .words(let words):
             Text(words)
                 .font(.title3.weight(.medium))
@@ -65,10 +53,6 @@ struct DropPreview: View {
                 if let length {
                     Text(length).font(.subheadline.weight(.semibold)).monospacedDigit().foregroundStyle(.tint)
                 }
-            }
-        case .symbol(let name):
-            if ratio != nil {
-                Image(systemName: name).font(.largeTitle.weight(.semibold)).foregroundStyle(.tertiary)
             }
         }
     }

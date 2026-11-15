@@ -83,7 +83,7 @@ struct CardsView: View {
         ScrollView(.horizontal) {
             HStack(alignment: .top, spacing: 12) {
                 ForEach(drops) { drop in
-                    card(drop, previewRatio: 0.75)
+                    card(drop, pictureRatio: 0.6)
                         .containerRelativeFrame(.horizontal, count: 3, span: 2, spacing: 12)
                 }
             }
@@ -95,11 +95,11 @@ struct CardsView: View {
         .scrollIndicators(.hidden)
     }
 
-    private func card(_ drop: Drop, previewRatio: CGFloat? = nil) -> some View {
+    private func card(_ drop: Drop, pictureRatio: CGFloat? = nil) -> some View {
         Button {
             select(drop)
         } label: {
-            DropCard(drop: drop, previewRatio: previewRatio)
+            DropCard(drop: drop, pictureRatio: pictureRatio)
         }
         .buttonStyle(CardPressStyle())
         .matchedTransitionSource(id: drop.id, in: namespace)

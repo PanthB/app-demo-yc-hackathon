@@ -8,7 +8,7 @@ enum PreviewFace {
     case date(top: String, day: String)
     case countdown(Date)
     case waveform(length: String?)
-    case symbol(String)
+    case plain
 
     var words: String? {
         if case .words(let words) = self { return words }
@@ -18,7 +18,7 @@ enum PreviewFace {
     var fillsItsFrame: Bool {
         switch self {
         case .image, .cutout: true
-        case .words, .date, .countdown, .waveform, .symbol: false
+        case .words, .date, .countdown, .waveform, .plain: false
         }
     }
 
@@ -27,9 +27,10 @@ enum PreviewFace {
         case .image(let image):
             guard image.size.width > 0 else { return 1 }
             return min(max(image.size.height / image.size.width, 0.75), 1.5)
-        case .cutout:
-            return 1
-        case .words, .date, .countdown, .waveform, .symbol:
+        case .cutout(let image):
+            guard image.size.width > 0 else { return 1 }
+            return min(max(image.size.height / image.size.width, 0.75), 1.25)
+        case .words, .date, .countdown, .waveform, .plain:
             return 0.75
         }
     }
@@ -69,7 +70,7 @@ extension Drop {
         case .photo, .video, .song, .place:
             break
         }
-        return .symbol(kind.symbol)
+        return .plain
     }
 
     func cardTitle(beside face: PreviewFace) -> String? {
@@ -83,6 +84,7 @@ extension Drop {
     }
 
     func suggestion(now: Date) -> DropSuggestion? {
+        if isArriving { return .words("reading this one now.") }
         guard zone != .done, dueAt == nil, let startsAt else { return nil }
         let wait = startsAt.timeIntervalSince(now)
         return wait > 60 && wait <= ZoneClock.soonWindow ? .startsSoon(startsAt) : nil

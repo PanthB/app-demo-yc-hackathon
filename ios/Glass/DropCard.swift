@@ -2,7 +2,7 @@ import SwiftUI
 
 struct DropCard: View {
     let drop: Drop
-    var previewRatio: CGFloat?
+    var pictureRatio: CGFloat?
     @Environment(BoardClock.self) private var clock
 
     static let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -11,7 +11,7 @@ struct DropCard: View {
         let now = clock.now
         let face = drop.previewFace(now: now)
         VStack(alignment: .leading, spacing: 0) {
-            DropPreview(face: face, seed: drop.id, ratio: previewRatio)
+            DropPreview(face: face, seed: drop.id, pictureRatio: pictureRatio)
             VStack(alignment: .leading, spacing: 4) {
                 if let title = drop.cardTitle(beside: face) {
                     Text(title).font(.headline).lineLimit(2)
@@ -19,6 +19,7 @@ struct DropCard: View {
                 if let meta = drop.cardMeta(now: now, beside: face) {
                     Text(meta).font(.footnote).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
                 }
+                Spacer(minLength: 0)
                 HStack(alignment: .top, spacing: 6) {
                     PersonAvatar(name: drop.cardAuthorName, personId: drop.cardAuthorId)
                     if let suggestion = drop.suggestion(now: now) {
@@ -31,11 +32,10 @@ struct DropCard: View {
             }
             .multilineTextAlignment(.leading)
             .padding(.horizontal, 12)
-            .padding(.top, face.fillsItsFrame || previewRatio != nil ? 12 : 8)
+            .padding(.top, face.fillsItsFrame ? 12 : 8)
             .padding(.bottom, 12)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(maxHeight: .infinity, alignment: .top)
         .overlay(alignment: .topLeading) {
             KindPill(kind: drop.kind).padding(12)
         }
