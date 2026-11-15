@@ -21,11 +21,11 @@ test:
         - type: instructions
           step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
     - type: instructions
-      step_description: "Tap the plus button at the bottom right of the glass bar, choose note, type \"farmers market this saturday morning\" in the write a note box, and tap add it."
+      step_description: "Tap the plus button at the bottom right of the glass bar, choose note, type \"coffee in 20 minutes\" in the write a note box, and tap add it."
     - type: instructions
       step_description: "Tap the plus button at the bottom right of the glass bar, choose note, type \"movie at 10pm\" in the write a note box, and tap add it."
     - type: manual
       step_type: wait
       step_description: "15"
     - type: validation
-      step_description: The farmers market note is under the this weekend section, and the movie note is under the tonight section.
+      step_description: The coffee note is under the now section, and the movie note is under the tonight section.

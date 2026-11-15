@@ -49,7 +49,7 @@ Every test is a plain-English YAML file in `tests/`. Revyl's agent reads the scr
 | `phase1-2-drop-lands-on-board` | On a fresh device, a shared Google Maps link shows up as an item right away, then reads Tartine Bakery under a section. | Published, passes on main at 70f40e0 |
 | `phase1-5-countdown` | Add "remind me in 1 hr to call grandma" and "remind me in 2 minutes to stretch" from the plus button, and see live countdowns with the sooner one on top. The local notification half is parked, because no branch schedules notifications yet. | Draft, waits on the shell |
 | `phase1-6a-nearby-suggestion` | Moving the simulated location next to a saved place adds a "few min from you" suggestion, and nothing moves while the context stays the same. | Draft |
-| `phase1-6b-time-sections` | With the board clock set to Friday 6:30pm, a Saturday note added from the plus button sits under this weekend and a 10pm note under tonight. | Draft, waits on the shell |
+| `phase1-6b-time-sections` | At the real time of day, "coffee in 20 minutes" added from the plus button sits under now and "movie at 10pm" under tonight. It needs a run between about 9am and 8pm Pacific. The board clock override (`-BoardDebugNow`) isn't used, because the backend reads time words against the real date: with the phone set to Friday 6:30pm, "movie at 10pm" came back as Sunday Nov 15 and sat under now. | Draft, waits on the shell |
 | `phase1-3-drag-between-zones`, `phase1-4-tag-flip` | Dragging between zones and the tag flip. | Deferred by the views plan, tagged `deferred` |
 
 ### Gate tests
@@ -83,7 +83,7 @@ revyl test run <name> --build-id <build_version_id> --no-open --json
 revyl test report <name> --json        # steps, reasoning, screenshots and the run video URL
 ```
 
-After editing a published test, run `revyl test push <name> --force`. `phase1-6b-time-sections` needs the board clock pinned, so run it with `--launch-arg -BoardDebugNow --launch-arg 2026-11-20T18:30:00-08:00`.
+After editing a published test, run `revyl test push <name> --force`.
 
 Tests never use a seed person against the dev deployment (crew rule), so `appdemo://seed` is only for tests that stay on the device. A test that needs a shared board joins sf crew as a fresh person through `appdemo://join/SFCREW`. Joining is permanent, because the backend has no leave: each run of `views-4` or `phase1-1` adds one member called "revyl" to sf crew until APPD-1 reruns `seed:run`, which puts the members back to panth, maya, sam and alex. `phase1-1` never brings the app back after sharing, so its drops stay in the device inbox and never reach sf crew.
 
