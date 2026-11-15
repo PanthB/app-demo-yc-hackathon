@@ -62,6 +62,20 @@ final class ShellUITests: XCTestCase {
         XCTAssertTrue(title(app, "suggestions").waitForExistence(timeout: 10))
     }
 
+    func testSettingsSwitchesNightToTheScrapbook() {
+        let app = launch("night")
+        let button = element(app, "settingsButton")
+        XCTAssertTrue(button.waitForExistence(timeout: 20))
+        button.tap()
+        XCTAssertTrue(title(app, "settings").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.switches["lines"].exists)
+        let scrapbook = app.buttons["scrapbook"].firstMatch
+        XCTAssertTrue(scrapbook.exists)
+        scrapbook.tap()
+        XCTAssertTrue(element(app, "arrangeMenu").waitForExistence(timeout: 10))
+        XCTAssertFalse(button.exists)
+    }
+
     func testACardZoomsIntoItsDetailAndBack() {
         let app = launch()
         let card = element(app, "dropCard")

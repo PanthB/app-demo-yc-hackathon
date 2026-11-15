@@ -82,7 +82,7 @@ struct NightBoardView: View {
                     ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    NightViewMenu()
+                    SettingsButton()
                 }
             }
             .overlay(alignment: .bottom) {
