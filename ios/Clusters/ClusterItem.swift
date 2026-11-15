@@ -199,6 +199,7 @@ struct ClusterLabelSlip: View {
         Text(text)
             .font(mood.ui(19, weight: .bold))
             .foregroundStyle(mood.ink)
+            .contentTransition(.interpolate)
             .lineLimit(1)
             .fixedSize()
             .padding(.horizontal, 14)
@@ -206,6 +207,26 @@ struct ClusterLabelSlip: View {
             .background(mood.paper)
             .contactShadow(mood)
             .accessibilityAddTraits(.isHeader)
+    }
+}
+
+struct ClusterGhostLabel: View {
+    let label: ClusterLayout.Label
+    let to: CGPoint
+    let animation: Animation
+
+    @State private var gone = false
+
+    var body: some View {
+        let point = gone ? to : label.origin
+        ClusterLabelSlip(text: label.text)
+            .rotationEffect(.degrees(label.tilt))
+            .scaleEffect(gone ? 0.92 : 1, anchor: .topLeading)
+            .offset(x: point.x, y: point.y)
+            .animation(.easeIn(duration: 0.3).delay(0.32)) { $0.opacity(gone ? 0 : 1) }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+            .onAppear { withAnimation(animation) { gone = true } }
     }
 }
 
