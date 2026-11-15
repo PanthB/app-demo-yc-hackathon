@@ -289,13 +289,25 @@ export const start = internalMutation({
   },
 });
 
-async function pageNames(url: string, title: string) {
+const folded = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const wordsOf = (title: string) => folded(title).split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
+const mapsSearch = (name: string) => `https://www.google.com/maps/search/${[...name.trim().split(/\s+/), "san", "francisco"].map(encodeURIComponent).join("+")}`;
+
+function urlNames(url: string, title: string) {
+  const words = wordsOf(title);
+  const flat = url.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return words.length > 0 && words.every((w) => flat.includes(w));
+}
+
+async function pageNames(url: string, title: string, every = false) {
   try {
     const response = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html" }, redirect: "follow", signal: AbortSignal.timeout(8000) });
     if (!response.ok) return false;
-    const page = (await response.text()).toLowerCase();
-    const words = title.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
-    return words.filter((w) => page.includes(w)).length * 2 >= Math.max(1, words.length);
+    const page = folded(await response.text());
+    const words = wordsOf(title);
+    if (words.length === 0) return page.includes(folded(title).trim());
+    const hits = words.filter((w) => page.includes(w)).length;
+    return every ? hits === words.length : hits * 2 >= words.length;
   } catch {
     return false;
   }
@@ -363,31 +375,37 @@ export const search = internalAction({
       const takenPlaces = new Set(job.known.map((k) => placeKey(k.place)).filter(Boolean));
       const names = [...savedNames(job.drops), ...job.known.map((k) => nameKey(k.title)).filter((k): k is string => k !== undefined)];
       const real = await Promise.all(
-        result.suggestions.map(async (s) => /^https?:\/\//.test(s.url) && (seen.has(linkKey(s.url)) || (await pageNames(s.url, s.title)))),
+        result.suggestions.map(async (s) => {
+          if (!/^https?:\/\//.test(s.url)) return false;
+          if (s.kind === "place" || s.kind === "event") return urlNames(s.url, s.title) || (await pageNames(s.url, s.title, true));
+          return seen.has(linkKey(s.url)) || (await pageNames(s.url, s.title));
+        }),
       );
       const skipped: Record<string, number> = {};
       const skip = (why: string) => (skipped[why] = (skipped[why] ?? 0) + 1);
-      const kept: { s: (typeof result.suggestions)[number]; startsAt?: number; inspiring: Doc<"drops">[] }[] = [];
-      for (const [i, s] of result.suggestions.entries()) {
+      const kept: { s: (typeof result.suggestions)[number]; mapped: boolean; startsAt?: number; inspiring: Doc<"drops">[] }[] = [];
+      for (const [i, found] of result.suggestions.entries()) {
+        const mapped = found.kind === "place" && !real[i];
+        const s = mapped ? { ...found, url: mapsSearch(found.title) } : found;
         const key = linkKey(s.url);
         const place = s.kind === "event" || s.kind === "place" ? placeKey(s.place ?? undefined) : undefined;
         const startsAt = s.kind === "event" && s.starts_at ? fromLocalIso(s.starts_at, offset) : undefined;
         const named = s.inspired_by.map((ref) => refs.get(ref)).filter((d): d is Doc<"drops"> => d !== undefined).slice(0, 2);
-        if (!key || !real[i]) skip("no page that names it");
+        if (!key || !(real[i] || mapped)) skip("no page that names it");
         else if (!job.kinds.includes(s.kind)) skip("a kind nobody here wants");
         else if (s.kind === "event" && (startsAt === undefined || startsAt < now - HOUR / 2 || startsAt > now + WINDOW)) skip("not in the next two weeks");
         else if (takenLinks.has(key) || alreadySaved(s, names)) skip("already on the board or suggested");
         else if (place && takenPlaces.has(place)) skip("same place as another suggestion");
         else if (kept.length >= PER_SEARCH) skip("over the 4 per search");
         else {
-          kept.push({ s, startsAt, inspiring: named.length > 0 ? named : [members[0]] });
+          kept.push({ s, mapped, startsAt, inspiring: named.length > 0 ? named : [members[0]] });
           takenLinks.add(key);
           if (place) takenPlaces.add(place);
         }
       }
       const suggestions = await Promise.all(
-        kept.map(async ({ s, startsAt, inspiring }) => {
-          const page = await enrichLink(s.url).catch(() => undefined);
+        kept.map(async ({ s, mapped, startsAt, inspiring }) => {
+          const page = mapped ? undefined : await enrichLink(s.url).catch(() => undefined);
           const first = inspiring[0];
           const who = job.shared ? nameLabel(job.names[first.authorId]) : "you";
           const named = (artistOf(first) ?? titleOf(first)).toLowerCase().replace(/[.!?]+$/, "");
