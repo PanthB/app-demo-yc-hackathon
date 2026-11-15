@@ -66,7 +66,7 @@ extension Drop {
         case .note:
             if let words = CardWords.clean(rawText) ?? CardWords.clean(title) { return .words(words) }
         case .link:
-            if let host = linkHost { return .words(host) }
+            if CardWords.clean(title) == nil, let host = linkHost { return .words(host) }
         case .photo, .video, .song, .place:
             break
         }
@@ -80,7 +80,7 @@ extension Drop {
     func cardMeta(now: Date, beside face: PreviewFace, calendar: Calendar = .current) -> String? {
         let when = dueAt.map { DropFace.dateTag($0, now: now, calendar: calendar) } ?? tag(now: now, calendar: calendar)
         let place = kind == .song ? artist : placeName ?? (kind == .link ? linkHost : nil)
-        return CardWords.meta([when, place], hiding: face.words)
+        return CardWords.meta([when, place], hiding: [face.words, cardTitle(beside: face)])
     }
 
     func liveSuggestion(now: Date) -> DropSuggestion? {

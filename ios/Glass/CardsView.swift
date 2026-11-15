@@ -12,24 +12,22 @@ struct CardsView: View {
 
     var body: some View {
         ScrollView {
-            GlassEffectContainer {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(sections) { section in
-                        switch section.style {
-                        case .pinned:
-                            header(section)
-                            pinnedRow(section.drops)
-                        case .zone:
-                            header(section)
-                            grid(section.drops)
-                        case .done:
-                            doneHeader(section)
-                            if showsDone { grid(section.drops) }
-                        }
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(sections) { section in
+                    switch section.style {
+                    case .pinned:
+                        header(section)
+                        pinnedRow(section.drops)
+                    case .zone:
+                        header(section)
+                        grid(section.drops)
+                    case .done:
+                        doneHeader(section)
+                        if showsDone { grid(section.drops) }
                     }
                 }
-                .padding(.bottom, 24)
             }
+            .padding(.bottom, 24)
         }
         .background(Color(.systemGroupedBackground))
         .accessibilityIdentifier("cardsView")

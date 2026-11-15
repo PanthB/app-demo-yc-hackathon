@@ -43,13 +43,13 @@ enum CardWords {
         return candidates.lazy.compactMap(clean).first { $0 != hidden }
     }
 
-    static func meta(_ parts: [String?], hiding shown: String?) -> String? {
-        let hidden = clean(shown)
-        var seen: [String] = []
-        for part in parts.compactMap(clean) where part != hidden && !seen.contains(part) {
+    static func meta(_ parts: [String?], hiding shown: [String?]) -> String? {
+        var seen = shown.compactMap(clean)
+        let hidden = seen.count
+        for part in parts.compactMap(clean) where !seen.contains(part) {
             seen.append(part)
         }
-        return seen.isEmpty ? nil : seen.joined(separator: " · ")
+        return seen.count == hidden ? nil : seen.dropFirst(hidden).joined(separator: " · ")
     }
 
     static func clean(_ words: String?) -> String? {

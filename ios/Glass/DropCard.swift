@@ -18,13 +18,12 @@ struct DropCard: View {
                 if let meta = drop.cardMeta(now: now, beside: face) {
                     Text(meta).font(.footnote).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
                 }
-                HStack(alignment: .top, spacing: 6) {
+                if let suggestion = drop.liveSuggestion(now: now) {
+                    SuggestionLine(suggestion: suggestion)
+                }
+                HStack(spacing: 6) {
                     PersonAvatar(drop: drop)
-                    if let suggestion = drop.liveSuggestion(now: now) {
-                        SuggestionLine(suggestion: suggestion)
-                    } else {
-                        Text(drop.authorLabel).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
-                    }
+                    Text(drop.authorLabel).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
                 }
                 .padding(.top, 4)
             }

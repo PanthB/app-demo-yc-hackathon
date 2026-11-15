@@ -44,11 +44,12 @@ final class DropKindTests: XCTestCase {
     }
 
     func testTheMetaLineJoinsWhenAndWhereOnce() {
-        XCTAssertEqual(CardWords.meta(["sat 8pm", "The Chapel"], hiding: nil), "sat 8pm · the chapel")
-        XCTAssertEqual(CardWords.meta([nil, "kacey musgraves"], hiding: nil), "kacey musgraves")
-        XCTAssertEqual(CardWords.meta(["sometime in march", nil], hiding: "sometime in march"), nil)
-        XCTAssertEqual(CardWords.meta(["instagram.com", "instagram.com"], hiding: nil), "instagram.com")
-        XCTAssertNil(CardWords.meta([nil, nil], hiding: nil))
+        XCTAssertEqual(CardWords.meta(["sat 8pm", "The Chapel"], hiding: []), "sat 8pm · the chapel")
+        XCTAssertEqual(CardWords.meta([nil, "kacey musgraves"], hiding: [nil]), "kacey musgraves")
+        XCTAssertNil(CardWords.meta(["sometime in march", nil], hiding: ["sometime in march"]))
+        XCTAssertEqual(CardWords.meta(["instagram.com", "instagram.com"], hiding: []), "instagram.com")
+        XCTAssertEqual(CardWords.meta(["12:45pm", "Stonemill Matcha"], hiding: [nil, "stonemill matcha"]), "12:45pm")
+        XCTAssertNil(CardWords.meta([nil, nil], hiding: []))
     }
 
     func testAPersonKeepsOneInitialAndOneColor() {
