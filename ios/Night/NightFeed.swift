@@ -5,6 +5,7 @@ struct NightFeed: View {
     let namespace: Namespace.ID
     let moves: Namespace.ID
     let select: (Drop) -> Void
+    var openGroup: ((String) -> Void)? = nil
 
     @State private var showsDone = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -34,11 +35,30 @@ struct NightFeed: View {
         .animation(reduceMotion ? .easeInOut(duration: 0.25) : .smooth(duration: 0.6), value: sections.map { section in section.drops.map(\.id) })
     }
 
+    @ViewBuilder
     private func header(_ section: DropSection) -> some View {
+        if let openGroup, section.id.hasPrefix("cluster-") {
+            let cluster = String(section.id.dropFirst("cluster-".count))
+            Button { openGroup(cluster) } label: {
+                title(section, opens: true)
+            }
+            .buttonStyle(.plain)
+            .matchedTransitionSource(id: "web-" + cluster, in: namespace)
+            .accessibilityHint("opens this group as a web")
+        } else {
+            title(section, opens: false)
+        }
+    }
+
+    private func title(_ section: DropSection, opens: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(section.title).font(NightStyle.sectionHeading)
             Text("\(section.drops.count)").font(NightStyle.sectionHeading).monospacedDigit().foregroundStyle(NightStyle.tertiary)
+            if opens {
+                Image(systemName: "chevron.right").font(NightStyle.body.weight(.semibold)).foregroundStyle(NightStyle.tertiary)
+            }
         }
+        .contentShape(.rect)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
         .accessibilityIdentifier("section-\(section.id)")

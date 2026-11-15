@@ -11,6 +11,7 @@ struct NightBoardView: View {
     @State private var path: [UUID] = []
     @State private var showsStreaks = false
     @State private var tab: NightTab = .board
+    @State private var web: BoardWebStop?
     @State private var moment = 0
     @State private var holdsDemoStreak = Self.asksForStreakDemo
     @State private var following: UUID?
@@ -58,10 +59,10 @@ struct NightBoardView: View {
                     NightFeed(
                         sections: sections,
                         namespace: namespace,
-                        moves: moves
-                    ) { drop in
-                        path.append(drop.id)
-                    }
+                        moves: moves,
+                        select: { drop in path.append(drop.id) },
+                        openGroup: { web = BoardWebStop(focus: $0) }
+                    )
                     }
                 }
                 .padding(.bottom, 120)
@@ -110,6 +111,10 @@ struct NightBoardView: View {
                             .ignoresSafeArea(edges: .bottom)
                             .allowsHitTesting(false)
                     }
+            }
+            .navigationDestination(item: $web) { stop in
+                BoardWeb(boardId: boards.currentBoardId, focus: stop.focus)
+                    .navigationTransition(.zoom(sourceID: stop.id, in: namespace))
             }
             .navigationDestination(for: UUID.self) { id in
                 if let drop = allDrops.first(where: { $0.id == id }) {
@@ -239,8 +244,10 @@ struct NightBoardView: View {
                 }
             },
             startBoard: { boards.entry = .create },
-            joinBoard: { boards.entry = .join(code: nil) }
+            joinBoard: { boards.entry = .join(code: nil) },
+            seeFull: { web = BoardWebStop(focus: nil) }
         )
+        .matchedTransitionSource(id: "web-all", in: namespace)
     }
 
     private func reveal(_ id: UUID, in sections: [DropSection], proxy: ScrollViewProxy) {
