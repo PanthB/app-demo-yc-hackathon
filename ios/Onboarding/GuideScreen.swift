@@ -368,7 +368,7 @@ private struct BoardScreen: View {
                     .resizable(resizingMode: .tile)
                     .foregroundStyle(.white.opacity(0.06))
             } else {
-                Color(.systemGroupedBackground)
+                NightBackdrop(isLiving: false)
             }
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .center) {
