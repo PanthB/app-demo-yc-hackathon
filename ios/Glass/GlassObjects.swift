@@ -4,6 +4,7 @@ struct GlassObjectView: View {
     let drop: Drop
     var now: Date = .now
     var showsText = true
+    var showsDate = true
 
     var body: some View {
         let size = GlassLayout.baseSize(for: drop.objectKind)
@@ -20,7 +21,7 @@ struct GlassObjectView: View {
             case .record: GlassRecord(drop: drop)
             case .slip: GlassSlip()
             case .sticky: GlassSticky(drop: drop, now: now, showsText: showsText)
-            case .stub: GlassStub(drop: drop, now: now, showsText: showsText)
+            case .stub: GlassStub(drop: drop, now: now, showsText: showsText, showsDate: showsDate)
             case .postcard: GlassPostcard(drop: drop, showsText: showsText)
             }
         }
@@ -246,6 +247,7 @@ struct GlassStub: View {
     let drop: Drop
     let now: Date
     let showsText: Bool
+    let showsDate: Bool
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -258,23 +260,25 @@ struct GlassStub: View {
                     .frame(width: 132, height: 58)
                     .offset(x: 14, y: 9)
             }
-            if showsText {
-                VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                if showsText {
                     Text(GlassCopy.shortTitle(drop.title, limit: 4) ?? "")
                         .font(.system(size: 12.5, weight: .semibold))
-                        .lineLimit(2)
-                    Spacer(minLength: 0)
-                    if let date {
-                        Text(date)
-                            .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                    }
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
-                .foregroundStyle(GlassKit.ink)
-                .frame(width: 116, height: 48, alignment: .topLeading)
-                .offset(x: 22, y: 14)
+                Spacer(minLength: 0)
+                if showsDate, let date {
+                    Text(date)
+                        .font(.system(size: 17, weight: .semibold, design: .monospaced))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                if !showsText { Spacer(minLength: 0) }
             }
+            .foregroundStyle(GlassKit.ink)
+            .frame(width: 116, height: 46, alignment: .topLeading)
+            .offset(x: 22, y: 15)
         }
         .frame(width: 160, height: 76, alignment: .topLeading)
     }
@@ -307,11 +311,11 @@ struct GlassPostcard: View {
             if showsText {
                 Text(GlassCopy.shortTitle(drop.title ?? drop.placeName, limit: 4) ?? GlassCopy.host(drop.url) ?? "")
                     .font(.system(size: 11, weight: .semibold))
-                    .lineSpacing(0.8)
+                    .lineSpacing(0.9)
                     .foregroundStyle(GlassKit.ink)
-                    .lineLimit(3)
-                    .frame(width: 62, height: 44, alignment: .bottomLeading)
-                    .offset(x: 88, y: 44)
+                    .lineLimit(2)
+                    .frame(width: 62, height: 30, alignment: .topLeading)
+                    .offset(x: 88, y: 43)
             }
         }
         .frame(width: 160, height: 108, alignment: .topLeading)

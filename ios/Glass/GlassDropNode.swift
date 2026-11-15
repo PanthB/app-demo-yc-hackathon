@@ -59,7 +59,7 @@ struct GlassDropNode: View {
     }
 
     private func object(showsText: Bool) -> some View {
-        GlassObjectView(drop: drop, now: now, showsText: showsText)
+        GlassObjectView(drop: drop, now: now, showsText: showsText, showsDate: placement.scale * 17 >= 12)
             .scaleEffect(placement.scale)
             .rotationEffect(.degrees(placement.tilt))
     }
