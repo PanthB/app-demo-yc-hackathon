@@ -8,6 +8,12 @@ const app = defineApp({
     READER_MODEL: v.optional(v.string()),
     DECIDER_MODEL: v.optional(v.string()),
     SCRAPECREATORS_API_KEY: v.optional(v.string()),
+    OPENAI_API_KEY: v.optional(v.string()),
+    OPENAI_READER_MODEL: v.optional(v.string()),
+    OPENAI_DECIDER_MODEL: v.optional(v.string()),
+    OPENAI_BUDGET_USD: v.optional(v.string()),
+    MODEL_PROFILE: v.optional(v.string()),
+    READER_PROFILE: v.optional(v.string()),
   },
 });
 

@@ -29,6 +29,20 @@ export default defineSchema({
   })
     .index("by_boardId", ["boardId"])
     .index("by_personId_and_boardId", ["personId", "boardId"]),
+  openaiCalls: defineTable({
+    model: v.string(),
+    route: v.union(v.literal("reader"), v.literal("decisions")),
+    inputTokens: v.number(),
+    cachedTokens: v.number(),
+    cacheWriteTokens: v.number(),
+    outputTokens: v.number(),
+    usd: v.number(),
+  }),
+  openaiTotals: defineTable({
+    model: v.string(),
+    usd: v.number(),
+    calls: v.number(),
+  }).index("by_model", ["model"]),
   drops: defineTable(dropFields)
     .index("by_clientId", ["clientId"])
     .index("by_boardId", ["boardId"])
