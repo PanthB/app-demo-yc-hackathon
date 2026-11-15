@@ -27,12 +27,8 @@ const MUSIC_HOSTS = /(^|\.)(spotify\.com|music\.apple\.com|soundcloud\.com|bandc
 
 export const isMusicLink = (url?: string) => MUSIC_HOSTS.test(hostOf(url) ?? "");
 
-const CLIP_HOSTS = /(^|\.)(tiktok\.com|youtube\.com|youtu\.be)$/;
-export const isClipLink = (url?: string, durationSec?: number) => {
-  const host = hostOf(url) ?? "";
-  if (CLIP_HOSTS.test(host)) return true;
-  return /(^|\.)instagram\.com$/.test(host) && (/\/(reels?|tv)\//.test(url ?? "") || (durationSec ?? 0) > 0);
-};
+const CLIP_HOSTS = /(^|\.)(tiktok\.com|instagram\.com|youtube\.com|youtu\.be)$/;
+export const isClipLink = (url?: string) => CLIP_HOSTS.test(hostOf(url) ?? "");
 
 export const hostOf = (url?: string) => {
   if (!url) return undefined;
