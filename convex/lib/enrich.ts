@@ -44,21 +44,38 @@ async function pageMeta(url: string, userAgent = UA) {
 
 const str = (x: unknown) => (typeof x === "string" && x.trim() ? x.trim() : undefined);
 
+const unquote = (s: string) => s.trim().replace(/^"([\s\S]*)"\.?$/, "$1").trim();
+
+export function instagramPost(meta: Record<string, string>) {
+  const titled = meta["og:title"]?.match(/^([\s\S]*?) on Instagram:\s*([\s\S]*)$/);
+  const described = (meta["og:description"] ?? meta["description"])?.match(
+    /^(?:[\d.,]+[KkMm]?\s+likes?,\s*[\d.,]+[KkMm]?\s+comments?\s+-\s+)?(\S+)\s+on\s+[A-Z][a-z]+\s+\d{1,2},\s+\d{4}\s*:\s*([\s\S]*)$/,
+  );
+  const caption = str(described ? unquote(described[2]) : titled ? unquote(titled[2]) : undefined);
+  return {
+    title: caption?.split("\n").find((line) => line.trim())?.trim().slice(0, 100),
+    description: caption,
+    author: str(titled?.[1]) ?? described?.[1],
+  };
+}
+
 export async function enrichLink(url: string): Promise<Enrichment> {
   const host = hostOf(url) ?? "";
-  if (/(^|\.)(tiktok\.com|instagram\.com)$/.test(host)) {
-    const tiktok = host.endsWith("tiktok.com");
+  if (/(^|\.)instagram\.com$/.test(host)) {
+    const meta = await pageMeta(url, CRAWLER_UA).catch((): Record<string, string> => ({}));
+    return { provider: "instagram og tags", ...instagramPost(meta), siteName: "Instagram", thumbnailUrl: meta["og:image"] };
+  }
+  if (/(^|\.)tiktok\.com$/.test(host)) {
     const [o, meta] = await Promise.all([
-      tiktok ? getJson(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`).catch((): Record<string, unknown> => ({})) : Promise.resolve<Record<string, unknown>>({}),
+      getJson(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`).catch((): Record<string, unknown> => ({})),
       pageMeta(url, CRAWLER_UA).catch((): Record<string, string> => ({})),
     ]);
-    const ogTitle = meta["og:title"]?.replace(/^(TikTok|Instagram)\s*[·|-]\s*/i, "");
     return {
-      provider: tiktok ? "tiktok oembed + og tags" : "instagram og tags",
+      provider: "tiktok oembed + og tags",
       title: str(o.title),
       description: meta["og:description"],
-      author: str(o.author_name) ?? ogTitle,
-      siteName: tiktok ? "TikTok" : "Instagram",
+      author: str(o.author_name) ?? meta["og:title"]?.replace(/^TikTok\s*[·|-]\s*/i, ""),
+      siteName: "TikTok",
       thumbnailUrl: str(o.thumbnail_url) ?? meta["og:image"],
     };
   }

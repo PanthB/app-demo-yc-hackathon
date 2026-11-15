@@ -112,6 +112,20 @@ export function corpus(text: string | undefined, url: string | undefined, hints:
     .join("\n");
 }
 
+const SMALL_NUMBERS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+const TENS: Record<string, number> = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60 };
+const NUMBER_WORDS = new RegExp(
+  `\\b(?:(${Object.keys(TENS).join("|")})(?:[\\s-](${SMALL_NUMBERS.slice(1, 10).join("|")}))?|(${SMALL_NUMBERS.join("|")}))(?=\\s+(?:mins?|minutes?|hrs?|hours?|days?|weeks?)\\b)`,
+  "gi",
+);
+const COUNTDOWN = /^(?:in|within)\s+(?:\d|an?\b|half\b|a\s+few\b|a\s+couple\b)/i;
+const BARE_TIME_OF_DAY = /^(?:the\s+)?(?:morning|afternoon|evening|night|noon|midnight)$/i;
+
+const withDigits = (s: string) =>
+  s.replace(NUMBER_WORDS, (_, tens?: string, ones?: string, small?: string) =>
+    String(tens ? TENS[tens.toLowerCase()] + (ones ? SMALL_NUMBERS.indexOf(ones.toLowerCase()) : 0) : SMALL_NUMBERS.indexOf(small!.toLowerCase())),
+  );
+
 const pickWords = (haystack: string, words: string[]) =>
   words.filter((w) => new RegExp(`\\b${w}\\b`, "i").test(haystack));
 
@@ -125,10 +139,12 @@ export function ruleExtraction(args: {
 }): Extraction {
   const { text, url, hints, enrichment, capturedAt, utcOffsetMinutes } = args;
   const body = corpus(text, url, hints, enrichment);
-  const timeSource = [text, hints?.transcript, hints?.pdfText?.slice(0, 4000), enrichment?.title, enrichment?.description].filter(Boolean).join("\n");
-  const parsed = chrono.parse(timeSource, { instant: new Date(capturedAt), timezone: utcOffsetMinutes }, { forwardDate: true })[0];
+  const host = hostOf(url);
+  const linkText = host && MUSIC_HOSTS.test(host) ? [] : [enrichment?.title, enrichment?.description];
+  const timeSource = withDigits([text, hints?.transcript, hints?.pdfText?.slice(0, 4000), ...linkText].filter(Boolean).join("\n"));
+  const parsed = chrono.parse(timeSource, { instant: new Date(capturedAt), timezone: utcOffsetMinutes }, { forwardDate: true }).find((r) => !BARE_TIME_OF_DAY.test(r.text.trim()));
   const at = parsed?.start.date().getTime();
-  const isCountdown = Boolean(parsed && /^in\s+\d/i.test(parsed.text));
+  const isCountdown = Boolean(parsed && COUNTDOWN.test(parsed.text));
   const dueAt = hints?.dueAt ?? (isCountdown ? at : undefined);
   const startsAt = isCountdown ? undefined : at;
   const anchor = dueAt ?? startsAt;
