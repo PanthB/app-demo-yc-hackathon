@@ -31,8 +31,14 @@ type Env = {
   readonly CONVEX_CLOUD_URL: string;
   readonly CONVEX_SITE_URL: string;
   readonly DECIDER_MODEL: string | undefined;
+  readonly MODEL_PROFILE: string | undefined;
+  readonly OPENAI_API_KEY: string | undefined;
+  readonly OPENAI_BUDGET_USD: string | undefined;
+  readonly OPENAI_DECIDER_MODEL: string | undefined;
+  readonly OPENAI_READER_MODEL: string | undefined;
   readonly OPENROUTER_API_KEY: string | undefined;
   readonly READER_MODEL: string | undefined;
+  readonly READER_PROFILE: string | undefined;
   readonly SCRAPECREATORS_API_KEY: string | undefined;
   readonly SUPERMEMORY_API_KEY: string | undefined;
 };
