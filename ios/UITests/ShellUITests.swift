@@ -37,6 +37,14 @@ final class ShellUITests: XCTestCase {
         XCTAssertTrue(drop(app, saying: "nights like this").waitForExistence(timeout: 15))
     }
 
+    func testIdeasOpensTheSuggestions() {
+        let app = launch()
+        let button = element(app, "ideasButton")
+        XCTAssertTrue(button.waitForExistence(timeout: 20))
+        button.tap()
+        XCTAssertTrue(title(app, "suggestions").waitForExistence(timeout: 10))
+    }
+
     func testACardZoomsIntoItsDetailAndBack() {
         let app = launch()
         let card = element(app, "dropCard")

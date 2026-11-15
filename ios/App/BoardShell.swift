@@ -14,6 +14,7 @@ struct BoardShell: View {
     @State private var filter: DropFilter = .everyone
     @State private var groupings: [String: DropGrouping] = [:]
     @State private var showsMembers = false
+    @State private var showsIdeas = false
     @State private var toast: String?
 
     var body: some View {
@@ -44,6 +45,10 @@ struct BoardShell: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarTitleMenu { boardMenu(known, current: boardId) }
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("ideas", systemImage: "lightbulb") { showsIdeas = true }
+                            .accessibilityIdentifier("ideasButton")
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
                             Picker("arrange", selection: Binding(
@@ -116,6 +121,10 @@ struct BoardShell: View {
             if let board {
                 ShellMembersSheet(board: board)
             }
+        }
+        .sheet(isPresented: $showsIdeas) {
+            NavigationStack { SuggestionsFeed(boardId: boardId) }
+                .environment(boards)
         }
     }
 
