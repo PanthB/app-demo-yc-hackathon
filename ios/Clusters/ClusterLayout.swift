@@ -62,7 +62,7 @@ struct ClusterLayout {
     static let columnGap: CGFloat = 20
     static let rowGap: CGFloat = 30
     static let stagger: CGFloat = 6
-    static let groupGap: CGFloat = 96
+    static let groupGap: CGFloat = 56
     static let maxTilt = 1.4
 
     private(set) var spots: [UUID: Spot] = [:]
@@ -200,36 +200,54 @@ struct ClusterLayout {
     }
 
     private func makeLinks(_ pairs: [Pair]) -> [Link] {
-        let obstacles = spots.values.map { $0.frame.insetBy(dx: -4, dy: -4) }
+        let footprints = spots.mapValues(Self.footprint)
+        let labelFrames = labels.map(Self.frame)
         return pairs.compactMap { pair in
-            guard let spot = spots[pair.first], let partner = spots[pair.second] else { return nil }
-            return Self.link(key: pair.id, first: pair.first, second: pair.second, reason: pair.reason, from: spot.faceCenter, to: partner.faceCenter, obstacles: obstacles)
+            guard let spot = spots[pair.first], let partner = spots[pair.second],
+                  let start = footprints[pair.first], let end = footprints[pair.second]
+            else { return nil }
+            let obstacles = labelFrames + footprints.compactMap { $0.key == pair.first || $0.key == pair.second ? nil : $0.value }
+            return Self.link(pair, from: spot.faceCenter, to: partner.faceCenter, leaving: start, reaching: end, avoiding: obstacles)
         }
     }
 
-    private static func link(key: String, first: UUID, second: UUID, reason: String, from: CGPoint, to: CGPoint, obstacles: [CGRect]) -> Link {
+    static func footprint(_ spot: Spot) -> CGRect {
+        let frame = spot.frame
+        return CGRect(x: frame.minX - 4, y: frame.minY - 20, width: frame.width + 8, height: frame.height + 24)
+    }
+
+    static func frame(_ label: Label) -> CGRect {
+        CGRect(x: label.origin.x - 4, y: label.origin.y - 4, width: 36 + CGFloat(label.text.count) * 11, height: labelHeight + 8)
+    }
+
+    private static func link(_ pair: Pair, from: CGPoint, to: CGPoint, leaving start: CGRect, reaching end: CGRect, avoiding obstacles: [CGRect]) -> Link? {
         let distance = hypot(to.x - from.x, to.y - from.y)
-        let control = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 + distance * 0.12 + 4)
-        let draft = Link(id: key, first: first, second: second, reason: reason, from: from, control: control, to: to, anchor: .zero)
-        let samples = 48
-        var bestStart = -1
-        var bestLength = 0
-        var runStart = -1
-        for step in 0...samples {
-            let point = draft.point(at: CGFloat(step) / CGFloat(samples))
-            let open = !obstacles.contains { $0.contains(point) }
-            if open, runStart < 0 { runStart = step }
-            if (!open || step == samples), runStart >= 0 {
-                let end = open ? step : step - 1
-                if end - runStart + 1 > bestLength {
-                    bestLength = end - runStart + 1
-                    bestStart = runStart
-                }
-                runStart = -1
-            }
+        guard distance > 1 else { return nil }
+        let middle = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 + distance * 0.12 + 4)
+        let normal = CGPoint(x: -(to.y - from.y) / distance, y: (to.x - from.x) / distance)
+        for bend in [0, 0.18, -0.18, 0.35, -0.35, 0.55, -0.55] as [CGFloat] {
+            let control = CGPoint(x: middle.x + normal.x * bend * distance, y: middle.y + normal.y * bend * distance)
+            let whole = Link(id: pair.id, first: pair.first, second: pair.second, reason: pair.reason, from: from, control: control, to: to, anchor: .zero)
+            let samples = 64
+            let points = (0...samples).map { whole.point(at: CGFloat($0) / CGFloat(samples)) }
+            guard let exit = points.firstIndex(where: { !start.contains($0) }),
+                  let entry = points.lastIndex(where: { !end.contains($0) }),
+                  exit < entry
+            else { continue }
+            let open = points[exit...entry].allSatisfy { point in !obstacles.contains { $0.contains(point) } && !end.contains(point) && !start.contains(point) }
+            guard open else { continue }
+            let t0 = CGFloat(max(exit - 1, 0)) / CGFloat(samples)
+            let t1 = CGFloat(min(entry + 1, samples)) / CGFloat(samples)
+            let trimmed = CGPoint(
+                x: (1 - t0) * (1 - t1) * from.x + ((1 - t0) * t1 + t0 * (1 - t1)) * control.x + t0 * t1 * to.x,
+                y: (1 - t0) * (1 - t1) * from.y + ((1 - t0) * t1 + t0 * (1 - t1)) * control.y + t0 * t1 * to.y
+            )
+            let a = whole.point(at: t0)
+            let b = whole.point(at: t1)
+            let piece = Link(id: pair.id, first: pair.first, second: pair.second, reason: pair.reason, from: a, control: trimmed, to: b, anchor: .zero)
+            return Link(id: pair.id, first: pair.first, second: pair.second, reason: pair.reason, from: a, control: trimmed, to: b, anchor: piece.point(at: 0.5))
         }
-        let middle = bestStart >= 0 ? CGFloat(bestStart) + CGFloat(bestLength - 1) / 2 : CGFloat(samples) / 2
-        return Link(id: key, first: first, second: second, reason: reason, from: from, control: control, to: to, anchor: draft.point(at: middle / CGFloat(samples)))
+        return nil
     }
 
     private static func labelTilt(_ id: String) -> Double {

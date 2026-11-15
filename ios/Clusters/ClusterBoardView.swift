@@ -9,7 +9,9 @@ struct ClusterBoardView: View {
     var select: (Drop) -> Void = { _ in }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var scheme
     @Environment(BoardClock.self) private var clock
+    @AppStorage(Mood.handwritingKey) private var handwriting = true
     @State private var known: Set<UUID>?
     @State private var held: [UUID: Hold] = [:]
     @State private var readySince: [UUID: Date] = [:]
@@ -24,7 +26,29 @@ struct ClusterBoardView: View {
     @State private var scroll = ScrollPosition()
     @State private var aimed = false
 
-    private let mood = Mood.sunny
+    private var mood: Mood {
+        var mood = scheme == .dark ? Self.night : Mood.sunny
+        mood.handwriting = handwriting
+        return mood
+    }
+
+    private static let night = Mood(
+        board: Color(hex: 0x3A2E24),
+        paper: Color(hex: 0xF3E8D8),
+        stickerWhite: Color(hex: 0xF6EEE0),
+        ink: Color(hex: 0x2B2420),
+        person: Color(hex: 0xFF7D5E),
+        personDeep: Color(hex: 0xE2603F),
+        butter: Color(hex: 0xFFD25C),
+        sky: Color(hex: 0x7CC4FF),
+        mint: Color(hex: 0x8FDDB0),
+        lilac: Color(hex: 0xBFA2FF),
+        shade: Color(hex: 0x0A0604),
+        speckle: 0.3,
+        tilt: Mood.sunny.tilt,
+        land: Mood.sunny.land,
+        move: Mood.sunny.move
+    )
     private static let dwell: Duration = .milliseconds(1100)
     private static let departureGap = 0.45
 
