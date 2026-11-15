@@ -40,6 +40,12 @@ final class ShareViewController: UIViewController {
     private func closeSoon() {
         guard isOnScreen, state.outcome != nil, !isClosingSoon else { return }
         isClosingSoon = true
+        #if DEBUG
+        if AppGroup.defaults.bool(forKey: "holdShareNote") {
+            Logger.share.info("the share note stays until it's tapped")
+            return
+        }
+        #endif
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(2))
             close()

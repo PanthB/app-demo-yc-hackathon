@@ -20,4 +20,6 @@ The card sits in the full-height sheet iOS 26 presents for every share extension
 
 ## Checking it on a phone
 
+In a DEBUG build, opening `appdemo://debug/hold-share-note` keeps the card up until it is tapped, so a test that looks at the screen late still sees it. `appdemo://debug/release-share-note` turns that off again. The switch is the app group flag `holdShareNote`, and it lasts until it is released or the app is deleted.
+
 The confirmation text has the accessibility identifier `shareConfirmation`. Errors are logged with `Logger.share`, which also logs "the share card is on screen" when the sheet has finished opening.
