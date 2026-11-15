@@ -2,12 +2,12 @@
 
 Owner: APPD-17.
 
-Sign in with Apple and Google, kept in the Keychain and handed to Convex through ConvexMobile's `ConvexClientWithAuth`.
+Sign in with Apple, the one account provider. Sign-in is optional: a guest is this phone's anonymous `DeviceIdentity.personId`, registered through `people:upsert` like every person, and the demo needs no account either. There's no other anonymous auth layer.
 
-- `AccountStore.shared` (main actor, observable) holds the signed-in `AccountSession` (method, ID token, expiry, name, email). The onboarding sign-in sheet fills it.
-- `AccountAuthProvider` is the `AuthProvider` for `ConvexClientWithAuth<AccountSession>(deploymentUrl:authProvider:)`. Its `login` and `loginFromCache` return the stored session, refreshing a Google token when it has run out. An Apple identity token lasts ten minutes and can't be refreshed without a server, so link the identity right after sign-in.
-- Wiring for the sync owner: build the client with `AccountAuthProvider()`, call `loginFromCache()` on launch, and call `login()` when `AccountStore.shared.session` goes from nil to a session, then the backend's link mutation.
-- `GoogleSignIn.clientID` is the one constant to fill in: the iOS OAuth client ID for `com.panthb.appdemo`. While it's empty the sheet leaves Google out, so filling it in is the whole change that brings Google back. Google runs in the system web sign-in sheet (ASWebAuthenticationSession with PKCE), so there's no SDK and no URL scheme to register.
-- Sign in with Apple needs the `com.apple.developer.applesignin` entitlement (`Default`) in Config/App.entitlements and a paid team for signing. `AppleSignIn.isEnabled` is the one switch: set it to false for a Personal Team build and the sheet shows Google and "not now" alone. The button is drawn in the sheet's own style and runs `ASAuthorizationController` directly, so its label stays lowercase.
+- `AppleSignIn.signIn()` runs the system prompt through `ASAuthorizationController`, so the sheet draws its own lowercase button. `AppleSignIn.isEnabled` is the one switch: set it to false for a build signed by a Personal Team, and start fresh goes in as a guest without the sheet. Apple gives the name only on an account's first sign-in, so later sign-ins keep the saved one.
+- `AccountStore.shared` (main actor, observable) holds the signed-in `AccountSession` (the Apple identity token, its expiry, name and email), kept in the Keychain.
+- `AccountAuthProvider` is the `AuthProvider` behind the app's `convex` client, which is a `ConvexClientWithAuth<AccountSession>` (ios/App/Convex.swift). It hands Convex the saved token. Apple's token lasts ten minutes and can't be refreshed without a server, which is fine: only the link needs it, and boards go by the person id.
+- `PeopleLink.link(_:)` runs right after sign-in: `convex.login()`, then `people:link { personId, personalBoardId, name }` (see handoffs/APPD-1/convex-contract.md in the crew drive). On an account's first sign-in it ties the account to this phone's person, so a guest keeps their boards. When the account already belongs to another person, the phone adopts that person and the caller restarts `BoardsStore`, so their boards come back. If the link fails, the sheet signs out again and says so in plain words, and the person carries on as a guest.
+- Signing needs the `com.apple.developer.applesignin` entitlement (`Default`) and a paid team; the backend trusts the issuer `https://appleid.apple.com` with the bundle id as audience.
 
 Compiled into the app target by folder (see `ios/project.yml`), so a new file here needs no project edit. Markdown files are excluded from the build.

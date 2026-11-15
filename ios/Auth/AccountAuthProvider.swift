@@ -2,9 +2,9 @@ import ConvexMobile
 import Foundation
 
 /// The AuthProvider behind ConvexClientWithAuth. The sign-in sheet does the interactive part and keeps the
-/// session in the Keychain; login and loginFromCache hand Convex that session's ID token, refreshing a
-/// Google token when it has run out. Apple identity tokens last ten minutes and can't be refreshed
-/// without a server, so an expired Apple session reads as signed out until the person signs in again.
+/// session in the Keychain; login and loginFromCache hand Convex that session's Apple identity token. The token
+/// lasts ten minutes and can't be refreshed without a server, so the app links the account right after sign-in,
+/// and an expired session reads as signed out to Convex. Boards don't need it: they go by the phone's person.
 final class AccountAuthProvider: AuthProvider {
     typealias T = AccountSession
 
@@ -14,12 +14,8 @@ final class AccountAuthProvider: AuthProvider {
 
     func loginFromCache(onIdToken: @Sendable @escaping (String?) -> Void) async throws -> AccountSession {
         guard let session = AccountKeychain.load() else { throw AccountError.signedOut }
-        guard session.isExpired else { return session }
-        guard session.method == .google else { throw AccountError.expired }
-        let renewed = try await GoogleSignIn.refresh(session)
-        AccountKeychain.save(renewed)
-        onIdToken(renewed.idToken)
-        return renewed
+        guard !session.isExpired else { throw AccountError.expired }
+        return session
     }
 
     func logout() async throws {

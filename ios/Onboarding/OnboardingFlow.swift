@@ -65,7 +65,7 @@ struct OnboardingFlow: View {
         .preferredColorScheme(.dark)
         .tint(.white)
         .sheet(isPresented: $askingToSignIn, onDismiss: { if step == .welcome { go(to: .share) } }) {
-            SignInSheet(onDone: signedIn)
+            SignInSheet(onDone: arrived)
                 .presentationDetents([.height(SignInSheet.height)])
                 .presentationDragIndicator(.visible)
         }
@@ -228,7 +228,7 @@ struct OnboardingFlow: View {
 
     #if DEBUG
     /// `-OnboardingAutoplay YES` plays the whole flow by itself (demo, or fresh with `-OnboardingAutoplayStart fresh`),
-    /// answering "not now" on the sign-in sheet, so a headless Simulator can record it.
+    /// going in as a guest from the sign-in sheet, so a headless Simulator can record it.
     private func autoplay() async {
         guard UserDefaults.standard.bool(forKey: "OnboardingAutoplay") else { return }
         let fresh = UserDefaults.standard.string(forKey: "OnboardingAutoplayStart") == "fresh"
@@ -236,7 +236,7 @@ struct OnboardingFlow: View {
             (1.8, { choose(fresh ? .fresh : .demo) }),
             (fresh ? 2.2 : 0, {
                 guard askingToSignIn else { return }
-                signedIn(.skipped)
+                arrived(.guest)
             }),
             (5.0, { go(to: .add) }),
             (3.8, { go(to: .vibes) }),
@@ -260,7 +260,7 @@ struct OnboardingFlow: View {
     }
 
     /// Demo goes straight into the guide, joining sf crew while the guide plays: a board needs no account.
-    /// Start fresh offers sign-in first, when a provider is switched on.
+    /// Start fresh offers the sign-in sheet first, unless someone is already signed in or Apple is switched off.
     private func choose(_ choice: OnboardingResult.Start) {
         start = choice
         Logger.onboarding.info("picked \(choice.rawValue, privacy: .public)")
@@ -278,11 +278,23 @@ struct OnboardingFlow: View {
         withAnimation(motion(.smooth(duration: 0.25))) { welcomeHidden = true }
     }
 
-    private func signedIn(_ outcome: SignInOutcome) {
-        if case .signedIn(let session) = outcome {
-            name = session.firstName
-        }
+    /// The sheet's answer. A guest carries on as this phone's person. Demo switches to sf crew. A signed-in person
+    /// may have become the person their Apple account already had, so the boards store starts over for them.
+    private func arrived(_ outcome: SignInOutcome) {
         askingToSignIn = false
+        switch outcome {
+        case .guest:
+            Logger.onboarding.info("going in as a guest")
+        case .demo:
+            start = .demo
+            Logger.onboarding.info("picked demo from the sign-in sheet")
+            if demoBoardId == nil {
+                Task { await joinDemo() }
+            }
+        case .signedIn(let session):
+            name = session.firstName
+            boards.start()
+        }
         go(to: .share)
     }
 

@@ -7,23 +7,21 @@ extension Logger {
 }
 
 enum SignInMethod: String, Codable, Sendable {
-    case apple, google
+    case apple
 }
 
 enum AccountError: LocalizedError {
     case signedOut
     case expired
     case missingToken
-    case notConfigured
-    case badResponse(String)
+    case notLinked(String)
 
     var errorDescription: String? {
         switch self {
         case .signedOut: "nobody is signed in on this phone."
         case .expired: "the sign-in ran out, so it needs doing again."
         case .missingToken: "the sign-in came back without a token."
-        case .notConfigured: "google sign-in isn't set up in this build yet."
-        case .badResponse(let detail): "the sign-in answer didn't make sense: \(detail)"
+        case .notLinked(let reason): "the account couldn't be tied to this phone: \(reason)"
         }
     }
 }
@@ -34,7 +32,6 @@ struct AccountSession: Codable, Equatable, Sendable {
     var expiresAt: Date
     var name: String?
     var email: String?
-    var refreshToken: String?
 
     var firstName: String? {
         name?.split(separator: " ").first.map { $0.lowercased() }
@@ -44,14 +41,13 @@ struct AccountSession: Codable, Equatable, Sendable {
         expiresAt.timeIntervalSinceNow < 60
     }
 
-    init(method: SignInMethod, idToken: String, name: String?, email: String?, refreshToken: String? = nil) {
+    init(method: SignInMethod, idToken: String, name: String?, email: String?) {
         let claims = JWTClaims(idToken)
         self.method = method
         self.idToken = idToken
         self.expiresAt = claims.expiresAt ?? .now.addingTimeInterval(600)
         self.name = name ?? claims.name
         self.email = email ?? claims.email
-        self.refreshToken = refreshToken
     }
 }
 

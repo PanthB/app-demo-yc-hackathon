@@ -4,14 +4,15 @@ import UIKit
 
 enum AppleSignIn {
     /// The one switch for Sign in with Apple. It needs a paid team with the capability on the app ID, so a build
-    /// signed by a Personal Team turns it off and the sheet shows Google and "not now" alone.
+    /// signed by a Personal Team turns it off, and start fresh then goes in as a guest without the sheet.
     static let isEnabled = true
 
     static func prepare(_ request: ASAuthorizationAppleIDRequest) {
         request.requestedScopes = [.fullName, .email]
     }
 
-    /// Runs the system's Sign in with Apple prompt. Nil means the person cancelled it.
+    /// Runs the system's Sign in with Apple prompt. Nil means the person cancelled it. Apple gives the name only
+    /// on an account's first sign-in, so a later one keeps the name saved from before.
     @MainActor
     static func signIn() async throws -> AccountSession? {
         let request = ASAuthorizationAppleIDProvider().createRequest()
@@ -42,10 +43,11 @@ enum AppleSignIn {
                 Logger.auth.error("sign in with apple returned no identity token")
                 throw AccountError.missingToken
             }
-            let name = credential.fullName.flatMap {
+            let given = credential.fullName.flatMap {
                 PersonNameComponentsFormatter.localizedString(from: $0, style: .default)
             }
-            return AccountSession(method: .apple, idToken: token, name: name?.isEmpty == false ? name : nil, email: credential.email)
+            let name = given?.isEmpty == false ? given : AccountKeychain.load()?.name
+            return AccountSession(method: .apple, idToken: token, name: name, email: credential.email)
         }
     }
 }
