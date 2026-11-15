@@ -1,0 +1,22 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: e8e396a3-dfc3-44bd-abda-f32321d1afd9
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T18:44:41Z"
+    checksum: 00d5e6fe8904e3ed2b8630a4399834c0a174253590cad13449f586d6e173398d
+test:
+    metadata:
+        name: add-moment-coffee-with-sam
+        platform: ios
+        tags:
+            - smoke
+            - core-flow
+    build:
+        name: app-demo-yc-hackathon
+    blocks:
+        - type: instructions
+          step_description: Add a moment called 'Coffee with Sam'.
+        - type: validation
+          step_description: '''Coffee with Sam'' appears at the top of today''s list of moments.'
