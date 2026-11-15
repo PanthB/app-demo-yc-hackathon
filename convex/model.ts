@@ -97,6 +97,7 @@ export const extraction = v.object({
   vibeWords: v.array(v.string()),
   minutesThere: v.optional(v.number()),
   confidence: v.number(),
+  fieldConfidence: v.optional(v.record(v.string(), v.number())),
 });
 
 export const decision = v.object({
