@@ -43,6 +43,12 @@ extension RemoteDrop {
         if let words = extraction?.kindWords { put(\.kindWords, words) }
         if let words = extraction?.vibeWords { put(\.vibeWords, words) }
         put(\.relatedDropIds, (relatedClientIds ?? []).map(DropKey.id(for:)))
+        put(\.vibes, vibes ?? [])
+        put(\.clusterId, clusterId)
+        put(\.clusterLabel, clusterLabel)
+        put(\.neighbors, (neighbors ?? []).map { DropNeighbor(clientId: DropKey.id(for: $0.clientId).uuidString, reason: $0.reason) })
+        fill(\.genre, enrichment?.genre)
+        fill(\.mediaDuration, enrichment?.durationSec)
 
         if let type = decision?.type.flatMap(DropType.init(rawValue:)) {
             put(\.typeRaw, type.rawValue)

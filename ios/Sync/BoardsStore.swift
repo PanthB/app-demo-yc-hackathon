@@ -38,10 +38,11 @@ final class BoardsStore {
         #if DEBUG
         if let debugPerson = UserDefaults.standard.string(forKey: "BoardDebugPerson"), !debugPerson.isEmpty,
            debugPerson != DeviceIdentity.personId {
-            DeviceIdentity.adopt(personId: debugPerson)
+            DeviceIdentity.adopt(personId: debugPerson, boardId: "\(debugPerson)-board")
             Logger.sync.info("this device is now \(debugPerson, privacy: .public)")
         }
         #endif
+        BoardKeys.keep(for: DeviceIdentity.personId)
         currentBoardId = BoardKeys.currentBoard
         personName = AppGroup.defaults.string(forKey: BoardKeys.personName)
     }
@@ -69,16 +70,12 @@ final class BoardsStore {
     func start() {
         let me = personId
         guard person != me else { return }
-        if person != nil {
-            listener?.cancel()
-            boards = []
-            for key in [BoardKeys.personName, BoardKeys.personalBoardId, BoardKeys.currentBoardId, BoardKeys.currentBoardName, BoardKeys.currentBoardShared] {
-                AppGroup.defaults.removeObject(forKey: key)
-            }
-            personName = nil
-            currentBoardId = BoardKeys.currentBoard
-            onChange()
-        }
+        listener?.cancel()
+        boards = []
+        BoardKeys.keep(for: me)
+        personName = AppGroup.defaults.string(forKey: BoardKeys.personName)
+        currentBoardId = BoardKeys.currentBoard
+        onChange()
         person = me
         Task { await register(me) }
     }
@@ -105,7 +102,7 @@ final class BoardsStore {
         let newName = cleaned?.isEmpty == false ? cleaned : nil
         var args = extra
         args.updateValue(personId, forKey: "personId")
-        args.updateValue(newName ?? personName, forKey: "personName")
+        args.updateValue(newName, forKey: "personName")
         do {
             let board: RemoteBoard = try await convex.mutation(function, with: args)
             if let newName {
@@ -126,11 +123,10 @@ final class BoardsStore {
             let known: RemotePerson = try await convex.mutation("people:upsert", with: [
                 "personId": me,
                 "personalBoardId": BoardKeys.personalBoard,
-                "name": personName,
             ])
             guard person == me else { return }
             AppGroup.defaults.set(known.personalBoardId, forKey: BoardKeys.personalBoardId)
-            if personName == nil, known.name != "me" {
+            if known.name != "me" {
                 personName = known.name
                 AppGroup.defaults.set(known.name, forKey: BoardKeys.personName)
             }

@@ -25,4 +25,6 @@ Owner: the share and ingest thread (PAN-5). Compiled into the app target by fold
 - **Video:** four frames, one of them the thumbnail, and the duration.
 - **Voice notes:** on-device speech to text. The audio never leaves the phone.
 - **PDFs:** the text of the first five pages and a picture of the first page.
-- **Links** are read by the backend. The text that came with the share is passed along as the link's title.
+- **Links** are read by the backend. The first line of the text that came with the share is passed along as the link's title, without a trailing site name such as "| Spotify" or "- YouTube". `LinkReading` reads two kinds on the phone, from the link and that text alone, with no network:
+  - **Songs** (Spotify and Apple Music): a page title like "Blinding Lights - song and lyrics by The Weeknd | Spotify" becomes the title "Blinding Lights" and the artist "The Weeknd". The app never listens to anything.
+  - **Places** (Apple Maps and full Google Maps links): the place's name and coordinates from the link go in `placeName`, `latitude` and `longitude`, and are sent as `hints.placeName` and the drop's position, so the backend files it as a place in its neighborhood. A short `maps.app.goo.gl` link carries neither, so the backend reads it.

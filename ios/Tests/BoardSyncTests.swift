@@ -105,6 +105,44 @@ final class BoardSyncTests: XCTestCase {
         XCTAssertEqual(drop.zone, .now)
     }
 
+    func testADropLandsInItsClusterWithItsVibesNeighborsGenreAndLength() throws {
+        let drop = landed(try row([
+            "vibes": ["dreamy", "late night", "pop"], "clusterId": "c1", "clusterLabel": "late night, dreamy",
+            "neighbors": [
+                ["clientId": "5eed0000-0000-4000-8000-000000000009", "reason": "both dreamy, late night."],
+                ["clientId": "nk2-web", "reason": "both pop."],
+            ],
+            "enrichment": ["provider": "spotify oembed + og tags + deezer", "author": "Rick Astley", "genre": "pop", "bpm": 113.2, "durationSec": 213] as [String: Any],
+        ]))
+
+        XCTAssertEqual(drop.vibes, ["dreamy", "late night", "pop"])
+        XCTAssertEqual(drop.clusterId, "c1")
+        XCTAssertEqual(drop.clusterLabel, "late night, dreamy")
+        XCTAssertEqual(drop.neighbors, [
+            DropNeighbor(clientId: "5EED0000-0000-4000-8000-000000000009", reason: "both dreamy, late night."),
+            DropNeighbor(clientId: DropKey.id(for: "nk2-web").uuidString, reason: "both pop."),
+        ])
+        XCTAssertEqual(drop.genre, "pop")
+        XCTAssertEqual(drop.mediaDuration, 213)
+    }
+
+    func testADropLeavesItsClusterWhenTheBackendTakesItOut() throws {
+        let drop = landed(try row([
+            "vibes": ["dreamy"], "clusterId": "c1", "clusterLabel": "dreamy",
+            "neighbors": [["clientId": "nk2-web", "reason": "both dreamy."]],
+            "enrichment": ["author": "Rick Astley", "genre": "pop", "durationSec": 213.4] as [String: Any],
+        ]))
+
+        try row(["zone": "done", "zoneSetByUser": true, "vibes": ["dreamy"], "neighbors": [[String: String]]()]).apply(to: drop, holdingPlacement: false)
+
+        XCTAssertNil(drop.clusterId)
+        XCTAssertNil(drop.clusterLabel)
+        XCTAssertTrue(drop.neighbors.isEmpty)
+        XCTAssertEqual(drop.vibes, ["dreamy"])
+        XCTAssertEqual(drop.genre, "pop")
+        XCTAssertEqual(drop.mediaDuration, 213.4)
+    }
+
     func testAPhotoWithNoCutoutOnThisPhoneIsAPolaroid() throws {
         let photo = try row(["kind": "image", "decision": ["type": "place", "objectKind": "cutout", "emphasis": "normal", "unsure": false] as [String: Any]])
 
@@ -144,6 +182,31 @@ final class BoardSyncTests: XCTestCase {
         let args = DropSubmit.arguments(for: drop, reading: DropReading(), boardId: "b", personId: "me")
 
         XCTAssertEqual((args["hints"] as? [String: Any?])?["linkTitle"] as? String, "best ramen in the mission")
+    }
+
+    func testASharedSongSendsItsNameAndArtistWithoutTheSiteName() throws {
+        let drop = Drop(authorId: "me", sourceKind: .url, rawText: "Blinding Lights - song and lyrics by The Weeknd | Spotify", url: "https://open.spotify.com/track/0VjIjW4GlUZAMYd2vXMi3b")
+        DropReader.readLink(of: drop)
+
+        let args = DropSubmit.arguments(for: drop, reading: DropReading(), boardId: "b", personId: "me")
+
+        XCTAssertEqual(drop.title, "Blinding Lights")
+        XCTAssertEqual(drop.artist, "The Weeknd")
+        let hints = try XCTUnwrap(args["hints"] as? [String: Any?])
+        XCTAssertEqual(hints["linkTitle"] as? String, "Blinding Lights")
+        XCTAssertEqual(hints["artist"] as? String, "The Weeknd")
+    }
+
+    func testASharedPlaceSendsItsNameAndWhereItIs() throws {
+        let drop = Drop(authorId: "me", sourceKind: .url, rawText: "Tadaima", url: "https://maps.apple.com/place?address=3515%2020th%20St,%20Ste%20B,%20San%20Francisco&coordinate=37.758509,-122.419611&name=Tadaima&place-id=IE280BA887A0204F9&map=explore")
+        DropReader.readLink(of: drop)
+
+        let args = DropSubmit.arguments(for: drop, reading: DropReading(), boardId: "b", personId: "me")
+
+        XCTAssertEqual(drop.placeName, "Tadaima")
+        XCTAssertEqual((args["hints"] as? [String: Any?])?["placeName"] as? String, "Tadaima")
+        XCTAssertEqual(args["latitude"] as? Double, 37.758509)
+        XCTAssertEqual(args["longitude"] as? Double, -122.419611)
     }
 
     func testAnInviteLinkGivesItsCode() throws {

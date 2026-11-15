@@ -11,8 +11,9 @@ enum DropSubmit {
         timeZone: TimeZone = .current
     ) -> [String: ConvexEncodable?] {
         var hints: [String: ConvexEncodable?] = [:]
-        if drop.sourceKind == .url, let caption = drop.rawText?.split(whereSeparator: \.isNewline).first {
-            hints["linkTitle"] = String(caption)
+        if drop.sourceKind == .url {
+            if let title = drop.title ?? LinkReading.firstLine(of: drop.rawText) { hints["linkTitle"] = title }
+            if let place = drop.placeName { hints["placeName"] = place }
         }
         if let artist = drop.artist { hints["artist"] = artist }
         if let transcript = reading.transcript { hints["transcript"] = transcript }
@@ -33,8 +34,8 @@ enum DropSubmit {
             "imageIds": imagesValue,
             "capturedAt": drop.createdAt.convexTime,
             "utcOffsetMinutes": Double(timeZone.secondsFromGMT(for: drop.createdAt)) / 60,
-            "latitude": drop.anchorLatitude,
-            "longitude": drop.anchorLongitude,
+            "latitude": drop.anchorLatitude ?? drop.latitude,
+            "longitude": drop.anchorLongitude ?? drop.longitude,
             "hints": hintsValue,
         ]
     }

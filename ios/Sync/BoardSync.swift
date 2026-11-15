@@ -23,7 +23,14 @@ final class BoardSync {
     @ObservationIgnored private var located: Set<UUID> = []
     @ObservationIgnored private var retry: Task<Void, Never>?
 
-    private static let isUnderTest = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    private static let staysOffline: Bool = {
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return true }
+        #if DEBUG
+        return UserDefaults.standard.bool(forKey: "BoardDebugSeed")
+        #else
+        return false
+        #endif
+    }()
 
     init(boards: BoardsStore) {
         self.boards = boards
@@ -33,7 +40,7 @@ final class BoardSync {
     func wake(in context: ModelContext) {
         self.context = context
         InboxIngest.appGroup?.run(in: context)
-        guard !Self.isUnderTest else { return }
+        guard !Self.staysOffline else { return }
         boards.start()
         follow()
         sendWaiting()
@@ -63,7 +70,7 @@ final class BoardSync {
     }
 
     private func follow() {
-        guard context != nil, !Self.isUnderTest else { return }
+        guard context != nil, !Self.staysOffline else { return }
         let wanted = Set(boards.boardIds)
         for id in listeners.keys where !wanted.contains(id) {
             listeners.removeValue(forKey: id)?.cancel()
@@ -180,7 +187,7 @@ final class BoardSync {
 
     private func fetchPicture(for drop: Drop, from link: String?) {
         guard drop.thumbnailPath == nil, drop.cutoutPath == nil,
-              let url = link.flatMap(URL.init(string:)),
+              let url = link.flatMap({ URL(string: $0.replacingOccurrences(of: "http://", with: "https://", options: .anchored)) }),
               let container = AppGroup.containerURL,
               pictured.insert(drop.id).inserted
         else { return }

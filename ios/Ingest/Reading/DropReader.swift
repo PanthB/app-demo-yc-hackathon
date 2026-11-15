@@ -15,6 +15,7 @@ enum DropReader {
         let id = drop.id
         if let done = DropReading.load(for: id, in: container), done.finished { return done }
         readWords(of: drop)
+        readLink(of: drop)
         let seen = await look(kind: drop.sourceKind, id: id, mediaPaths: drop.mediaPaths, container: container)
         if let path = seen.thumbnailPath { drop.thumbnailPath = path }
         if let path = seen.cutoutPath { drop.cutoutPath = path }
@@ -35,6 +36,19 @@ enum DropReader {
         drop.startsAt = time.startsAt
         drop.whenLabel = time.whenLabel
         drop.applyDecidedZone(time.zone, unsure: false)
+    }
+
+    @MainActor
+    static func readLink(of drop: Drop) {
+        guard drop.sourceKind == .url, let link = drop.url else { return }
+        let seen = LinkReading.read(link, caption: drop.rawText)
+        if let title = seen.title { drop.title = title }
+        if let artist = seen.artist { drop.artist = artist }
+        if let place = seen.placeName { drop.placeName = place }
+        if let latitude = seen.latitude, let longitude = seen.longitude {
+            drop.latitude = latitude
+            drop.longitude = longitude
+        }
     }
 
     static func look(kind: SourceKind, id: UUID, mediaPaths: [String], container: URL) async -> Seen {

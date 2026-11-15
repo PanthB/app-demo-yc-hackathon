@@ -50,13 +50,18 @@ struct RemoteDrop: Decodable, Equatable, Sendable {
 
     struct Enrichment: Decodable, Equatable, Sendable {
         var author: String?
+        var genre: String?
+        var durationSec: Double?
 
         init(from decoder: Decoder) throws {
-            author = try decoder.container(keyedBy: CodingKeys.self).maybe(.author)
+            let row = try decoder.container(keyedBy: CodingKeys.self)
+            author = row.maybe(.author)
+            genre = row.maybe(.genre)
+            durationSec = row.maybe(.durationSec)
         }
 
         enum CodingKeys: String, CodingKey {
-            case author
+            case author, genre, durationSec
         }
     }
 
@@ -137,6 +142,10 @@ struct RemoteDrop: Decodable, Equatable, Sendable {
     var pinnedAt: Double?
     var suggestion: String?
     var relatedClientIds: [String]?
+    var vibes: [String]?
+    var clusterId: String?
+    var clusterLabel: String?
+    var neighbors: [DropNeighbor]?
     var enrichment: Enrichment?
     var extraction: Extraction?
     var decision: Decision?
@@ -166,6 +175,10 @@ struct RemoteDrop: Decodable, Equatable, Sendable {
         pinnedAt = row.maybe(.pinnedAt)
         suggestion = row.maybe(.suggestion)
         relatedClientIds = row.maybe(.relatedClientIds)
+        vibes = row.maybe(.vibes)
+        clusterId = row.maybe(.clusterId)
+        clusterLabel = row.maybe(.clusterLabel)
+        neighbors = row.maybe(.neighbors)
         enrichment = row.maybe(.enrichment)
         extraction = row.maybe(.extraction)
         decision = row.maybe(.decision)
@@ -174,7 +187,7 @@ struct RemoteDrop: Decodable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey {
         case _id, boardId, clientId, authorId, authorName, authorColor, kind, text, url, thumbnailUrl, title
         case capturedAt, latitude, longitude, hints, status, zone, zoneSetByUser, previousZone, pinned, pinnedAt
-        case suggestion, relatedClientIds, enrichment, extraction, decision
+        case suggestion, relatedClientIds, vibes, clusterId, clusterLabel, neighbors, enrichment, extraction, decision
     }
 }
 
