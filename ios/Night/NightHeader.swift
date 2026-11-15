@@ -18,10 +18,10 @@ struct NightHeader: View {
     let line: String
     let isShared: Bool
     @Binding var filter: DropFilter
+    @Binding var tab: NightTab
     let showBoard: (String) -> Void
     let startBoard: () -> Void
     let joinBoard: () -> Void
-    let openSuggestions: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -64,29 +64,73 @@ struct NightHeader: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("nightHeaderLine")
 
-            HStack(spacing: 12) {
-                if isShared {
-                    NightFilterPicker(filter: $filter)
-                }
-                Spacer(minLength: 0)
-                Button(action: openSuggestions) {
-                    Text("suggestions")
-                        .font(NightStyle.body.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .frame(height: 44)
-                        .contentShape(.capsule)
-                }
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .capsule)
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                .accessibilityHint("shows things that go with this board")
-                .accessibilityIdentifier("nightSuggestions")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) { controls }
+                VStack(alignment: .leading, spacing: 10) { controls }
             }
             .padding(.top, 8)
         }
         .padding(.horizontal, NightStyle.margin)
         .padding(.top, 8)
+    }
+
+    @ViewBuilder
+    private var controls: some View {
+        NightSegments(options: NightTab.allCases, selection: $tab, label: \.rawValue, idPrefix: "nightTab")
+        if isShared, tab == .board {
+            NightFilterPicker(filter: $filter).transition(.opacity)
+        }
+    }
+}
+
+enum NightTab: String, CaseIterable, Hashable {
+    case board, suggestions
+}
+
+struct NightSegments<Option: Hashable>: View {
+    let options: [Option]
+    @Binding var selection: Option
+    let label: (Option) -> String
+    let idPrefix: String
+    @Namespace private var namespace
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(options: [Option], selection: Binding<Option>, label: @escaping (Option) -> String, idPrefix: String) {
+        self.options = options
+        _selection = selection
+        self.label = label
+        self.idPrefix = idPrefix
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options, id: \.self) { option in
+                let isOn = option == selection
+                Button {
+                    withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy(duration: 0.3)) { selection = option }
+                } label: {
+                    Text(label(option))
+                        .font(NightStyle.body.weight(.semibold))
+                        .foregroundStyle(isOn ? Color.black : Color.white.opacity(0.8))
+                        .lineLimit(1)
+                        .padding(.horizontal, 16)
+                        .frame(height: 36)
+                        .background {
+                            if isOn {
+                                Capsule().fill(.white).matchedGeometryEffect(id: "segment", in: namespace)
+                            }
+                        }
+                        .contentShape(.capsule)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isOn ? .isSelected : [])
+                .accessibilityIdentifier("\(idPrefix)-\(label(option))")
+            }
+        }
+        .padding(4)
+        .glassEffect(.regular, in: .capsule)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .sensoryFeedback(.selection, trigger: selection)
     }
 }
 

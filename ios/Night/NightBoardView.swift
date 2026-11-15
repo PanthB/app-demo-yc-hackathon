@@ -10,7 +10,7 @@ struct NightBoardView: View {
     @State private var filter: DropFilter = .everyone
     @State private var path: [UUID] = []
     @State private var showsStreaks = false
-    @State private var showsSuggestions = false
+    @State private var tab: NightTab = .board
     @State private var moment = 0
     @State private var holdsDemoStreak = Self.asksForStreakDemo
     @State private var following: UUID?
@@ -52,23 +52,8 @@ struct NightBoardView: View {
             ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    NightHeader(
-                        boardName: name,
-                        boards: choices,
-                        currentBoardId: current,
-                        line: Self.line(streaks, isShared: isShared),
-                        isShared: isShared,
-                        filter: $filter,
-                        showBoard: { id in
-                            withAnimation(.smooth(duration: 0.4)) {
-                                boards.show(id)
-                                filter = .everyone
-                            }
-                        },
-                        startBoard: { boards.entry = .create },
-                        joinBoard: { boards.entry = .join(code: nil) },
-                        openSuggestions: { showsSuggestions = true }
-                    )
+                    if tab == .board {
+                    header(name: name, choices: choices, current: current, streaks: streaks, isShared: isShared)
                     NightFeed(
                         sections: sections,
                         namespace: namespace,
@@ -76,11 +61,23 @@ struct NightBoardView: View {
                     ) { drop in
                         path.append(drop.id)
                     }
+                    }
                 }
                 .padding(.bottom, 120)
             }
             .scrollIndicators(.hidden)
             .background { NightBackdrop(palette: palette, isLiving: false) }
+            .overlay {
+                if tab == .suggestions {
+                    VStack(alignment: .leading, spacing: 0) {
+                        header(name: name, choices: choices, current: current, streaks: streaks, isShared: isShared)
+                        SuggestionsFeed(boardId: current, embedded: true)
+                            .tint(palette.ember)
+                            .padding(.top, 8)
+                    }
+                    .transition(.opacity)
+                }
+            }
             .overlay(alignment: .top) {
                 LinearGradient(stops: [.init(color: NightStyle.ink.opacity(0.97), location: 0), .init(color: NightStyle.ink.opacity(0.94), location: 0.62), .init(color: NightStyle.ink.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
                     .frame(height: 130)
@@ -131,7 +128,7 @@ struct NightBoardView: View {
             }
             .safeAreaInset(edge: .top, spacing: 0) {
                 let jumps = sections.filter { $0.style != .done }
-                if jumps.count > 1 {
+                if tab == .board, jumps.count > 1 {
                     NightJumpRow(sections: jumps, current: sectionInView ?? jumps.first?.id) { id in
                         withAnimation(reduceMotion ? nil : .smooth(duration: 0.5)) { proxy.scrollTo(id, anchor: .top) }
                     }
@@ -180,16 +177,6 @@ struct NightBoardView: View {
             guard !Task.isCancelled else { return }
             following = nil
         }
-        .sheet(isPresented: $showsSuggestions) {
-            NavigationStack {
-                SuggestionsFeed(boardId: current)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("done") { showsSuggestions = false }
-                        }
-                    }
-            }
-        }
         .sheet(isPresented: $showsStreaks) {
             NightStreakSheet(boardName: name, streaks: streaks, members: members, me: me, isShared: isShared, invite: boards.currentBoard?.inviteLink, inviteCode: boards.currentBoard?.inviteCode)
         }
@@ -218,6 +205,26 @@ struct NightBoardView: View {
         .tint(palette.ember)
         .preferredColorScheme(.dark)
         .accessibilityIdentifier("nightBoard")
+    }
+
+    private func header(name: String, choices: [NightBoardChoice], current: String, streaks: BoardStreaks, isShared: Bool) -> some View {
+        NightHeader(
+            boardName: name,
+            boards: choices,
+            currentBoardId: current,
+            line: Self.line(streaks, isShared: isShared),
+            isShared: isShared,
+            filter: $filter,
+            tab: $tab,
+            showBoard: { id in
+                withAnimation(.smooth(duration: 0.4)) {
+                    boards.show(id)
+                    filter = .everyone
+                }
+            },
+            startBoard: { boards.entry = .create },
+            joinBoard: { boards.entry = .join(code: nil) }
+        )
     }
 
     private func reveal(_ id: UUID, in sections: [DropSection], proxy: ScrollViewProxy) {
