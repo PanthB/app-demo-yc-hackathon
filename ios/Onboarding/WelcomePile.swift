@@ -38,6 +38,7 @@ struct WelcomePile: View {
                 }
                 .overlay(alignment: .topLeading) {
                     NightKindTag(kind: slot.kind)
+                        .background(Color(white: 0.08).opacity(0.72), in: .capsule)
                         .scaleEffect(0.85, anchor: .topLeading)
                         .padding(9)
                 }
@@ -50,7 +51,7 @@ struct WelcomePile: View {
                     .animation(leave, value: shown)
             }
             DroppedNote()
-                .offset(x: -58, y: 164)
+                .offset(y: 164)
                 .opacity(dealt && shown ? 1 : 0)
                 .offset(y: dealt ? 0 : 8)
                 .blur(radius: dealt && shown ? 0 : 6)
