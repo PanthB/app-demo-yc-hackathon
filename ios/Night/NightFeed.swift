@@ -9,6 +9,7 @@ struct NightFeed: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dropActions) private var actions
     @Environment(BoardClock.self) private var clock
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
@@ -29,8 +30,8 @@ struct NightFeed: View {
 
     private func header(_ section: DropSection) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(section.title).font(NightStyle.heading)
-            Text("\(section.drops.count)").font(NightStyle.heading).monospacedDigit().foregroundStyle(NightStyle.tertiary)
+            Text(section.title).font(NightStyle.sectionHeading)
+            Text("\(section.drops.count)").font(NightStyle.sectionHeading).monospacedDigit().foregroundStyle(NightStyle.tertiary)
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
@@ -45,8 +46,8 @@ struct NightFeed: View {
             withAnimation(NightStyle.motion(reduceMotion)) { showsDone.toggle() }
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(section.title).font(NightStyle.heading)
-                Text("\(section.drops.count)").font(NightStyle.heading).monospacedDigit().foregroundStyle(NightStyle.tertiary)
+                Text(section.title).font(NightStyle.sectionHeading)
+                Text("\(section.drops.count)").font(NightStyle.sectionHeading).monospacedDigit().foregroundStyle(NightStyle.tertiary)
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(NightStyle.body.weight(NightStyle.symbolWeight))
@@ -65,7 +66,7 @@ struct NightFeed: View {
     }
 
     private func grid(_ drops: [Drop]) -> some View {
-        MasonryLayout(columns: 2, spacing: NightStyle.gutter) {
+        MasonryLayout(columns: typeSize.isAccessibilitySize ? 1 : 2, spacing: NightStyle.gutter) {
             ForEach(drops) { drop in
                 item(drop) { NightCard(drop: drop) }
             }

@@ -62,31 +62,33 @@ struct NightDetail: View {
     }
 
     private var actionsRow: some View {
-        HStack(spacing: 8) {
-            GlassEffectContainer(spacing: 8) {
-                HStack(spacing: 8) {
+        HStack(alignment: .top, spacing: 8) {
+            GlassEffectContainer(spacing: 16) {
+                HStack(alignment: .top, spacing: 16) {
                     iconButton(drop.isPinned ? "unpin" : "pin", symbol: drop.isPinned ? "pin.slash" : "pin") {
                         actions.pin(drop, !drop.isPinned)
                     }
                     if drop.zone != .done {
-                        iconButton("mark done", symbol: "checkmark") { actions.done(drop) }
+                        iconButton("done", symbol: "checkmark") { actions.done(drop) }
                     } else if drop.canUndoMove {
                         iconButton("put it back", symbol: "arrow.uturn.backward") { actions.undo(drop) }
                     }
-                    Menu {
-                        let current = drop.boardZone(now: clock.now)
-                        ForEach(Zone.allCases.filter { $0 != .done && $0 != current }, id: \.self) { zone in
-                            Button(zone.displayName) {
-                                withAnimation(NightStyle.motion(reduceMotion)) { actions.move(drop, zone) }
+                    captioned("move") {
+                        Menu {
+                            let current = drop.boardZone(now: clock.now)
+                            ForEach(Zone.allCases.filter { $0 != .done && $0 != current }, id: \.self) { zone in
+                                Button(zone.displayName) {
+                                    withAnimation(NightStyle.motion(reduceMotion)) { actions.move(drop, zone) }
+                                }
                             }
+                        } label: {
+                            Label("move to", systemImage: "arrow.right")
+                                .labelStyle(.iconOnly)
+                                .frame(width: NightStyle.target, height: NightStyle.target)
+                                .glassEffect(.regular.interactive(), in: .circle)
                         }
-                    } label: {
-                        Label("move to", systemImage: "arrow.right")
-                            .labelStyle(.iconOnly)
-                            .frame(width: NightStyle.target, height: NightStyle.target)
-                            .glassEffect(.regular.interactive(), in: .circle)
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             Spacer(minLength: 0)
@@ -106,14 +108,27 @@ struct NightDetail: View {
     }
 
     private func iconButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
-        Button {
-            withAnimation(NightStyle.motion(reduceMotion)) { action() }
-        } label: {
-            Label(title, systemImage: symbol)
-                .labelStyle(.iconOnly)
-                .frame(width: NightStyle.target, height: NightStyle.target)
-                .glassEffect(.regular.interactive(), in: .circle)
+        captioned(title) {
+            Button {
+                withAnimation(NightStyle.motion(reduceMotion)) { action() }
+            } label: {
+                Label(title, systemImage: symbol)
+                    .labelStyle(.iconOnly)
+                    .frame(width: NightStyle.target, height: NightStyle.target)
+                    .glassEffect(.regular.interactive(), in: .circle)
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
+    }
+
+    private func captioned(_ title: String, @ViewBuilder control: () -> some View) -> some View {
+        VStack(spacing: 6) {
+            control()
+            Text(title)
+                .font(NightStyle.caption)
+                .foregroundStyle(NightStyle.secondary)
+                .accessibilityHidden(true)
+        }
+        .frame(minWidth: NightStyle.target + 12)
     }
 }

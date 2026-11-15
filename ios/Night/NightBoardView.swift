@@ -4,7 +4,9 @@ import SwiftUI
 struct NightBoardView: View {
     @Query(sort: \Drop.createdAt, order: .reverse) private var allDrops: [Drop]
     @Environment(BoardClock.self) private var clock
-    @State private var chosenBoard: String?
+    @Environment(BoardsStore.self) private var boards
+    @Environment(BoardSync.self) private var sync
+    @Environment(\.dropActions) private var baseActions
     @State private var filter: DropFilter = .everyone
     @State private var path: [UUID] = []
     @State private var showsStreaks = false
@@ -18,17 +20,17 @@ struct NightBoardView: View {
     }
 
     var body: some View {
-        let personal = DeviceIdentity.boardId
-        let choices = Self.boards(in: allDrops, personal: personal)
-        let current = chosenBoard ?? Self.opening(choices, personal: personal)
+        let personal = BoardKeys.personalBoard
+        let current = boards.currentBoardId
+        let choices = Self.choices(boards.boards, drops: allDrops, personal: personal)
         let drops = allDrops.filter { Self.board(of: $0, personal: personal) == current }
-        let members = Self.members(of: drops)
-        let isShared = members.count > 1
+        let members = Self.members(boards.currentBoard?.members ?? [], drops: drops)
+        let isShared = boards.currentBoard?.shared ?? (members.count > 1)
         let palette = NightPalette.forBoard(current, personal: current == personal)
-        let name = choices.first { $0.id == current }?.name ?? "my board"
-        let me = DeviceIdentity.personId
-        let streaks = BoardStreaks(drops: drops, me: me, now: clock.now)
-        let mine = holdsDemoStreak ? DailyStreak(days: max(streaks.mine.days - 1, 0), droppedToday: false) : streaks.mine
+        let name = boards.currentBoard?.name ?? choices.first { $0.id == current }?.name ?? boards.currentBoardName
+        let me = boards.personId
+        let streaks = shownStreaks(drops, me: me)
+        let mine = streaks.mine
 
         NavigationStack(path: $path) {
             ScrollView {
@@ -39,13 +41,16 @@ struct NightBoardView: View {
                         currentBoardId: current,
                         line: Self.line(streaks, isShared: isShared),
                         isShared: isShared,
-                        filter: $filter
-                    ) { id in
-                        withAnimation(.smooth(duration: 0.4)) {
-                            chosenBoard = id
-                            filter = .everyone
-                        }
-                    }
+                        filter: $filter,
+                        showBoard: { id in
+                            withAnimation(.smooth(duration: 0.4)) {
+                                boards.show(id)
+                                filter = .everyone
+                            }
+                        },
+                        startBoard: { boards.entry = .create },
+                        joinBoard: { boards.entry = .join(code: nil) }
+                    )
                     NightFeed(
                         sections: DropSection.build(drops, grouping: isShared ? .vibe : .when, filter: filter, me: me, now: clock.now),
                         namespace: namespace
@@ -56,7 +61,7 @@ struct NightBoardView: View {
                 .padding(.bottom, 120)
             }
             .scrollIndicators(.hidden)
-            .scrollEdgeEffectStyle(.soft, for: .top)
+            .scrollEdgeEffectStyle(.hard, for: .top)
             .background { NightBackdrop(palette: palette) }
             .overlay(alignment: .top) {
                 LinearGradient(stops: [.init(color: NightStyle.ink.opacity(0.95), location: 0), .init(color: NightStyle.ink.opacity(0.75), location: 0.55), .init(color: NightStyle.ink.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
@@ -78,6 +83,17 @@ struct NightBoardView: View {
                     NightViewMenu()
                 }
             }
+            .overlay(alignment: .bottom) {
+                NightAddButton()
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 40)
+                    .padding(.bottom, 4)
+                    .background {
+                        LinearGradient(colors: [NightStyle.ink.opacity(0), NightStyle.ink.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                            .ignoresSafeArea(edges: .bottom)
+                            .allowsHitTesting(false)
+                    }
+            }
             .navigationDestination(for: UUID.self) { id in
                 if let drop = allDrops.first(where: { $0.id == id }) {
                     NightDetail(drop: drop, palette: palette)
@@ -91,9 +107,23 @@ struct NightBoardView: View {
         .onChange(of: StreakMark(board: current, days: mine.days)) { before, after in
             if before.board == after.board, after.days > before.days { moment += 1 }
         }
+        .environment(\.dropActions, DropActions(
+            pin: { sync.setPinned($0, $1) },
+            move: { sync.move($0, to: $1) },
+            done: { sync.markDone($0) },
+            undo: { sync.undoMove($0) },
+            open: baseActions.open
+        ))
+        #if DEBUG
+        .task {
+            if let asked = UserDefaults.standard.string(forKey: "NightBoard"), !asked.isEmpty {
+                boards.show(asked)
+            }
+        }
+        #endif
         .task {
             guard holdsDemoStreak else { return }
-            try? await Task.sleep(for: .seconds(2.5))
+            try? await Task.sleep(for: .seconds(4))
             withAnimation(.snappy) { holdsDemoStreak = false }
         }
         .tint(palette.ember)
@@ -105,9 +135,15 @@ struct NightBoardView: View {
         drop.boardId.isEmpty ? personal : drop.boardId
     }
 
-    static func boards(in drops: [Drop], personal: String) -> [NightBoardChoice] {
-        var seen: Set<String> = [personal]
-        var choices = [NightBoardChoice(id: personal, name: "my board")]
+    static func choices(_ remote: [RemoteBoard], drops: [Drop], personal: String) -> [NightBoardChoice] {
+        var seen: Set<String> = []
+        var choices: [NightBoardChoice] = []
+        for board in remote where seen.insert(board.boardId).inserted {
+            choices.append(NightBoardChoice(id: board.boardId, name: board.boardId == personal ? "my board" : board.name))
+        }
+        if seen.insert(personal).inserted {
+            choices.insert(NightBoardChoice(id: personal, name: "my board"), at: 0)
+        }
         for drop in drops {
             let id = board(of: drop, personal: personal)
             guard seen.insert(id).inserted else { continue }
@@ -116,21 +152,20 @@ struct NightBoardView: View {
         return choices
     }
 
-    static func opening(_ choices: [NightBoardChoice], personal: String) -> String {
-        #if DEBUG
-        if let asked = UserDefaults.standard.string(forKey: "NightBoard"), choices.contains(where: { $0.id == asked }) {
-            return asked
-        }
-        #endif
-        return personal
-    }
-
-    static func members(of drops: [Drop]) -> [NightMember] {
-        var seen: Set<String> = []
-        return drops.sorted { $0.createdAt < $1.createdAt }.compactMap { drop in
+    static func members(_ remote: [RemoteMember], drops: [Drop]) -> [NightMember] {
+        var seen = Set(remote.map(\.personId))
+        return remote.map { NightMember(id: $0.personId, name: $0.name, color: $0.color) } + drops.sorted { $0.createdAt < $1.createdAt }.compactMap { drop in
             guard seen.insert(drop.authorId).inserted else { return nil }
             return NightMember(id: drop.authorId, name: drop.authorLabel, color: drop.authorColor)
         }
+    }
+
+    private func shownStreaks(_ drops: [Drop], me: String) -> BoardStreaks {
+        var streaks = BoardStreaks(drops: drops, me: me, now: clock.now)
+        if holdsDemoStreak {
+            streaks.mine = DailyStreak(days: max(streaks.mine.days - 1, 0), droppedToday: false)
+        }
+        return streaks
     }
 
     static func line(_ streaks: BoardStreaks, isShared: Bool) -> String {

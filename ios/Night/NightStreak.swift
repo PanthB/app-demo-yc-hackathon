@@ -30,40 +30,11 @@ struct NightStreakChip: View {
                 SpringKeyframe(1.0, duration: 0.5, spring: .bouncy)
             }
         }
-        .background { StreakFlare(trigger: reduceMotion ? 0 : moment).clipShape(.capsule) }
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .sensoryFeedback(.success, trigger: moment)
         .accessibilityLabel(streak.days == 1 ? "your streak, one day" : "your streak, \(streak.days) days")
         .accessibilityHint(streak.isWaitingOnToday ? "drop something today to keep it going" : "shows everyone's streaks")
         .accessibilityIdentifier("nightStreakChip")
-    }
-}
-
-private struct StreakFlare: View {
-    let trigger: Int
-
-    private struct Glow {
-        var scale = 0.4
-        var opacity = 0.0
-    }
-
-    var body: some View {
-        Circle()
-            .fill(NightStyle.flame)
-            .blur(radius: 12)
-            .keyframeAnimator(initialValue: Glow(), trigger: trigger) { content, glow in
-                content.scaleEffect(glow.scale).opacity(glow.opacity)
-            } keyframes: { _ in
-                KeyframeTrack(\.scale) {
-                    LinearKeyframe(0.4, duration: 0.01)
-                    CubicKeyframe(2.4, duration: 1.0)
-                }
-                KeyframeTrack(\.opacity) {
-                    LinearKeyframe(0.7, duration: 0.08)
-                    CubicKeyframe(0, duration: 0.9)
-                }
-            }
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
     }
 }
 
@@ -73,6 +44,8 @@ struct NightStreakSheet: View {
     let members: [NightMember]
     let me: String
     let isShared: Bool
+
+    @State private var contentHeight: CGFloat = 320
 
     var body: some View {
         ScrollView {
@@ -119,14 +92,15 @@ struct NightStreakSheet: View {
 
                 Text("a streak counts the days in a row you drop something here. it stays alive until the end of today.")
                     .font(NightStyle.body)
-                    .foregroundStyle(NightStyle.tertiary)
+                    .foregroundStyle(NightStyle.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(NightStyle.margin)
             .padding(.top, 8)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
         .scrollIndicators(.hidden)
-        .presentationDetents([.medium, .large])
+        .presentationDetents(isShared ? [.medium, .large] : [.height(contentHeight + 24)])
         .presentationDragIndicator(.visible)
         .accessibilityIdentifier("nightStreakSheet")
     }
@@ -154,7 +128,7 @@ private struct WeekStrip: View {
                         }
                     Text(Self.letters[weekday])
                         .font(NightStyle.caption)
-                        .foregroundStyle(NightStyle.tertiary)
+                        .foregroundStyle(NightStyle.secondary)
                 }
                 .frame(maxWidth: .infinity)
             }
