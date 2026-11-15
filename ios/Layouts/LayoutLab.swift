@@ -29,20 +29,27 @@ enum LayoutKind: String, CaseIterable, Identifiable {
     }
 }
 
+enum LabRoute: Hashable {
+    case mood(String)
+    case drop(UUID)
+}
+
 struct LayoutLab: View {
     @Query(sort: \Drop.createdAt, order: .reverse) private var allDrops: [Drop]
     @Environment(\.modelContext) private var context
+    @Environment(BoardClock.self) private var clock
     @State var kind: LayoutKind
     @State private var board = UserDefaults.standard.string(forKey: "LayoutBoard")
-    @State private var path: [UUID] = []
+    @State private var path: [LabRoute] = []
     @Namespace private var namespace
 
     var body: some View {
         let personal = DeviceIdentity.boardId
         let current = board ?? personal
         let drops = allDrops.filter { NightBoardView.board(of: $0, personal: personal) == current }
-        let choices = NightBoardView.boards(in: allDrops, personal: personal)
+        let choices = NightBoardView.boards(in: allDrops, personal: personal).filter { $0.id != "layout-replay" }
         let palette = NightPalette.forBoard(current, personal: current == personal)
+        let hasMoods = drops.contains { $0.clusterId != nil }
 
         NavigationStack(path: $path) {
             VStack(alignment: .leading, spacing: 0) {
@@ -63,6 +70,10 @@ struct LayoutLab: View {
 
                 Group {
                     switch kind {
+                    case .web where hasMoods:
+                        MoodHome(drops: drops, me: DeviceIdentity.personId, namespace: namespace) { mood in
+                            path.append(.mood(mood.id))
+                        }
                     case .web: ConstellationView(drops: drops, namespace: namespace, open: show)
                     case .orbit: OrbitView(drops: drops, namespace: namespace, open: show)
                     case .map: NightMapView(drops: drops, namespace: namespace, open: show)
@@ -87,10 +98,19 @@ struct LayoutLab: View {
                     .accessibilityIdentifier("layoutMenu")
                 }
             }
-            .navigationDestination(for: UUID.self) { id in
-                if let drop = allDrops.first(where: { $0.id == id }) {
-                    NightDetail(drop: drop, palette: palette)
-                        .navigationTransition(.zoom(sourceID: id, in: namespace))
+            .navigationDestination(for: LabRoute.self) { route in
+                switch route {
+                case .drop(let id):
+                    if let drop = allDrops.first(where: { $0.id == id }) {
+                        NightDetail(drop: drop, palette: palette)
+                            .navigationTransition(.zoom(sourceID: id, in: namespace))
+                    }
+                case .mood(let id):
+                    let moods = BoardMood.build(drops, me: DeviceIdentity.personId, now: clock.now)
+                    if let mood = (moods.active + moods.quiet).first(where: { $0.id == id }) {
+                        MoodScreen(mood: mood, drops: drops, palette: palette, namespace: namespace, open: show)
+                            .navigationTransition(.zoom(sourceID: id, in: namespace))
+                    }
                 }
             }
         }
@@ -105,7 +125,7 @@ struct LayoutLab: View {
     }
 
     private func show(_ drop: Drop) {
-        path.append(drop.id)
+        path.append(.drop(drop.id))
     }
 }
 

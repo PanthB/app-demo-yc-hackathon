@@ -130,6 +130,7 @@ struct ConstellationView: View {
     let drops: [Drop]
     let namespace: Namespace.ID
     let open: (Drop) -> Void
+    var zoomOut: (() -> Void)?
 
     @Environment(BoardClock.self) private var clock
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -200,7 +201,7 @@ struct ConstellationView: View {
                     .onTapGesture { withAnimation(LayoutMotion.select(reduceMotion)) { selected = nil } }
 
                 Canvas { context, _ in
-                    for cluster in geometry.clusters {
+                    for cluster in geometry.clusters where !plan.focused {
                         let center = frame.place(cluster.center)
                         let radius = (collapsed ? Self.collapsedRadius(cluster) : cluster.radius) * frame.scale
                         let ring = Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
@@ -220,7 +221,7 @@ struct ConstellationView: View {
                 .allowsHitTesting(false)
                 .animation(Self.makeRoom, value: settles)
 
-                ForEach(geometry.clusters) { cluster in
+                ForEach(plan.focused ? [] : geometry.clusters) { cluster in
                     let center = frame.place(cluster.center)
                     let top = (collapsed ? Self.collapsedRadius(cluster) : cluster.radius) * frame.scale + 12
                     clusterLabel(cluster)
@@ -240,7 +241,7 @@ struct ConstellationView: View {
                         let resting = geometry.points[drop.id].map { collapsed ? Self.stacked(home?.center ?? $0, order: order) : $0 } ?? .zero
                         let origin = home.map { frame.place($0.center) } ?? frame.landing
                         let spot = landed ? Self.landingSpot(frame, index: landingOrder.firstIndex(of: drop.id) ?? 0) : (flight?.target ?? frame.place(resting))
-                        let size = landed ? Self.node * 1.25 : Self.node * frame.scale * (drop.isPinned ? 1.12 : 1) * (collapsed ? 1.2 : 1)
+                        let size = landed ? Self.node * 1.25 : Self.node * frame.scale * (plan.focused ? Self.focusScale(order) : (drop.isPinned ? 1.12 : 1)) * (collapsed ? 1.2 : 1)
                         node(drop, size: size, related: related)
                             .background {
                                 if landed { Reading(drop: drop, size: size) }
@@ -353,7 +354,8 @@ struct ConstellationView: View {
     private func frame(_ plan: Plan, size: CGSize, live: Bool) -> Frame {
         let geometry = plan.field.map { ConstellationGeometry(field: $0, groups: plan.groups) }
             ?? ConstellationGeometry(groups: plan.groups, links: plan.links, width: size.width)
-        let fit = min(1, (size.height - Self.top - 8) / max(geometry.size.height, 1), (size.width - 16) / max(geometry.size.width, 1))
+        let tall = (size.height - Self.top - 8) / max(geometry.size.height, 1)
+        let fit = plan.field == nil ? min(plan.focused ? 1.35 : 1, tall) : min(1, tall, (size.width - 16) / max(geometry.size.width, 1))
         let scale = fit * zoom * (live ? pinch : 1)
         let offset = live ? CGSize(width: pan.width + drag.width, height: pan.height + drag.height) : pan
         return Frame(geometry: geometry, scale: scale, fit: fit, size: size, offset: offset)
@@ -551,7 +553,10 @@ struct ConstellationView: View {
 
     private func pinched(to next: CGFloat, frame: Frame) {
         withAnimation(LayoutMotion.settle(reduceMotion)) {
-            if !collapsed && next < 0.78 {
+            if !collapsed && next < 0.78, let zoomOut {
+                zoom = 1
+                zoomOut()
+            } else if !collapsed && next < 0.78 {
                 collapsed = true
                 selected = nil
                 zoom = 1
@@ -571,6 +576,10 @@ struct ConstellationView: View {
             guard let other = byId[link.other(than: drop.id)] else { return nil }
             return "goes with \(other.layoutTitle). \(link.reason)"
         }
+    }
+
+    static func focusScale(_ order: Int) -> CGFloat {
+        order == 0 ? 1.45 : (order <= 6 ? 1.05 : 0.85)
     }
 
     static func article(_ kind: DropKind) -> String {
@@ -630,12 +639,25 @@ struct ConstellationView: View {
         var collapsedLegend = ""
         var snapshot: ClusterSnapshot?
         var field: ClusterField?
+        var focused = false
     }
 
     static func plan(_ drops: [Drop], now: Date, view: CGSize, snapshot previous: ClusterSnapshot?, field previousField: ClusterField?) -> Plan {
         var plan = Plan()
         if drops.contains(where: { $0.clusterId != nil }) {
             let snapshot = ClusterSnapshot(drops: drops, following: previous)
+            if snapshot.groups.count == 1, let only = snapshot.groups.first {
+                let order = Dictionary(drops.map { ($0.id, $0.createdAt) }, uniquingKeysWith: { first, _ in first })
+                let newest = only.members.sorted { (order[$0] ?? .distantPast) > (order[$1] ?? .distantPast) }
+                plan.groups = [.init(id: only.id, label: only.label, members: newest)]
+                for id in newest { plan.cluster[id] = only.id }
+                plan.links = snapshot.pairs.map { LayoutLink(first: $0.first, second: $0.second, reason: $0.reason) }
+                plan.snapshot = snapshot
+                plan.focused = true
+                plan.legend = "the newest is in the middle and the biggest. strings join what goes together, and a pinch out takes you back."
+                plan.collapsedLegend = plan.legend
+                return plan
+            }
             let field = ClusterField(snapshot, size: plane(for: snapshot, view: view), following: previousField)
             for group in snapshot.groups where group.shelf != .done {
                 plan.groups.append(.init(id: group.id, label: group.label, members: group.members))
