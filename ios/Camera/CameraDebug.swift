@@ -39,7 +39,10 @@ extension CameraDebug {
         }
     }
 
-    static let autoShots = 3
+    static var autoShotGaps: [Double] {
+        guard let plan = UserDefaults.standard.string(forKey: "CameraDebugShotGaps") else { return [2.2, 2.2] }
+        return plan.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+    }
 
     static let stills = ["seed-dolores-sunny", "seed-pinksky", "seed-landsend", "seed-matcha"]
 

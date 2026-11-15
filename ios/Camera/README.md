@@ -21,7 +21,7 @@ Each photo is written to the same inbox the share extension and `AddMenu`'s phot
 
 - On the Simulator, in DEBUG, the viewfinder shows sample stills from `ios/Seed/SeedImages.xcassets` and each photo advances to the next one. `-CameraDebugStill YES` does the same on a device.
 - Sample photos only go into the inbox when `-BoardDebugSeed YES` keeps the board offline, so a Simulator run never sends them to the dev deployment.
-- `-CameraDebugAutoShoot <seconds>` takes three photos, the first after that many seconds and then one every 2.2 seconds, so the moment can be recorded with `simctl io recordVideo`.
+- `-CameraDebugAutoShoot <seconds>` takes photos without a tap, the first after that many seconds, so the moment can be recorded with `simctl io recordVideo`. Then it takes one more after each gap in `-CameraDebugShotGaps` (comma-separated seconds, default `2.2,2.2`; an empty string takes one photo).
 - `-CameraDebugOpen YES` opens the camera at launch, through `.cameraDebugLauncher()` on the root view (a no-op outside DEBUG).
 - `-CameraDebugAccess notAsked|denied|unavailable` shows a permission state.
 

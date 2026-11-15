@@ -90,8 +90,9 @@ struct DropCamera: View {
         .task {
             guard let delay = CameraDebug.autoShootDelay else { return }
             try? await Task.sleep(for: .seconds(delay))
-            for shot in 0..<CameraDebug.autoShots {
-                if shot > 0 { try? await Task.sleep(for: .seconds(2.2)) }
+            shoot()
+            for gap in CameraDebug.autoShotGaps {
+                try? await Task.sleep(for: .seconds(gap))
                 shoot()
             }
         }
