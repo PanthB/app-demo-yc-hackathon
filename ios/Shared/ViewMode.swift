@@ -3,7 +3,7 @@ import Foundation
 enum ViewMode: String, CaseIterable, Sendable {
     case list, cards, board, night
 
-    static let storageKey = "view"
+    static let storageKey = "viewMode"
     static let urlScheme = "appdemo"
 
     static func resolve(
@@ -15,7 +15,11 @@ enum ViewMode: String, CaseIterable, Sendable {
            let mode = ViewMode(rawValue: arguments[flag + 1]) {
             return mode
         }
-        return stored.flatMap(ViewMode.init(rawValue:)) ?? .cards
+        return ViewMode(stored: stored)
+    }
+
+    init(stored: String?) {
+        self = stored.flatMap(ViewMode.init(rawValue:)) ?? .cards
     }
 
     init?(url: URL) {
@@ -24,5 +28,14 @@ enum ViewMode: String, CaseIterable, Sendable {
               let mode = ViewMode(rawValue: url.lastPathComponent.lowercased())
         else { return nil }
         self = mode
+    }
+
+    var symbol: String {
+        switch self {
+        case .list: "list.bullet"
+        case .cards: "square.grid.2x2"
+        case .board: "pin"
+        case .night: "moon"
+        }
     }
 }

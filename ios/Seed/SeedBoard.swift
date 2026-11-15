@@ -18,6 +18,28 @@ enum SeedBoard {
     static let sam = Person(id: "seed-sam", name: "sam", color: "green")
     static let alex = Person(id: "seed-alex", name: "alex", color: "pink")
 
+    static let boards: [RemoteBoard] = [
+        RemoteBoard(
+            boardId: homeBoardId,
+            name: "my board",
+            shared: false,
+            ownerId: panth.id,
+            members: [RemoteMember(personId: panth.id, name: panth.name, color: panth.color, joinedAt: 0)],
+            createdAt: 0
+        ),
+        RemoteBoard(
+            boardId: crewBoardId,
+            name: "sf crew",
+            shared: true,
+            inviteCode: "SFCREW",
+            ownerId: panth.id,
+            members: [panth, maya, sam, alex].enumerated().map { index, person in
+                RemoteMember(personId: person.id, name: person.name, color: person.color, joinedAt: Double(index))
+            },
+            createdAt: 0
+        ),
+    ]
+
     static func clientId(board: Int, _ number: Int) -> UUID {
         UUID(uuidString: String(format: "5EED%04X-0000-4000-8000-%012X", board, number)) ?? UUID()
     }

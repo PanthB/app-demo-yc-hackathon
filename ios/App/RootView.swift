@@ -7,19 +7,21 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var context
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(BoardSync.self) private var sync
+    @Environment(BoardsStore.self) private var boards
     @State private var clock = BoardClock()
 
     var body: some View {
-        Group {
-            switch ViewMode.resolve(stored: storedView) {
-            case .board:
-                PaperBoardRoot()
-            case .cards, .list:
-                GlassBoardRoot()
-            case .night:
+        ZStack {
+            if ViewMode(stored: storedView) == .night {
                 NightBoardView()
                     .environment(\.colorScheme, .dark)
+                    .transition(.opacity)
+            } else {
+                BoardShell()
+                    .tint(ShellTint.accent)
+                    .transition(.opacity)
             }
         }
         .environment(clock)
@@ -38,9 +40,7 @@ struct RootView: View {
         ))
         #if DEBUG
         .task {
-            if UserDefaults.standard.bool(forKey: "BoardDebugSeed") {
-                SeedBoard.replace(in: context)
-            }
+            if UserDefaults.standard.bool(forKey: "BoardDebugSeed") { seed() }
         }
         #endif
         .onChange(of: scenePhase) { _, phase in
@@ -55,14 +55,14 @@ struct RootView: View {
         .onOpenURL { url in
             if let mode = ViewMode(url: url) {
                 Logger.app.info("switching to the \(mode.rawValue, privacy: .public) view")
-                storedView = mode.rawValue
+                withAnimation(reduceMotion ? nil : .smooth(duration: 0.45)) { storedView = mode.rawValue }
                 return
             }
             #if DEBUG
             switch url.host()?.lowercased() {
             case "seed":
-                Logger.app.info("loading the sf crew sample board")
-                SeedBoard.replace(in: context)
+                Logger.app.info("loading the sample boards")
+                seed()
                 return
             case "clear":
                 Logger.app.info("clearing the board")
@@ -75,4 +75,11 @@ struct RootView: View {
             Logger.app.error("ignored a link the app doesn't handle: \(url.absoluteString, privacy: .public)")
         }
     }
+
+    #if DEBUG
+    private func seed() {
+        SeedBoard.replace(in: context)
+        boards.show(SeedBoard.homeBoardId)
+    }
+    #endif
 }

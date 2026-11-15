@@ -6,6 +6,13 @@ enum DropFilter: String, CaseIterable, Sendable {
 
 enum DropGrouping: String, CaseIterable, Sendable {
     case when, vibe
+
+    var menuName: String {
+        switch self {
+        case .when: "by when"
+        case .vibe: "by mood"
+        }
+    }
 }
 
 struct DropSection: Identifiable {
