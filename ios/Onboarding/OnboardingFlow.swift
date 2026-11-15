@@ -4,23 +4,16 @@ import SwiftUI
 enum GuideStep: Int, CaseIterable {
     case welcome, share, add, vibes
 
-    func lead(shared: Bool) -> String {
+    func title(shared: Bool) -> String {
         switch self {
         case .welcome: "welcome"
         case .share: "share it from any app."
-        case .add: "or add one right here."
+        case .add: "or add it right here."
         case .vibes: shared ? "\(Onboarding.demoBoardName) sorts itself by mood." : "shared boards sort by mood."
         }
     }
 
-    var rest: String {
-        switch self {
-        case .welcome: "one board for everything you and your friends share."
-        case .share: "tap share in spotify, maps or tiktok."
-        case .add: "drop in a song, a restaurant or a wikipedia page."
-        case .vibes: "drops that feel alike end up side by side."
-        }
-    }
+    static let welcomeLine = "one board for everything you and your friends share."
 }
 
 /// The first run: an animated welcome with demo and start fresh, the sign-in sheet for start fresh, and a
@@ -113,20 +106,19 @@ struct OnboardingFlow: View {
     private var words: some View {
         ZStack(alignment: .topLeading) {
             if inGuide {
-                WordsText(lead: step.lead(shared: start == .demo), rest: step.rest, size: 24)
-                    .frame(maxWidth: step == .share ? 330 : .infinity, alignment: .leading)
+                WordsText(lead: step.title(shared: start == .demo), rest: "", size: 24)
                     .id(step)
                     .transition(.blurReplace)
                     .accessibilityAddTraits(.isHeader)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(GuideStep.welcome.lead(shared: true))
+                    Text(GuideStep.welcome.title(shared: true))
                         .font(.system(size: 64, weight: .bold))
                         .foregroundStyle(.white)
                         .textRenderer(RiseInText(progress: titleProgress))
                         .accessibilityAddTraits(.isHeader)
                     if detailsShown {
-                        WordsText(lead: "", rest: GuideStep.welcome.rest, size: 22)
+                        WordsText(lead: "", rest: GuideStep.welcomeLine, size: 22)
                     }
                 }
                 .opacity(welcomeHidden ? 0 : 1)
@@ -135,7 +127,7 @@ struct OnboardingFlow: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .frame(height: inGuide ? 92 : 150, alignment: .topLeading)
+        .frame(height: inGuide ? 64 : 150, alignment: .topLeading)
         .padding(.horizontal, 24)
     }
 

@@ -30,7 +30,7 @@ ZStack {
 - Demo goes straight into the guide. Start fresh offers `SignInSheet` first, at a fixed height, with the welcome faded out behind it. It has the three ways in: continue with apple (linked to this phone's person through `PeopleLink`), continue as a guest, and the sf crew demo.
 - `WelcomeFan`: six example drops fanned behind a frosted card, with a pill under them.
 - `RiseInText` draws "welcome" glyph by glyph; `WordsText` fades each step's words in.
-- `GuideStage` and `GuideScreen`: the guide's phone, taller than the stage and fading out behind the words, and the drops that pile up beside it, deal onto its board and settle into two mood clusters. Step 3 shows sf crew on both paths, as the example of a shared board.
+- `GuideStage` and `GuideScreen`: the guide's phone, taller than the stage and fading out behind the words, and the drops that pile up beside it, deal onto its board and settle into two mood clusters, grouped by space alone. Each step has one plain line, and wordless arrows point at what to tap. The lines between drops show only with `@AppStorage("BoardLines")` on (default off). Step 3 shows sf crew on both paths, as the example of a shared board.
 - `Onboarding.xcassets`: the guide's example photos and artwork, generated for this guide, so they ship in every build.
 
 Reduce Motion turns every move into a 0.25 s cross-fade. With `AppleSignIn.isEnabled` off, start fresh skips the sheet and goes in as a guest.

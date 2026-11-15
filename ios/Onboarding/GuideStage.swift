@@ -29,8 +29,7 @@ extension View {
 
 struct GuideHint: Equatable {
     let target: GuideTarget
-    let label: String
-    /// Where the label's pill sits, from the middle of the thing it points at.
+    /// Where the arrow starts, from the middle of the thing it points at.
     let offset: CGSize
 }
 
@@ -42,6 +41,7 @@ struct GuideStage: View {
     let shared: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("BoardLines") private var lines = false
     @State private var phase: GuidePhase = .hidden
 
     var body: some View {
@@ -49,7 +49,9 @@ struct GuideStage: View {
             let layout = GuideLayout(size: proxy.size)
             ZStack(alignment: .topLeading) {
                 phone(layout)
-                strings(layout)
+                if lines {
+                    strings(layout)
+                }
                 ForEach(Array(GuideSample.guide.enumerated()), id: \.element) { index, sample in
                     card(sample, layout)
                         .zIndex(Double(index))
@@ -80,7 +82,7 @@ struct GuideStage: View {
                     ZStack {
                         if let hint, let anchor = targets[hint.target] {
                             GuideArrow(target: local[anchor], hint: hint, bounds: local.size)
-                                .id(hint.label)
+                                .id(hint.target)
                                 .transition(.asymmetric(
                                     insertion: .opacity.animation(.easeOut(duration: 0.2).delay(0.15)),
                                     removal: .opacity.animation(.easeOut(duration: 0.15))
@@ -122,10 +124,10 @@ struct GuideStage: View {
 
     private var hint: GuideHint? {
         switch phase {
-        case .shareApp: GuideHint(target: .share, label: "tap share", offset: CGSize(width: -86, height: 62))
-        case .shareSheet: GuideHint(target: .ourApp, label: "pick \(Onboarding.appName)", offset: CGSize(width: -90, height: -116))
-        case .board: GuideHint(target: .plus, label: "tap +", offset: CGSize(width: -96, height: -70))
-        case .addMenu: GuideHint(target: .pasteLink, label: "paste a link", offset: CGSize(width: -40, height: -112))
+        case .shareApp: GuideHint(target: .share, offset: CGSize(width: -64, height: 56))
+        case .shareSheet: GuideHint(target: .ourApp, offset: CGSize(width: -70, height: -84))
+        case .board: GuideHint(target: .plus, offset: CGSize(width: -76, height: -60))
+        case .addMenu: GuideHint(target: .pasteLink, offset: CGSize(width: -96, height: -64))
         default: nil
         }
     }
@@ -490,7 +492,7 @@ struct GuideBottomBar: View {
     }
 }
 
-/// A short label in a frosted pill on the screen, with a drawn arrow from the pill to the thing to tap.
+/// A drawn arrow to the thing to tap, with no words: the step's one line says what's going on.
 struct GuideArrow: View {
     let target: CGRect
     let hint: GuideHint
@@ -500,48 +502,32 @@ struct GuideArrow: View {
     @State private var drawn: CGFloat = 0
 
     var body: some View {
-        let half = CGSize(width: CGFloat(hint.label.count) * 3.6 + 12, height: 14)
-        let center = CGPoint(
-            x: min(max(target.midX + hint.offset.width, 24 + half.width), bounds.width - 24 - half.width),
+        let start = CGPoint(
+            x: min(max(target.midX + hint.offset.width, 24), bounds.width - 24),
             y: target.midY + hint.offset.height
         )
-        let dx = target.midX - center.x
-        let dy = target.midY - center.y
+        let dx = target.midX - start.x
+        let dy = target.midY - start.y
         let length = max(hypot(dx, dy), 1)
         let unit = CGPoint(x: dx / length, y: dy / length)
-        let exit = min(half.width / max(abs(unit.x), 0.001), half.height / max(abs(unit.y), 0.001)) + 5
-        let start = CGPoint(x: center.x + unit.x * exit, y: center.y + unit.y * exit)
         let reach = min(target.width, target.height) / 2 + 6
         let tip = CGPoint(x: target.midX - unit.x * reach, y: target.midY - unit.y * reach)
         let bend = 0.2 * hypot(tip.x - start.x, tip.y - start.y)
         let control = CGPoint(x: (start.x + tip.x) / 2 - unit.y * bend, y: (start.y + tip.y) / 2 + unit.x * bend)
         let angle = atan2(tip.y - control.y, tip.x - control.x)
-        ZStack {
-            Path { path in
-                path.move(to: start)
-                path.addQuadCurve(to: tip, control: control)
-                path.addLine(to: CGPoint(x: tip.x - 9 * cos(angle - 0.5), y: tip.y - 9 * sin(angle - 0.5)))
-                path.move(to: tip)
-                path.addLine(to: CGPoint(x: tip.x - 9 * cos(angle + 0.5), y: tip.y - 9 * sin(angle + 0.5)))
-            }
-            .trim(from: 0, to: drawn)
-            .stroke(.white, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-            .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
-            Text(hint.label)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.horizontal, 10)
-                .frame(height: 28)
-                .background(.ultraThinMaterial, in: .capsule)
-                .overlay(Capsule().strokeBorder(.white.opacity(0.18), lineWidth: 1))
-                .environment(\.colorScheme, .dark)
-                .position(center)
+        Path { path in
+            path.move(to: start)
+            path.addQuadCurve(to: tip, control: control)
+            path.addLine(to: CGPoint(x: tip.x - 9 * cos(angle - 0.5), y: tip.y - 9 * sin(angle - 0.5)))
+            path.move(to: tip)
+            path.addLine(to: CGPoint(x: tip.x - 9 * cos(angle + 0.5), y: tip.y - 9 * sin(angle + 0.5)))
         }
+        .trim(from: 0, to: drawn)
+        .stroke(.white, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+        .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
         .allowsHitTesting(false)
         .onAppear {
-            withAnimation(reduceMotion ? .easeInOut(duration: 0.25) : .easeOut(duration: 0.3).delay(0.2)) {
+            withAnimation(reduceMotion ? .easeInOut(duration: 0.25) : .easeOut(duration: 0.35).delay(0.2)) {
                 drawn = 1
             }
         }
