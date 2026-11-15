@@ -94,15 +94,15 @@ enum SeedBoard {
             $0.cutoutPath = media("seed-ramen", jpeg: false)
         }
         _ = drop(4, alex, .url, .tonight, minutesAgo: 200) {
-            $0.url = "https://www.roxie.com"
-            $0.title = "roxie late show"
-            $0.placeName = "the roxie"
-            $0.latitude = 37.7649
-            $0.longitude = -122.4226
+            $0.url = "https://www.act-sf.org/the-strand"
+            $0.title = "late show at the strand"
+            $0.placeName = "the strand theater"
+            $0.latitude = 37.7787
+            $0.longitude = -122.4139
             $0.type = .event
             $0.objectKind = .postcard
             $0.startsAt = max(day(0, 21, 45), rounded(now.addingTimeInterval(3 * 3600), toMinutes: 15))
-            $0.thumbnailPath = media("seed-roxie", jpeg: true)
+            $0.thumbnailPath = media("seed-strand", jpeg: true)
         }
         _ = drop(5, panth, .pdf, .thisWeekend, minutesAgo: 1440) {
             $0.title = "chapel jazz night"
