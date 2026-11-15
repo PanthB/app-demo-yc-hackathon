@@ -2,174 +2,40 @@
 import os
 import SwiftData
 import SwiftUI
-import UIKit
 
 enum ClusterFixture {
-    struct Person {
-        let id: String
-        let name: String
-        let color: String
-    }
-
-    static let panth = Person(id: "seed-panth", name: "panth", color: "orange")
-    static let maya = Person(id: "seed-maya", name: "maya", color: "blue")
-    static let sam = Person(id: "seed-sam", name: "sam", color: "green")
-    static let alex = Person(id: "seed-alex", name: "alex", color: "pink")
-    static let boardId = "sf-crew"
     static let arrivalId = UUID(uuidString: "C1057E00-0000-4000-8000-000000000001") ?? UUID()
-
-    static func seedId(_ number: Int) -> UUID {
-        UUID(uuidString: String(format: "5EED0002-0000-4000-8000-%012X", number)) ?? UUID()
-    }
-
-    private static let sunny = ("sunny-afternoons", "upbeat, in the mission")
-    private static let night = ("late-night", "late night")
-    private static let golden = ("golden-hour", "golden hour, by the water")
-
     static let copies = max(1, UserDefaults.standard.integer(forKey: "ClusterDebugCopies"))
-
-    private static func facts(
-        _ cluster: (String, String),
-        _ vibes: [String],
-        genre: String? = nil,
-        copy: Int = 0,
-        _ neighbors: [(Int, String)]
-    ) -> ClusterFacts {
-        ClusterFacts(
-            vibes: vibes,
-            clusterId: cluster.0,
-            clusterLabel: cluster.1,
-            neighbors: neighbors.map { ClusterFacts.Neighbor(clientId: seedId($0.0 + 100 * copy).uuidString, reason: $0.1) },
-            genre: genre
-        )
-    }
-
-    static let facts: [UUID: ClusterFacts] = {
-        var table: [UUID: ClusterFacts] = [:]
-        for copy in 0..<copies {
-            for (number, entry) in seedFacts(copy: copy) {
-                table[seedId(number + 100 * copy)] = entry
-            }
-        }
-        table[arrivalId] = facts(sunny, ["upbeat", "indie", "steady"], genre: "indie", [(4, "both upbeat, steady."), (5, "both upbeat.")])
-        return table
-    }()
-
-    private static func seedFacts(copy: Int) -> [Int: ClusterFacts] {
-        [
-            1: facts(sunny, ["upbeat", "outdoors", "mission"], copy: copy, [(5, "both upbeat, outdoors."), (2, "both in the mission.")]),
-            2: facts(sunny, ["cozy", "morning", "food", "mission"], copy: copy, [(3, "both morning, in the mission."), (1, "both in the mission.")]),
-            3: facts(sunny, ["calm", "morning", "mission"], copy: copy, [(2, "both morning, in the mission.")]),
-            4: facts(sunny, ["upbeat", "folk", "steady"], genre: "folk", copy: copy, [(1, "both upbeat."), (5, "both upbeat.")]),
-            5: facts(sunny, ["upbeat", "outdoors"], copy: copy, [(1, "both upbeat, outdoors.")]),
-            6: facts(night, ["late night", "food", "mission"], copy: copy, [(7, "both late night, food."), (10, "both late night, in the mission.")]),
-            7: facts(night, ["cozy", "late night", "food", "japantown"], copy: copy, [(6, "both late night, food.")]),
-            8: facts(night, ["dreamy", "late night", "rock", "steady"], genre: "rock", copy: copy, [(9, "both late night."), (14, "both dreamy.")]),
-            9: facts(night, ["moody", "late night", "r&b", "slow"], genre: "r&b", copy: copy, [(8, "both late night.")]),
-            10: facts(night, ["late night", "live music", "mission"], copy: copy, [(6, "both late night, in the mission.")]),
-            11: facts(golden, ["golden hour", "by the water", "calm", "presidio"], copy: copy, [(12, "both golden hour, by the water."), (15, "both golden hour, by the water.")]),
-            12: facts(golden, ["golden hour", "by the water", "dreamy"], copy: copy, [(11, "both golden hour, by the water."), (14, "both dreamy, golden hour.")]),
-            13: facts(golden, ["calm", "by the water", "soul", "slow"], genre: "soul", copy: copy, [(11, "both calm, by the water.")]),
-            14: facts(golden, ["dreamy", "golden hour", "r&b", "steady"], genre: "r&b", copy: copy, [(12, "both dreamy, golden hour.")]),
-            15: facts(golden, ["golden hour", "by the water", "outdoors", "lands end"], copy: copy, [(11, "both golden hour, by the water.")]),
-        ]
-    }
 
     @MainActor
     static func fill(_ context: ModelContext, now: Date = .now) {
-        func drop(_ number: Int, _ person: Person, minutesAgo: Double, _ zone: Zone, configure: (Drop) -> Void) {
-            for copy in 0..<copies {
-                let drop = Drop(id: seedId(number + 100 * copy), createdAt: now.addingTimeInterval(-(minutesAgo + Double(copy) * 37) * 60), authorId: person.id, boardId: boardId, sourceKind: .url)
-                drop.authorName = person.name
-                drop.authorColor = person.color
+        SeedBoard.pin(into: context, now: now)
+        guard copies > 1 else { return }
+        let crew = ((try? context.fetch(FetchDescriptor<Drop>())) ?? []).filter { $0.boardId == SeedBoard.crewBoardId }
+        for copy in 1..<copies {
+            for seed in crew {
+                let drop = Drop(id: copyId(seed.id, copy), createdAt: seed.createdAt.addingTimeInterval(-Double(copy) * 37 * 60), authorId: seed.authorId, boardId: seed.boardId, sourceKind: seed.sourceKind, url: seed.url)
+                drop.authorName = seed.authorName
+                drop.authorColor = seed.authorColor
+                drop.title = seed.title
+                drop.artist = seed.artist
+                drop.placeName = seed.placeName
+                drop.latitude = seed.latitude
+                drop.longitude = seed.longitude
+                drop.type = seed.type
+                drop.objectKind = seed.objectKind
+                drop.thumbnailPath = seed.thumbnailPath
+                drop.mediaDuration = seed.mediaDuration
                 drop.status = .processed
-                configure(drop)
-                if copy > 0 { drop.pinnedAt = nil }
-                drop.applyDecidedZone(zone, unsure: false)
+                drop.vibes = seed.vibes
+                drop.clusterId = seed.clusterId
+                drop.clusterLabel = seed.clusterLabel
+                drop.neighbors = seed.neighbors.map { neighbor in
+                    DropNeighbor(clientId: UUID(uuidString: neighbor.clientId).map { copyId($0, copy).uuidString } ?? neighbor.clientId, reason: neighbor.reason)
+                }
+                drop.applyDecidedZone(seed.zone, unsure: false)
                 context.insert(drop)
             }
-        }
-        func clip(_ drop: Drop, _ url: String, _ title: String, image: String) {
-            drop.url = url
-            drop.title = title
-            drop.type = .mood
-            drop.objectKind = .polaroid
-            drop.thumbnailPath = media(image)
-        }
-        func song(_ drop: Drop, _ url: String, _ title: String, _ artist: String, image: String? = nil) {
-            drop.url = url
-            drop.title = title
-            drop.artist = artist
-            drop.type = .song
-            drop.objectKind = .record
-            drop.thumbnailPath = image.flatMap(media)
-        }
-        func place(_ drop: Drop, _ url: String, _ title: String, _ name: String, _ latitude: Double, _ longitude: Double, image: String? = nil) {
-            drop.url = url
-            drop.title = title
-            drop.placeName = name
-            drop.latitude = latitude
-            drop.longitude = longitude
-            drop.type = .place
-            drop.objectKind = .postcard
-            drop.thumbnailPath = image.flatMap(media)
-        }
-
-        drop(1, maya, minutesAgo: 300, .vibes) {
-            clip($0, "https://www.tiktok.com/@graacciiee/video/7617551860244745503", "dolores park on a sunny day", image: "seed-dolores")
-            $0.placeName = "dolores park"
-            $0.latitude = 37.75972
-            $0.longitude = -122.42713
-            $0.pinnedAt = now.addingTimeInterval(-2 * 3600)
-        }
-        drop(2, sam, minutesAgo: 1500, .someday) {
-            place($0, "https://www.instagram.com/p/DHY65llvDPK/", "tartine morning bun", "tartine bakery", 37.76146, -122.42395)
-        }
-        drop(3, alex, minutesAgo: 2600, .someday) {
-            place($0, "https://www.stonemillmatcha-us.com/", "stonemill matcha", "stonemill matcha", 37.76402, -122.42153, image: "seed-matcha")
-        }
-        drop(4, panth, minutesAgo: 900, .vibes) {
-            song($0, "https://open.spotify.com/track/6UsdldEfcEXSID2G3nA89J", "san francisco (be sure to wear flowers in your hair)", "scott mckenzie")
-        }
-        drop(5, maya, minutesAgo: 4000, .vibes) {
-            clip($0, "https://www.tiktok.com/@marissadaily_/video/7541446036347309343", "15 things to do in sf", image: "seed-bookshop")
-        }
-        drop(6, alex, minutesAgo: 700, .vibes) {
-            clip($0, "https://www.tiktok.com/@thesnacksensei/video/7561602082596343095", "mission district food tour", image: "seed-strand")
-        }
-        drop(7, sam, minutesAgo: 2000, .vibes) {
-            clip($0, "https://www.youtube.com/watch?v=zmIgc0SkVgE", "marufuku ramen", image: "seed-ramen")
-            $0.placeName = "marufuku ramen"
-            $0.latitude = 37.78530
-            $0.longitude = -122.43010
-        }
-        drop(8, panth, minutesAgo: 3100, .vibes) {
-            song($0, "https://open.spotify.com/track/0ofHAoxe9vBkTCp2UQIavz", "dreams", "fleetwood mac")
-        }
-        drop(9, maya, minutesAgo: 1200, .vibes) {
-            song($0, "https://open.spotify.com/track/6ZRuF2n1CQxyxxAAWsKJOy", "nights like this", "kehlani")
-        }
-        drop(10, alex, minutesAgo: 5200, .someday) {
-            place($0, "https://thechapelsf.com", "the chapel", "the chapel", 37.76049, -122.42120, image: "seed-concert")
-        }
-        drop(11, panth, minutesAgo: 450, .vibes) {
-            clip($0, "https://www.instagram.com/p/DWCN6pbgn3F/", "golden gate from fort point", image: "seed-album")
-            $0.placeName = "fort point"
-            $0.latitude = 37.81060
-            $0.longitude = -122.47710
-        }
-        drop(12, sam, minutesAgo: 3600, .vibes) {
-            clip($0, "https://www.instagram.com/reel/DbySW82ILGn/", "the golden gate still feels unreal", image: "seed-pinksky")
-        }
-        drop(13, maya, minutesAgo: 6100, .vibes) {
-            song($0, "https://open.spotify.com/track/3zBhihYUHBmGd2bcQIobrF", "(sittin' on) the dock of the bay", "otis redding")
-        }
-        drop(14, alex, minutesAgo: 2300, .vibes) {
-            song($0, "https://open.spotify.com/track/3xKsf9qdS1CyvXSMEid6g8", "pink + white", "frank ocean", image: "seed-pinkpony")
-        }
-        drop(15, panth, minutesAgo: 8000, .someday) {
-            place($0, "https://www.nps.gov/goga/planyourvisit/landsend.htm", "lands end trail", "lands end", 37.78020, -122.51150)
-            $0.pinnedAt = now.addingTimeInterval(-20 * 3600)
         }
         save(context)
     }
@@ -177,9 +43,9 @@ enum ClusterFixture {
     @MainActor
     static func playArrival(_ context: ModelContext) async {
         try? await Task.sleep(for: .seconds(2.5))
-        let drop = Drop(id: arrivalId, createdAt: .now, authorId: panth.id, boardId: boardId, sourceKind: .url, url: "https://open.spotify.com/track/6MpCaSIOfqBqbMED4kXgNY")
-        drop.authorName = panth.name
-        drop.authorColor = panth.color
+        let drop = Drop(id: arrivalId, createdAt: .now, authorId: SeedBoard.panth.id, boardId: SeedBoard.crewBoardId, sourceKind: .url, url: "https://open.spotify.com/track/6MpCaSIOfqBqbMED4kXgNY")
+        drop.authorName = SeedBoard.panth.name
+        drop.authorColor = SeedBoard.panth.color
         context.insert(drop)
         save(context)
         Logger.app.info("cluster fixture: prom queen landed")
@@ -189,22 +55,22 @@ enum ClusterFixture {
         drop.type = .song
         drop.objectKind = .record
         drop.status = .processed
+        drop.genre = "indie"
+        drop.vibes = ["upbeat", "indie", "steady"]
+        drop.clusterId = "sunny-afternoons"
+        drop.clusterLabel = "upbeat, in the mission"
+        drop.neighbors = [
+            DropNeighbor(clientId: SeedBoard.clientId(board: 2, 4).uuidString, reason: "both upbeat, steady."),
+            DropNeighbor(clientId: SeedBoard.clientId(board: 2, 5).uuidString, reason: "both upbeat."),
+        ]
         drop.applyDecidedZone(.vibes, unsure: false)
         save(context)
         Logger.app.info("cluster fixture: prom queen was read")
     }
 
-    private static func media(_ name: String) -> String? {
-        guard let image = UIImage(named: name), let data = image.pngData() else {
-            Logger.store.error("cluster fixture image \(name, privacy: .public) is missing")
-            return nil
-        }
-        do {
-            return try MediaStore.save(data, named: "cluster-\(name).png")
-        } catch {
-            Logger.store.error("saving cluster fixture image \(name, privacy: .public) failed: \(String(describing: error), privacy: .public)")
-            return nil
-        }
+    private static func copyId(_ id: UUID, _ copy: Int) -> UUID {
+        let text = id.uuidString
+        return UUID(uuidString: String(format: "%04X", 0x100 * copy) + text.dropFirst(4)) ?? UUID()
     }
 
     @MainActor
@@ -233,7 +99,7 @@ private struct ClusterPlaygroundBoard: View {
 
     var body: some View {
         NavigationStack {
-            ClusterBoardView(drops: filled ? drops : [], namespace: namespace, me: ClusterFixture.panth.id) { opened = $0 }
+            ClusterBoardView(drops: filled ? drops.filter { $0.boardId == SeedBoard.crewBoardId } : [], namespace: namespace, me: SeedBoard.panth.id) { opened = $0 }
                 .navigationTitle("sf crew")
                 .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 64) }
                 .sheet(item: $opened) { drop in

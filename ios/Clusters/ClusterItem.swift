@@ -197,8 +197,7 @@ struct ClusterLabelSlip: View {
 
     var body: some View {
         Text(text)
-            .font(mood.hand(26))
-            .fontWeight(.bold)
+            .font(mood.ui(19, weight: .bold))
             .foregroundStyle(mood.ink)
             .lineLimit(1)
             .fixedSize()
@@ -216,8 +215,7 @@ struct ClusterReasonNote: View {
 
     var body: some View {
         Text(text)
-            .font(mood.hand(22))
-            .fontWeight(.semibold)
+            .font(mood.ui(15, weight: .semibold))
             .foregroundStyle(mood.ink)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)

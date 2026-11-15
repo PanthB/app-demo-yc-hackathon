@@ -204,7 +204,6 @@ struct ClusterBoardView: View {
     }
 
     private func makePlan(width: CGFloat, holding: Set<UUID>) -> Plan {
-        let facts = Dictionary(drops.map { ($0.id, ClusterFacts($0)) }, uniquingKeysWith: { first, _ in first })
         let now = clock.now
         var shapes: [UUID: ClusterShape] = [:]
         for drop in drops {
@@ -222,7 +221,7 @@ struct ClusterBoardView: View {
         var clusters: [String: [Drop]] = [:]
         var born: [String: Date] = [:]
         for drop in drops {
-            let clusterId = drop.zone == .done ? nil : facts[drop.id]?.clusterId
+            let clusterId = drop.zone == .done ? nil : drop.clusterId
             if let clusterId {
                 born[clusterId] = min(born[clusterId] ?? .distantFuture, drop.createdAt)
             }
@@ -249,7 +248,7 @@ struct ClusterBoardView: View {
         let clusterOrder = clusters.keys.sorted { ((born[$0] ?? .distantFuture), $0) < ((born[$1] ?? .distantFuture), $1) }
         for clusterId in clusterOrder {
             let members = (clusters[clusterId] ?? []).sorted(by: byAge)
-            let label = members.reversed().lazy.compactMap { CardWords.clean(facts[$0.id]?.clusterLabel) }.first ?? "together"
+            let label = members.reversed().lazy.compactMap { CardWords.clean($0.clusterLabel) }.first ?? "together"
             for drop in members {
                 labels[drop.id] = label
                 pairOrder.append(drop.id)
@@ -264,7 +263,8 @@ struct ClusterBoardView: View {
             groups.append(ClusterLayout.Group(id: "done", label: "done", shelf: .done, members: done.sorted { $0.updatedAt > $1.updatedAt }.map(member)))
         }
 
-        let pairs = ClusterLayout.pairs(order: pairOrder, cluster: home, neighbors: facts.mapValues(\.neighbors))
+        let neighbors = Dictionary(drops.map { ($0.id, $0.neighbors) }, uniquingKeysWith: { first, _ in first })
+        let pairs = ClusterLayout.pairs(order: pairOrder, cluster: home, neighbors: neighbors)
         let layout = ClusterLayout(groups: groups, pairs: pairs, width: width)
         let links = layout.links(pairs)
         let titles = Dictionary(drops.map { ($0.id, $0.title?.lowercased() ?? $0.kind.word) }, uniquingKeysWith: { first, _ in first })
@@ -307,7 +307,7 @@ struct ClusterBoardView: View {
             hasher.combine(drop.statusRaw)
             hasher.combine(drop.zoneRaw)
             hasher.combine(drop.pinnedAt)
-            hasher.combine(ClusterFacts(drop).clusterId)
+            hasher.combine(drop.clusterId)
         }
         return hasher.finalize()
     }
@@ -317,7 +317,7 @@ struct ClusterBoardView: View {
         for drop in drops {
             hasher.combine(drop.id)
             hasher.combine(drop.statusRaw)
-            hasher.combine(ClusterFacts(drop).clusterId)
+            hasher.combine(drop.clusterId)
         }
         return hasher.finalize()
     }
@@ -354,12 +354,11 @@ struct ClusterBoardView: View {
         for (id, hold) in held {
             let waited = now.timeIntervalSince(hold.since)
             guard flights[id] == nil, let drop = drops.first(where: { $0.id == id }) else { continue }
-            let facts = ClusterFacts(drop)
-            let ready = facts.clusterId != nil
+            let ready = drop.clusterId != nil
                 || drop.status == .failed
                 || drop.zone == .done
                 || drop.isPinned
-                || (drop.status == .processed && facts.vibes.isEmpty && waited >= 3)
+                || (drop.status == .processed && drop.vibes.isEmpty && waited >= 3)
             guard ready else { continue }
             let since = readySince[id] ?? now
             if readySince[id] == nil { readySince[id] = now }

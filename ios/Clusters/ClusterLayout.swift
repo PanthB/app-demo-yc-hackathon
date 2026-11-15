@@ -236,7 +236,7 @@ struct ClusterLayout {
     static func pairs(
         order: [UUID],
         cluster: [UUID: String],
-        neighbors: [UUID: [ClusterFacts.Neighbor]]
+        neighbors: [UUID: [DropNeighbor]]
     ) -> [Pair] {
         var counts: [UUID: Int] = [:]
         var taken = Set<String>()
