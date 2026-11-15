@@ -10,6 +10,7 @@ struct NightBoardView: View {
     @State private var filter: DropFilter = .everyone
     @State private var path: [UUID] = []
     @State private var showsStreaks = false
+    @State private var showsSuggestions = false
     @State private var moment = 0
     @State private var holdsDemoStreak = Self.asksForStreakDemo
     @Namespace private var namespace
@@ -49,7 +50,8 @@ struct NightBoardView: View {
                             }
                         },
                         startBoard: { boards.entry = .create },
-                        joinBoard: { boards.entry = .join(code: nil) }
+                        joinBoard: { boards.entry = .join(code: nil) },
+                        openSuggestions: { showsSuggestions = true }
                     )
                     NightFeed(
                         sections: DropSection.build(drops, grouping: isShared ? .vibe : .when, filter: filter, me: me, now: clock.now),
@@ -100,6 +102,16 @@ struct NightBoardView: View {
                     NightDetail(drop: drop, palette: palette)
                         .navigationTransition(.zoom(sourceID: id, in: namespace))
                 }
+            }
+        }
+        .sheet(isPresented: $showsSuggestions) {
+            NavigationStack {
+                SuggestionsFeed(boardId: current)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("done") { showsSuggestions = false }
+                        }
+                    }
             }
         }
         .sheet(isPresented: $showsStreaks) {
