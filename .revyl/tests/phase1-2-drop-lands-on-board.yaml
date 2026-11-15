@@ -1,32 +1,49 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: b2bc4536-e745-41e2-acb2-fc6b7982233d
+    remote_version: 2
+    local_version: 2
+    last_synced_at: "2026-11-15T21:27:04Z"
+    checksum: 3041add5d5c31df86c68ead12ff503572ac4f25e707c4e6bcbf9a60a68703b90
 test:
-  metadata:
-    name: phase1-2-drop-lands-on-board
-    platform: ios
-    tags:
-      - phase1
-      - board
-  build:
-    name: app-demo-yc-hackathon
-  variables:
-    share-target: "Moments"
-    share-url: "https://www.google.com/maps/place/Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110"
-  blocks:
-    - type: manual
-      step_type: navigate
-      step_description: "{{share-url}}"
-    - type: instructions
-      step_description: Wait for the page to finish loading, then tap Safari's Share button. If the toolbar has no Share button, tap the More (…) button first and choose Share from its menu. In the share sheet, pick {{share-target}} from the row of apps, and if it isn't in the row, scroll the row or tap More to find it.
-    - type: manual
-      step_type: open_app
-    - type: if
-      condition: Is a system permission prompt (location or notifications) visible?
-      then:
+    metadata:
+        name: phase1-2-drop-lands-on-board
+        platform: ios
+        tags:
+            - phase1
+            - board
+    build:
+        name: app-demo-yc-hackathon
+    variables:
+        share-target: Moments
+        share-url: https://maps.google.com/?q=Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: validation
+          step_description: The board has no Tartine Bakery item yet.
+        - type: manual
+          step_type: navigate
+          step_description: '{{share-url}}'
         - type: instructions
-          step_description: Tap the button that allows it (Allow While Using App, or Allow).
-    - type: validation
-      step_description: The app shows the Tartine Bakery link as an item right away, with a link pill, even if it still looks plain or unprocessed.
-    - type: manual
-      step_type: wait
-      step_description: "20"
-    - type: validation
-      step_description: The Tartine Bakery item now sits under one of the section headers (now, tonight, this weekend, someday or vibes) and is still there.
+          step_description: Wait for the page to finish loading, then tap Safari's Share button. If the toolbar has no Share button, tap the More (…) button first and choose Share from its menu. In the share sheet, pick {{share-target}} from the row of apps, and if it isn't in the row, scroll the row or tap More to find it.
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: validation
+          step_description: The app shows the shared Google Maps link as an item right away, with a small type pill (link or place), even if it still looks plain or unprocessed.
+        - type: manual
+          step_type: wait
+          step_description: "20"
+        - type: validation
+          step_description: The item's title now reads Tartine Bakery, not just google maps or a web address, and it sits under one of the section headers (now, tonight, this weekend, someday or vibes).
