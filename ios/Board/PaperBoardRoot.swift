@@ -8,25 +8,16 @@ struct PaperBoardRoot: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let insets = proxy.safeAreaInsets
             let contents = BoardContents(drops, now: clock.now)
-            let layout = CorkboardLayout(
-                contents: contents,
-                width: proxy.size.width,
-                minHeight: proxy.size.height - insets.top - insets.bottom,
-                now: clock.now
-            )
+            let layout = CorkboardLayout(contents: contents, width: proxy.size.width, minHeight: proxy.size.height, now: clock.now)
             ScrollView(.vertical) {
                 Corkboard(contents: contents, layout: layout, width: proxy.size.width)
-                    .padding(.top, insets.top)
-                    .padding(.bottom, insets.bottom)
-                    .background(alignment: .top) { CorkSurface() }
+                    .background { CorkSurface().padding(.vertical, -240) }
             }
             .scrollIndicators(.hidden)
             .accessibilityIdentifier("paperBoard")
         }
-        .ignoresSafeArea(.container)
-        .background(mood.board)
+        .background(mood.board.ignoresSafeArea())
         .environment(\.mood, mood)
         .preferredColorScheme(.light)
         .animation(mood.move, value: clock.now)

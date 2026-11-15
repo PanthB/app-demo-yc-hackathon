@@ -18,6 +18,13 @@ struct RootView: View {
             }
         }
         .environment(clock)
+        #if DEBUG
+        .task {
+            if UserDefaults.standard.bool(forKey: "BoardDebugSeed") {
+                SeedBoard.replace(in: context)
+            }
+        }
+        #endif
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { clock.tick() }
         }

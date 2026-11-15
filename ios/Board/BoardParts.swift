@@ -199,25 +199,15 @@ struct DonePocket: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Rectangle().fill(mood.paper)
+            Rectangle().fill(mood.paper.mix(with: mood.shade, by: 0.05))
             Rectangle().fill(mood.mint).frame(height: 9)
-            TickMark()
-                .stroke(mood.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                .frame(width: 16, height: 12)
-                .offset(y: 22)
+            PocketShape(dip: 14)
+                .fill(mood.paper)
+                .overlay(PocketShape(dip: 14).stroke(mood.shade.opacity(0.14), lineWidth: 0.8))
+                .padding(.top, 16)
         }
         .paperShadow()
         .accessibilityHidden(true)
-    }
-}
-
-struct TickMark: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.midY))
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.38, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        return path
     }
 }
 
