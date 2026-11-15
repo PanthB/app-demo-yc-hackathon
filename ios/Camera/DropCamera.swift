@@ -295,6 +295,7 @@ struct DropCamera: View {
                         .contentTransition(.numericText(value: camera.zoom))
                         .frame(width: 36, height: 36)
                         .background(Circle().fill(.black.opacity(isSelected ? 0.35 : 0)))
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("zoom to \(Self.zoomWords(preset))")
@@ -303,7 +304,7 @@ struct DropCamera: View {
             }
         }
         .padding(3)
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .glassEffect(.regular, in: .capsule)
         .animation(.snappy(duration: 0.2), value: camera.zoom)
     }
 
