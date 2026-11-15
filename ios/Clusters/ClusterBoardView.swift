@@ -9,25 +9,74 @@ struct ClusterBoardView: View {
     var select: (Drop) -> Void = { _ in }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var scheme
     @Environment(BoardClock.self) private var clock
+    @AppStorage(Mood.handwritingKey) private var handwriting = true
     @State private var known: Set<UUID>?
     @State private var held: [UUID: Hold] = [:]
     @State private var readySince: [UUID: Date] = [:]
     @State private var flights: [UUID: Flight] = [:]
-    @State private var viewport: CGRect = .zero
+    @State private var lastDeparture: Date = .distantPast
+    @State private var committed: Committed?
+    @State private var visible = Visible()
+    @State private var touching = false
     @State private var boardWidth: CGFloat = 0
     @State private var chosenLink: String?
     @State private var settles = 0
     @State private var scroll = ScrollPosition()
     @State private var aimed = false
 
-    private let mood = Mood.sunny
+    private var mood: Mood {
+        var mood = scheme == .dark ? Self.night : Mood.sunny
+        mood.handwriting = handwriting
+        return mood
+    }
+
+    private static let night = Mood(
+        board: Color(hex: 0x5A4535),
+        paper: Color(hex: 0xF3E8D8),
+        stickerWhite: Color(hex: 0xF6EEE0),
+        ink: Color(hex: 0x2B2420),
+        person: Color(hex: 0xFF7D5E),
+        personDeep: Color(hex: 0xE2603F),
+        butter: Color(hex: 0xFFD25C),
+        sky: Color(hex: 0x7CC4FF),
+        mint: Color(hex: 0x8FDDB0),
+        lilac: Color(hex: 0xBFA2FF),
+        shade: Color(hex: 0x0A0604),
+        speckle: 0.24,
+        tilt: Mood.sunny.tilt,
+        land: Mood.sunny.land,
+        move: Mood.sunny.move
+    )
     private static let dwell: Duration = .milliseconds(1100)
-    private static let makeRoom: Animation = .spring(response: 0.5, dampingFraction: 0.86)
+    private static let departureGap = 0.45
 
     private struct Hold {
-        let point: CGPoint
+        let slot: Int
         let since: Date
+    }
+
+    private struct Committed {
+        let snapshot: ClusterSnapshot
+        let labels: [String: ClusterLayout.Label]
+    }
+
+    private struct Visible: Equatable {
+        var rect: CGRect = .zero
+        var top: CGFloat = 0
+        var bottom: CGFloat = 0
+
+        var band: ClosedRange<CGFloat> {
+            let low = rect.minY + top
+            return low...max(low, rect.maxY - bottom)
+        }
+    }
+
+    private struct Ghost: Identifiable {
+        let id: String
+        let label: ClusterLayout.Label
+        let to: CGPoint
     }
 
     private struct Flight {
@@ -39,8 +88,10 @@ struct ClusterBoardView: View {
     }
 
     private struct Plan {
+        let snapshot: ClusterSnapshot
         let layout: ClusterLayout
-        let links: [ClusterLayout.Link]
+        let changes: [ClusterChange]
+        let delays: [UUID: Double]
         let shapes: [UUID: ClusterShape]
         let labels: [UUID: String]
         let reasons: [UUID: [String]]
@@ -87,8 +138,12 @@ struct ClusterBoardView: View {
                 aimed = true
                 scroll.scrollTo(y: max(label.origin.y - 12, 0))
             }
-            .onScrollGeometryChange(for: CGRect.self, of: { $0.visibleRect }) { _, rect in
-                viewport = rect
+            .task(id: plan.snapshot) { await settle(plan) }
+            .onScrollGeometryChange(for: Visible.self, of: { Visible(rect: $0.visibleRect, top: $0.contentInsets.top, bottom: $0.contentInsets.bottom) }) { _, new in
+                visible = new
+            }
+            .onScrollPhaseChange { _, phase in
+                touching = phase == .tracking || phase == .interacting || phase == .decelerating
             }
             .onAppear { boardWidth = width }
             .onChange(of: width) { _, newWidth in boardWidth = newWidth }
@@ -104,21 +159,27 @@ struct ClusterBoardView: View {
     private func board(_ plan: Plan, holds: [UUID: CGPoint], width: CGFloat) -> some View {
         let shown = Set(drops.filter(isShown).map(\.id))
         let calm = Set(holds.keys).union(flights.keys)
-        let chosen = plan.links.first { $0.id == chosenLink }
+        let chosen = plan.layout.links.first { $0.id == chosenLink }
         return ZStack(alignment: .topLeading) {
-            ForEach(plan.links) { link in
+            ForEach(plan.layout.links) { link in
                 let live = shown.contains(link.first) && shown.contains(link.second)
                     && !calm.contains(link.first) && !calm.contains(link.second)
                 strand(link, chosen: link.id == chosenLink)
+                    .animation(move(after: max(plan.delays[link.first] ?? 0, plan.delays[link.second] ?? 0)), value: [link.from, link.control, link.to])
                     .opacity(live ? 1 : 0)
                     .allowsHitTesting(live)
                     .transition(.opacity)
+            }
+
+            ForEach(ghosts(plan)) { ghost in
+                ClusterGhostLabel(label: ghost.label, to: ghost.to, animation: move(after: 0))
             }
 
             ForEach(plan.layout.labels) { label in
                 ClusterLabelSlip(text: label.text)
                     .rotationEffect(.degrees(label.tilt))
                     .offset(x: label.origin.x, y: label.origin.y)
+                    .transition(arrival(of: label, plan: plan))
                     .accessibilitySortPriority(-Double(label.order) * 1000)
                     .accessibilityIdentifier("clusterLabel-\(label.id)")
             }
@@ -140,15 +201,50 @@ struct ClusterBoardView: View {
                     .accessibilityHidden(true)
             }
         }
-        .frame(width: width, height: max(plan.layout.height, viewport.height), alignment: .topLeading)
-        .animation(reduceMotion ? .easeInOut(duration: 0.25) : mood.move, value: dataKey)
+        .frame(width: width, height: max(plan.layout.height, visible.rect.height), alignment: .topLeading)
+        .animation(move(after: 0), value: dataKey)
+    }
+
+    private func move(after delay: Double) -> Animation {
+        reduceMotion ? .easeInOut(duration: 0.25) : ClusterMotion.drift.delay(delay)
+    }
+
+    private func ghosts(_ plan: Plan) -> [Ghost] {
+        guard let committed else { return [] }
+        let now = Dictionary(plan.layout.labels.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return plan.changes.compactMap { change in
+            switch change {
+            case .merged(let from, let into):
+                guard let old = committed.labels[from] else { return nil }
+                return Ghost(id: from, label: old, to: now[into]?.origin ?? old.origin)
+            case .dissolved(let group):
+                guard let old = committed.labels[group] else { return nil }
+                return Ghost(id: group, label: old, to: old.origin)
+            default:
+                return nil
+            }
+        }
+    }
+
+    private func arrival(of label: ClusterLayout.Label, plan: Plan) -> AnyTransition {
+        let parent = plan.changes.lazy.compactMap { change -> String? in
+            guard case .split(let from, let into) = change, into == label.id else { return nil }
+            return from
+        }.first
+        if !reduceMotion, let parent, let origin = plan.layout.labels.first(where: { $0.id == parent })?.origin {
+            return .asymmetric(
+                insertion: .offset(x: origin.x - label.origin.x, y: origin.y - label.origin.y).combined(with: .opacity),
+                removal: .identity
+            )
+        }
+        return .asymmetric(insertion: .scale(scale: 0.85, anchor: .topLeading).combined(with: .opacity), removal: .identity)
     }
 
     private func item(_ drop: Drop, shape: ClusterShape, point: CGPoint, plan: Plan, shown: Bool, lifted: Bool) -> some View {
         let spot = plan.layout.spots[drop.id]
         let flight = flights[drop.id]
         let start = lifted ? CGSize.zero : (flight?.start ?? .zero)
-        let identity = reduceMotion ? "\(drop.id)@\(Int(point.x)),\(Int(point.y))" : drop.id.uuidString
+        let identity = reduceMotion && !lifted ? "\(drop.id)@\(Int(point.x)),\(Int(point.y))" : drop.id.uuidString
         return ClusterItem(
             drop: drop,
             shape: shape,
@@ -162,6 +258,7 @@ struct ClusterBoardView: View {
         .shadow(color: mood.shade.opacity(lifted ? 0.22 : 0), radius: 18, y: 14)
         .rotationEffect(.degrees(spot?.tilt ?? 0))
         .position(point)
+        .animation(lifted || flight != nil ? nil : move(after: plan.delays[drop.id] ?? 0), value: point)
         .transaction { if flight != nil { $0.animation = nil } }
         .animation(flight?.curve ?? .default) {
             $0.modifier(ArcFlight(progress: flight?.progress ?? 1, start: start, bulge: flight?.bulge ?? .zero))
@@ -209,94 +306,71 @@ struct ClusterBoardView: View {
         for drop in drops {
             shapes[drop.id] = ClusterShape(drop, now: now)
         }
-        func member(_ drop: Drop) -> ClusterLayout.Member {
-            let shape = shapes[drop.id] ?? ClusterShape(drop, now: now)
-            return ClusterLayout.Member(id: drop.id, size: shape.size, faceHeight: shape.face.height)
+        let snapshot = ClusterSnapshot(drops: drops.filter { !holding.contains($0.id) }, following: committed?.snapshot)
+        let layout = ClusterLayout(snapshot, width: width) { id in
+            let shape = shapes[id]
+            return ClusterLayout.Member(id: id, size: shape?.size ?? .zero, faceHeight: shape?.face.height ?? 0)
         }
-        let byAge: (Drop, Drop) -> Bool = { ($0.createdAt, $0.id.uuidString) < ($1.createdAt, $1.id.uuidString) }
-
-        var pinned: [Drop] = []
-        var loose: [Drop] = []
-        var done: [Drop] = []
-        var clusters: [String: [Drop]] = [:]
-        var born: [String: Date] = [:]
-        for drop in drops {
-            let clusterId = drop.zone == .done ? nil : drop.clusterId
-            if let clusterId {
-                born[clusterId] = min(born[clusterId] ?? .distantFuture, drop.createdAt)
-            }
-            guard !holding.contains(drop.id) else { continue }
-            if drop.zone == .done {
-                done.append(drop)
-            } else if drop.isPinned {
-                pinned.append(drop)
-            } else if let clusterId {
-                clusters[clusterId, default: []].append(drop)
-            } else {
-                loose.append(drop)
-            }
-        }
-
-        var groups: [ClusterLayout.Group] = []
+        let changes = committed.map { snapshot.changes(since: $0.snapshot) } ?? []
         var labels: [UUID: String] = [:]
-        var pairOrder: [UUID] = []
-        var home: [UUID: String] = [:]
-        if !pinned.isEmpty {
-            let sorted = pinned.sorted { ($0.pinnedAt ?? .distantPast) > ($1.pinnedAt ?? .distantPast) }
-            groups.append(ClusterLayout.Group(id: "pinned", label: "pinned", shelf: .pinned, members: sorted.map(member)))
+        for group in snapshot.groups where group.shelf == .cluster {
+            for id in group.members { labels[id] = group.label }
         }
-        let clusterOrder = clusters.keys.sorted { ((born[$0] ?? .distantFuture), $0) < ((born[$1] ?? .distantFuture), $1) }
-        for clusterId in clusterOrder {
-            let members = (clusters[clusterId] ?? []).sorted(by: byAge)
-            let label = members.reversed().lazy.compactMap { CardWords.clean($0.clusterLabel) }.first ?? "together"
-            for drop in members {
-                labels[drop.id] = label
-                pairOrder.append(drop.id)
-                home[drop.id] = clusterId
-            }
-            groups.append(ClusterLayout.Group(id: "cluster-\(clusterId)", label: label, shelf: .cluster, members: members.map(member)))
-        }
-        if !loose.isEmpty {
-            groups.append(ClusterLayout.Group(id: "loose", label: "on their own", shelf: .loose, members: loose.sorted(by: byAge).map(member)))
-        }
-        if !done.isEmpty {
-            groups.append(ClusterLayout.Group(id: "done", label: "done", shelf: .done, members: done.sorted { $0.updatedAt > $1.updatedAt }.map(member)))
-        }
-
-        let neighbors = Dictionary(drops.map { ($0.id, $0.neighbors) }, uniquingKeysWith: { first, _ in first })
-        let pairs = ClusterLayout.pairs(order: pairOrder, cluster: home, neighbors: neighbors)
-        let layout = ClusterLayout(groups: groups, pairs: pairs, width: width)
-        let links = layout.links(pairs)
         let titles = Dictionary(drops.map { ($0.id, $0.title?.lowercased() ?? $0.kind.word) }, uniquingKeysWith: { first, _ in first })
         var reasons: [UUID: [String]] = [:]
-        for link in links {
+        for link in layout.links {
             reasons[link.first, default: []].append("goes with \(titles[link.second] ?? "a drop"): \(link.reason)")
             reasons[link.second, default: []].append("goes with \(titles[link.first] ?? "a drop"): \(link.reason)")
         }
-        return Plan(layout: layout, links: links, shapes: shapes, labels: labels, reasons: reasons)
+        return Plan(snapshot: snapshot, layout: layout, changes: changes, delays: ClusterMotion.delays(for: changes), shapes: shapes, labels: labels, reasons: reasons)
     }
 
-    private func landingPoint(_ index: Int, width: CGFloat) -> CGPoint {
-        let area = viewport.height > 0 ? viewport : CGRect(x: 0, y: 0, width: width, height: 700)
-        let spread = CGFloat(index)
-        return CGPoint(x: area.midX + spread * 28 - 14 * min(spread, 1), y: area.minY + area.height * 0.5 + spread * 32)
+    private func settle(_ plan: Plan) async {
+        let labels = Dictionary(plan.layout.labels.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        guard committed != nil else {
+            committed = Committed(snapshot: plan.snapshot, labels: labels)
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(1200))
+        guard !Task.isCancelled else { return }
+        committed = Committed(snapshot: plan.snapshot, labels: labels)
+    }
+
+    private func follow(_ rect: CGRect, height: CGFloat, animation: Animation) {
+        guard !touching, !reduceMotion, visible.rect.height > 0 else { return }
+        let band = visible.band
+        let room = band.upperBound - band.lowerBound
+        guard room > 0 else { return }
+        let fits = rect.minY >= band.lowerBound && min(rect.maxY, rect.minY + room) <= band.upperBound
+        guard !fits else { return }
+        let y = rect.height < room ? rect.midY - room / 2 : rect.minY - 16
+        withAnimation(animation) { scroll.scrollTo(y: min(max(y, 0), max(height - room, 0))) }
+    }
+
+    private func landingPoint(_ slot: Int, width: CGFloat) -> CGPoint {
+        let band = visible.rect.height > 0 ? visible.band : 0...700
+        let lane: CGFloat = [0, -1, 1][slot % 3]
+        let x = min(max(width / 2 + lane * width * 0.27, 92), width - 92)
+        let y = band.lowerBound + (band.upperBound - band.lowerBound) * 0.42 + (lane == 0 ? 0 : 34) + CGFloat(slot / 3) * 48
+        return CGPoint(x: x, y: y)
+    }
+
+    private func slots() -> [UUID: Int] {
+        var slots = held.mapValues(\.slot)
+        let fresh = known.map { known in drops.filter { !known.contains($0.id) && held[$0.id] == nil } } ?? drops.filter(\.isArriving)
+        guard known == nil || fresh.count <= 3 else { return slots }
+        var used = Set(slots.values)
+        for drop in fresh {
+            var slot = 0
+            while used.contains(slot) { slot += 1 }
+            used.insert(slot)
+            slots[drop.id] = slot
+        }
+        return slots
     }
 
     private func currentHolds(width: CGFloat) -> [UUID: CGPoint] {
-        var holds = held.mapValues(\.point)
-        guard let known else {
-            for (index, drop) in drops.filter(\.isArriving).enumerated() {
-                holds[drop.id] = landingPoint(index, width: width)
-            }
-            return holds
-        }
-        let fresh = drops.filter { !known.contains($0.id) && holds[$0.id] == nil }
-        if fresh.count <= 3 {
-            for (index, drop) in fresh.enumerated() {
-                holds[drop.id] = landingPoint(held.count + index, width: width)
-            }
-        }
-        return holds
+        slots().mapValues { landingPoint($0, width: width) }
     }
 
     private var dataKey: Int {
@@ -308,6 +382,7 @@ struct ClusterBoardView: View {
             hasher.combine(drop.zoneRaw)
             hasher.combine(drop.pinnedAt)
             hasher.combine(drop.clusterId)
+            hasher.combine(drop.clusterLabel)
         }
         return hasher.finalize()
     }
@@ -324,10 +399,9 @@ struct ClusterBoardView: View {
 
     private func reconcile() {
         let ids = Set(drops.map(\.id))
-        let holds = currentHolds(width: boardWidth)
         let now = Date.now
-        for (id, point) in holds where held[id] == nil {
-            held[id] = Hold(point: point, since: now)
+        for (id, slot) in slots() where held[id] == nil {
+            held[id] = Hold(slot: slot, since: now)
             watch(id)
         }
         held = held.filter { ids.contains($0.key) }
@@ -362,13 +436,14 @@ struct ClusterBoardView: View {
             guard ready else { continue }
             let since = readySince[id] ?? now
             if readySince[id] == nil { readySince[id] = now }
-            if waited >= 1.1, now.timeIntervalSince(since) >= 0.6 { fly(id) }
+            if waited >= 1.1, now.timeIntervalSince(since) >= 0.6, now.timeIntervalSince(lastDeparture) >= Self.departureGap { fly(id) }
         }
     }
 
     private func fly(_ id: UUID) {
         guard let hold = held[id], flights[id] == nil else { return }
         readySince[id] = nil
+        lastDeparture = .now
         if reduceMotion {
             withAnimation(.easeInOut(duration: 0.25)) { held[id] = nil }
             settles += 1
@@ -376,8 +451,11 @@ struct ClusterBoardView: View {
         }
         var remaining = Set(held.keys)
         remaining.remove(id)
-        let target = makePlan(width: boardWidth, holding: remaining).layout.spots[id]?.center ?? hold.point
-        let travel = CGSize(width: target.x - hold.point.x, height: target.y - hold.point.y)
+        let from = landingPoint(hold.slot, width: boardWidth)
+        let plan = makePlan(width: boardWidth, holding: remaining)
+        let spot = plan.layout.spots[id]
+        let target = spot?.center ?? from
+        let travel = CGSize(width: target.x - from.x, height: target.y - from.y)
         let distance = max(hypot(travel.width, travel.height), 1)
         let swing = min(90, distance * 0.2)
         let side: CGFloat = travel.height >= 0 ? 1 : -1
@@ -396,7 +474,10 @@ struct ClusterBoardView: View {
         }
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(30))
-            withAnimation(Self.makeRoom) {
+            if let spot, drops.first(where: { $0.id == id })?.authorId == me {
+                follow(spot.frame, height: plan.layout.height, animation: .spring(duration: seconds, bounce: 0.12))
+            }
+            withAnimation(ClusterMotion.makeRoom) {
                 held[id] = nil
                 flights[id]?.progress = 1
             }

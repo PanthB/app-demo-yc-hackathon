@@ -2,9 +2,7 @@ import CoreGraphics
 import Foundation
 
 struct ClusterLayout {
-    enum Shelf {
-        case pinned, cluster, loose, done
-    }
+    typealias Pair = ClusterSnapshot.Pair
 
     struct Member {
         let id: UUID
@@ -12,16 +10,9 @@ struct ClusterLayout {
         let faceHeight: CGFloat
     }
 
-    struct Group {
-        let id: String
-        let label: String
-        let shelf: Shelf
-        let members: [Member]
-    }
-
     struct Spot {
         let group: String
-        let shelf: Shelf
+        let shelf: ClusterSnapshot.Shelf
         let center: CGPoint
         let size: CGSize
         let faceHeight: CGFloat
@@ -64,12 +55,6 @@ struct ClusterLayout {
         }
     }
 
-    struct Pair {
-        let first: UUID
-        let second: UUID
-        let reason: String
-    }
-
     static let margin: CGFloat = 16
     static let top: CGFloat = 16
     static let labelHeight: CGFloat = 44
@@ -77,23 +62,28 @@ struct ClusterLayout {
     static let columnGap: CGFloat = 20
     static let rowGap: CGFloat = 30
     static let stagger: CGFloat = 6
-    static let groupGap: CGFloat = 96
+    static let groupGap: CGFloat = 56
     static let maxTilt = 1.4
+    static let stringRoom: CGFloat = 12
 
     private(set) var spots: [UUID: Spot] = [:]
     private(set) var labels: [Label] = []
+    private(set) var frames: [String: CGRect] = [:]
+    private(set) var links: [Link] = []
     private(set) var order: [UUID] = []
     private(set) var height: CGFloat = 0
 
-    init(groups: [Group], pairs: [Pair], width: CGFloat) {
+    init(_ snapshot: ClusterSnapshot, width: CGFloat, member: (UUID) -> Member) {
+        let pairs = snapshot.pairs
         var y = Self.top
         var placed = 0
-        for group in groups where !group.members.isEmpty {
+        for group in snapshot.groups where !group.members.isEmpty {
             let labelTop = y
             y += Self.labelHeight + Self.labelGap
+            let members = group.members.map(member)
             let rows = group.shelf == .cluster
-                ? Self.orient(Self.packRows(Self.arrange(group.members, pairs: pairs), width: width - 2 * Self.margin), pairs: pairs)
-                : Self.flowRows(group.members, width: width - 2 * Self.margin)
+                ? Self.orient(Self.packRows(members, width: width - 2 * Self.margin), pairs: pairs)
+                : Self.flowRows(members, width: width - 2 * Self.margin)
             var leading = width
             for (rowIndex, row) in rows.enumerated() {
                 let tallest = row.map(\.size.height).max() ?? 0
@@ -122,6 +112,7 @@ struct ClusterLayout {
                 y += rowHeight + Self.rowGap
             }
             y -= Self.rowGap
+            frames[group.id] = CGRect(x: Self.margin, y: labelTop, width: width - 2 * Self.margin, height: y - labelTop)
             labels.append(Label(
                 id: group.id,
                 text: group.label,
@@ -132,6 +123,7 @@ struct ClusterLayout {
             y += Self.groupGap
         }
         height = max(y - Self.groupGap + 32, 0)
+        links = makeLinks(pairs, width: width)
     }
 
     static func packRows(_ members: [Member], width: CGFloat) -> [[Member]] {
@@ -177,31 +169,6 @@ struct ClusterLayout {
         return rows
     }
 
-    static func arrange(_ members: [Member], pairs: [Pair]) -> [Member] {
-        let index = Dictionary(members.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
-        var adjacent: [Int: [Int]] = [:]
-        for pair in pairs {
-            guard let a = index[pair.first], let b = index[pair.second] else { continue }
-            adjacent[a, default: []].append(b)
-            adjacent[b, default: []].append(a)
-        }
-        var seen = Set<Int>()
-        var arranged: [Int] = []
-        for start in members.indices where !seen.contains(start) {
-            var queue = [start]
-            seen.insert(start)
-            while !queue.isEmpty {
-                let current = queue.removeFirst()
-                arranged.append(current)
-                for next in (adjacent[current] ?? []).sorted() where !seen.contains(next) {
-                    seen.insert(next)
-                    queue.append(next)
-                }
-            }
-        }
-        return arranged.map { members[$0] }
-    }
-
     static func orient(_ rows: [[Member]], pairs: [Pair]) -> [[Member]] {
         var partners: [UUID: [UUID]] = [:]
         for pair in pairs {
@@ -233,70 +200,58 @@ struct ClusterLayout {
         return result
     }
 
-    static func pairs(
-        order: [UUID],
-        cluster: [UUID: String],
-        neighbors: [UUID: [DropNeighbor]]
-    ) -> [Pair] {
-        var counts: [UUID: Int] = [:]
-        var taken = Set<String>()
-        var bridges = Set<String>()
-        var result: [Pair] = []
-        for rank in 0..<2 {
-            for id in order {
-                guard let home = cluster[id],
-                      let list = neighbors[id], rank < list.count,
-                      let other = UUID(uuidString: list[rank].clientId), other != id,
-                      let away = cluster[other]
-                else { continue }
-                let key = [id.uuidString, other.uuidString].sorted().joined(separator: "|")
-                guard !taken.contains(key), counts[id, default: 0] < 2, counts[other, default: 0] < 2 else { continue }
-                if home != away {
-                    let bridge = [home, away].sorted().joined(separator: "|")
-                    guard !bridges.contains(bridge) else { continue }
-                    bridges.insert(bridge)
-                }
-                taken.insert(key)
-                counts[id, default: 0] += 1
-                counts[other, default: 0] += 1
-                result.append(Pair(first: id, second: other, reason: list[rank].reason))
-            }
-        }
-        return result
-    }
-
-    func links(_ pairs: [Pair]) -> [Link] {
-        let obstacles = spots.values.map { $0.frame.insetBy(dx: -4, dy: -4) }
+    private func makeLinks(_ pairs: [Pair], width: CGFloat) -> [Link] {
+        let footprints = spots.mapValues(Self.footprint)
+        let labelFrames = labels.map(Self.frame)
         return pairs.compactMap { pair in
-            guard let spot = spots[pair.first], let partner = spots[pair.second] else { return nil }
-            let key = [pair.first.uuidString, pair.second.uuidString].sorted().joined(separator: "|")
-            return Self.link(key: key, first: pair.first, second: pair.second, reason: pair.reason, from: spot.faceCenter, to: partner.faceCenter, obstacles: obstacles)
+            guard let spot = spots[pair.first], let partner = spots[pair.second],
+                  let start = footprints[pair.first], let end = footprints[pair.second]
+            else { return nil }
+            let obstacles = labelFrames + footprints.compactMap { $0.key == pair.first || $0.key == pair.second ? nil : $0.value }
+            return Self.link(pair, from: spot.faceCenter, to: partner.faceCenter, leaving: start, reaching: end, avoiding: obstacles, width: width)
         }
     }
 
-    private static func link(key: String, first: UUID, second: UUID, reason: String, from: CGPoint, to: CGPoint, obstacles: [CGRect]) -> Link {
+    static func footprint(_ spot: Spot) -> CGRect {
+        let frame = spot.frame
+        return CGRect(x: frame.minX - 4, y: frame.minY - 20, width: frame.width + 8, height: frame.height + 24)
+    }
+
+    static func frame(_ label: Label) -> CGRect {
+        CGRect(x: label.origin.x - 4, y: label.origin.y - 4, width: 36 + CGFloat(label.text.count) * 11, height: labelHeight + 8)
+    }
+
+    private static func link(_ pair: Pair, from: CGPoint, to: CGPoint, leaving start: CGRect, reaching end: CGRect, avoiding obstacles: [CGRect], width: CGFloat) -> Link? {
         let distance = hypot(to.x - from.x, to.y - from.y)
-        let control = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 + distance * 0.12 + 4)
-        let draft = Link(id: key, first: first, second: second, reason: reason, from: from, control: control, to: to, anchor: .zero)
-        let samples = 48
-        var bestStart = -1
-        var bestLength = 0
-        var runStart = -1
-        for step in 0...samples {
-            let point = draft.point(at: CGFloat(step) / CGFloat(samples))
-            let open = !obstacles.contains { $0.contains(point) }
-            if open, runStart < 0 { runStart = step }
-            if (!open || step == samples), runStart >= 0 {
-                let end = open ? step : step - 1
-                if end - runStart + 1 > bestLength {
-                    bestLength = end - runStart + 1
-                    bestStart = runStart
-                }
-                runStart = -1
+        guard distance > 1 else { return nil }
+        let middle = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 + distance * 0.12 + 4)
+        let normal = CGPoint(x: -(to.y - from.y) / distance, y: (to.x - from.x) / distance)
+        for bend in [0, 0.18, -0.18, 0.35, -0.35] as [CGFloat] {
+            let control = CGPoint(x: middle.x + normal.x * bend * distance, y: middle.y + normal.y * bend * distance)
+            let whole = Link(id: pair.id, first: pair.first, second: pair.second, reason: pair.reason, from: from, control: control, to: to, anchor: .zero)
+            let samples = 64
+            let points = (0...samples).map { whole.point(at: CGFloat($0) / CGFloat(samples)) }
+            guard let exit = points.firstIndex(where: { !start.contains($0) }),
+                  let entry = points.lastIndex(where: { !end.contains($0) }),
+                  exit < entry
+            else { continue }
+            let open = points[exit...entry].allSatisfy { point in
+                point.x >= stringRoom && point.x <= width - stringRoom
+                    && !obstacles.contains { $0.contains(point) } && !end.contains(point) && !start.contains(point)
             }
+            guard open else { continue }
+            let t0 = CGFloat(max(exit - 1, 0)) / CGFloat(samples)
+            let t1 = CGFloat(min(entry + 1, samples)) / CGFloat(samples)
+            let trimmed = CGPoint(
+                x: (1 - t0) * (1 - t1) * from.x + ((1 - t0) * t1 + t0 * (1 - t1)) * control.x + t0 * t1 * to.x,
+                y: (1 - t0) * (1 - t1) * from.y + ((1 - t0) * t1 + t0 * (1 - t1)) * control.y + t0 * t1 * to.y
+            )
+            let a = whole.point(at: t0)
+            let b = whole.point(at: t1)
+            let piece = Link(id: pair.id, first: pair.first, second: pair.second, reason: pair.reason, from: a, control: trimmed, to: b, anchor: .zero)
+            return Link(id: pair.id, first: pair.first, second: pair.second, reason: pair.reason, from: a, control: trimmed, to: b, anchor: piece.point(at: 0.5))
         }
-        let middle = bestStart >= 0 ? CGFloat(bestStart) + CGFloat(bestLength - 1) / 2 : CGFloat(samples) / 2
-        return Link(id: key, first: first, second: second, reason: reason, from: from, control: control, to: to, anchor: draft.point(at: middle / CGFloat(samples)))
+        return nil
     }
 
     private static func labelTilt(_ id: String) -> Double {

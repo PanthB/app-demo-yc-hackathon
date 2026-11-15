@@ -11,6 +11,8 @@ struct ClusterShape {
 
     let native: CGSize
     let face: CGSize
+    let stripTitle: String
+    let stripLines: Int
     let stripHeight: CGFloat
     let caption: String
     let isRecord: Bool
@@ -20,16 +22,36 @@ struct ClusterShape {
         isRecord = drop.objectKind == .record && !drop.showsRawThing
         if isRecord {
             native = CGSize(width: 120, height: 120)
-            let words = CGFloat((drop.title ?? "").count) * 7.4
-            stripHeight = words > Self.minWidth - 20 ? 48 : 30
+            stripTitle = Self.fitting(drop.title?.lowercased() ?? "")
+            stripLines = max(1, min(3, Int((CGFloat(stripTitle.count) * Self.letter / Self.line).rounded(.up))))
+            stripHeight = 12 + 18 * CGFloat(stripLines)
             face = CGSize(width: Self.minWidth, height: Self.disc - Self.stripOverlap + stripHeight)
         } else {
             native = CorkboardLayout.size(for: drop)
             face = CGSize(width: (native.width * Self.faceScale).rounded(), height: (native.height * Self.faceScale).rounded())
+            stripTitle = ""
+            stripLines = 0
             stripHeight = 0
         }
-        caption = drop.cardMeta(now: now, beside: drop.previewFace(now: now)) ?? drop.authorLabel
+        let shown = (isRecord ? drop.title : drop.frontTitle)?.lowercased()
+        let meta = drop.cardMeta(now: now, beside: drop.previewFace(now: now))
+        let repeats = meta.map { meta in shown.map { $0.contains(meta.lowercased()) || meta.lowercased().contains($0) } ?? false } ?? false
+        caption = repeats ? drop.authorLabel : meta ?? drop.authorLabel
         captionWidth = min(Self.maxCaption, (37 + CGFloat(caption.count) * 7).rounded())
+    }
+
+    private static let letter: CGFloat = 7.4
+    private static let line: CGFloat = minWidth - 20
+
+    private static func fitting(_ title: String) -> String {
+        let room = Int(3 * line / letter) - 1
+        guard title.count > room else { return title }
+        if let open = title.range(of: " ("), !title[..<open.lowerBound].isEmpty {
+            return fitting(String(title[..<open.lowerBound]))
+        }
+        let cut = title.prefix(room)
+        let words = cut.range(of: " ", options: .backwards).map { cut[..<$0.lowerBound] } ?? cut
+        return words.trimmingCharacters(in: .punctuationCharacters.union(.whitespaces)) + "…"
     }
 
     var size: CGSize {
@@ -97,11 +119,11 @@ struct ClusterItem: View {
                 PaperObject(drop: drop, size: shape.native)
                     .scaleEffect(ClusterShape.faceScale)
                     .frame(width: ClusterShape.disc, height: ClusterShape.disc)
-                Text(drop.title?.lowercased() ?? "")
+                Text(shape.stripTitle)
                     .font(mood.ui(14, weight: .semibold))
                     .foregroundStyle(mood.ink)
                     .multilineTextAlignment(.center)
-                    .lineLimit(shape.stripHeight > 30 ? 2 : 1)
+                    .lineLimit(shape.stripLines)
                     .minimumScaleFactor(0.85)
                     .padding(.horizontal, 10)
                     .frame(width: shape.face.width, height: shape.stripHeight)
@@ -197,9 +219,10 @@ struct ClusterLabelSlip: View {
 
     var body: some View {
         Text(text)
-            .font(mood.ui(19, weight: .bold))
+            .font(mood.handwriting ? mood.hand(26) : mood.ui(19, weight: .bold))
             .foregroundStyle(mood.ink)
             .lineLimit(1)
+            .padding(.trailing, mood.handwriting ? 4 : 0)
             .fixedSize()
             .padding(.horizontal, 14)
             .frame(height: ClusterLayout.labelHeight)
@@ -209,13 +232,34 @@ struct ClusterLabelSlip: View {
     }
 }
 
+struct ClusterGhostLabel: View {
+    let label: ClusterLayout.Label
+    let to: CGPoint
+    let animation: Animation
+
+    @State private var gone = false
+
+    var body: some View {
+        let point = gone ? to : label.origin
+        ClusterLabelSlip(text: label.text)
+            .rotationEffect(.degrees(label.tilt))
+            .scaleEffect(gone ? 0.92 : 1, anchor: .topLeading)
+            .offset(x: point.x, y: point.y)
+            .animation(.easeIn(duration: 0.3).delay(0.32)) { $0.opacity(gone ? 0 : 1) }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+            .onAppear { withAnimation(animation) { gone = true } }
+    }
+}
+
 struct ClusterReasonNote: View {
     @Environment(\.mood) private var mood
     let text: String
 
     var body: some View {
         Text(text)
-            .font(mood.ui(15, weight: .semibold))
+            .font(mood.handwriting ? mood.hand(22) : mood.ui(15, weight: .semibold))
+            .fontWeight(.semibold)
             .foregroundStyle(mood.ink)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
