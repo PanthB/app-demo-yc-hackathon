@@ -2,6 +2,8 @@ import SwiftUI
 import UIKit
 
 struct PaperObject: View {
+    static let captionHeight: CGFloat = 26 + CorkboardLayout.labelDrop + 4
+
     let drop: Drop
     let size: CGSize
 
@@ -29,7 +31,7 @@ struct PaperObject: View {
                 }
             case .cutout:
                 if let image = MediaStore.image(at: drop.cutoutPath ?? drop.thumbnailPath) {
-                    Cutout(image: image)
+                    Cutout(image: image, title: drop.frontTitle)
                 } else {
                     RawPaper(drop: drop)
                 }
@@ -122,7 +124,7 @@ private struct Polaroid: View {
             Text(drop.frontTitle ?? "")
                 .font(mood.ui(15, weight: .medium))
                 .foregroundStyle(mood.ink)
-                .lineLimit(1)
+                .lineLimit(2)
                 .minimumScaleFactor(0.8)
                 .padding(.top, 6)
                 .frame(maxWidth: .infinity, minHeight: 40, maxHeight: 40, alignment: .topLeading)
@@ -163,6 +165,7 @@ private struct PlayBadge: View {
 private struct Cutout: View {
     @Environment(\.mood) private var mood
     let image: UIImage
+    let title: String?
 
     private static let border: [CGSize] = (0..<16).map { index in
         let angle = Double(index) / 16 * 2 * .pi
@@ -170,6 +173,20 @@ private struct Cutout: View {
     }
 
     var body: some View {
+        VStack(spacing: 4) {
+            sticker
+                .frame(maxHeight: .infinity)
+            Text(title ?? "")
+                .font(mood.ui(14, weight: .medium))
+                .foregroundStyle(mood.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(height: 22)
+                .padding(.bottom, CorkboardLayout.labelDrop + 4)
+        }
+    }
+
+    private var sticker: some View {
         ZStack {
             ForEach(Self.border.indices, id: \.self) { index in
                 Image(uiImage: image)
@@ -242,10 +259,23 @@ private struct Slip: View {
     let drop: Drop
 
     var body: some View {
-        Scribble(seed: drop.id)
-            .stroke(mood.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-            .frame(height: 28)
-            .padding(EdgeInsets(top: 10, leading: 16, bottom: 14, trailing: 16))
+        VStack(alignment: .leading, spacing: 6) {
+            Scribble(seed: drop.id)
+                .stroke(mood.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                .frame(height: 28)
+            HStack(spacing: 6) {
+                Text(drop.frontTitle ?? "voice note")
+                    .font(mood.ui(14, weight: .medium))
+                    .lineLimit(1)
+                if let seconds = drop.mediaDuration {
+                    Text(DropFace.duration(seconds))
+                        .font(mood.mono(12))
+                        .monospacedDigit()
+                }
+            }
+            .foregroundStyle(mood.ink)
+        }
+        .padding(EdgeInsets(top: 10, leading: 16, bottom: 14, trailing: 16))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(TornPaper(seed: drop.id).fill(mood.paper))
         .paperShadow()
@@ -398,6 +428,7 @@ private struct Postcard: View {
             .padding(9)
         }
         .background(mood.paper)
+        .compositingGroup()
         .paperShadow()
     }
 }
@@ -430,6 +461,7 @@ struct RawPaper: View {
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(mood.paper)
+        .compositingGroup()
         .paperShadow()
     }
 }

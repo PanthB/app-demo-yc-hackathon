@@ -5,10 +5,6 @@ extension Drop {
         status == .pending && !zoneSetByUser
     }
 
-    var isHeldByTape: Bool {
-        !zoneSetByUser && !isPinned && (status != .processed || zoneUnsure)
-    }
-
     var showsRawThing: Bool {
         status != .processed && !zoneSetByUser
     }

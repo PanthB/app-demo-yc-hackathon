@@ -2,26 +2,17 @@ import SwiftUI
 
 struct PinHead: View {
     @Environment(\.mood) private var mood
-    var ringed = false
 
     var body: some View {
         ZStack {
-            Circle()
-                .fill(RadialGradient(
-                    colors: [mood.person.mix(with: .white, by: 0.45), mood.person, mood.personDeep],
-                    center: UnitPoint(x: 0.35, y: 0.3),
-                    startRadius: 0,
-                    endRadius: 10
-                ))
-                .overlay(Circle().stroke(mood.personDeep, lineWidth: 1))
-                .frame(width: 16, height: 16)
-                .contactShadow(mood)
-            if ringed {
-                Circle()
-                    .stroke(mood.ink, lineWidth: 2)
-                    .frame(width: 22, height: 22)
-            }
+            Image("Kit/pin-shadow")
+                .foregroundStyle(mood.shade.opacity(0.35))
+                .offset(y: 1.5)
+            Image("Kit/pin-head")
+                .foregroundStyle(mood.person)
+            Image("Kit/pin-head-shade")
         }
+        .frame(width: 24, height: 24)
         .accessibilityHidden(true)
     }
 }
@@ -32,38 +23,12 @@ struct TapeStrip: View {
 
     var body: some View {
         var random = StableRandom(seed, salt: 31)
-        let turn = random.value(in: 4...10) * (random.value(in: 0...1) < 0.5 ? -1 : 1)
-        return TornEnds(seed: seed)
-            .fill(mood.paper.opacity(0.75))
-            .overlay(TornEnds(seed: seed).stroke(mood.shade.opacity(0.1), lineWidth: 0.5))
-            .frame(width: 46, height: 18)
+        let turn = random.value(in: 3...7) * (random.value(in: 0...1) < 0.5 ? -1 : 1)
+        return Image("Kit/tape-strip")
+            .foregroundStyle(mood.paper.opacity(0.75))
             .contactShadow(mood)
             .rotationEffect(.degrees(turn))
             .accessibilityHidden(true)
-    }
-}
-
-struct TornEnds: Shape {
-    let seed: UUID
-
-    func path(in rect: CGRect) -> Path {
-        var random = StableRandom(seed, salt: 41)
-        var path = Path()
-        let teeth = 6
-        let step = rect.height / CGFloat(teeth)
-        path.move(to: CGPoint(x: rect.minX + 2, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX - 2, y: rect.minY))
-        for index in 1...teeth {
-            let x = rect.maxX - CGFloat(random.value(in: 0...2.5))
-            path.addLine(to: CGPoint(x: x, y: rect.minY + step * CGFloat(index)))
-        }
-        path.addLine(to: CGPoint(x: rect.minX + 2, y: rect.maxY))
-        for index in stride(from: teeth - 1, through: 0, by: -1) {
-            let x = rect.minX + CGFloat(random.value(in: 0...2.5))
-            path.addLine(to: CGPoint(x: x, y: rect.minY + step * CGFloat(index)))
-        }
-        path.closeSubpath()
-        return path
     }
 }
 
@@ -91,7 +56,7 @@ private struct TagPaper: ViewModifier {
             .monospacedDigit()
             .foregroundStyle(mood.ink)
             .lineLimit(1)
-            .fixedSize()
+            .minimumScaleFactor(0.8)
             .padding(.horizontal, 7)
             .frame(height: 22)
             .background(mood.paper, in: RoundedRectangle(cornerRadius: 3))
@@ -107,23 +72,32 @@ extension View {
 
 struct ZoneLabel: View {
     @Environment(\.mood) private var mood
-    let zone: Zone
+    let title: String
+    let count: Int
+    let isNow: Bool
 
     var body: some View {
-        Text(zone.displayName)
-            .font(mood.hand(zone == .now ? 40 : 28))
-            .fontWeight(.bold)
-            .foregroundStyle(mood.ink)
-            .fixedSize()
-            .background(alignment: .bottom) {
-                if zone == .now {
-                    MarkerStroke()
-                        .stroke(mood.person, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                        .frame(height: 6)
-                        .offset(y: -2)
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(title)
+                .font(mood.hand(isNow ? 40 : 28))
+                .fontWeight(.bold)
+                .foregroundStyle(mood.ink)
+                .background(alignment: .bottom) {
+                    if isNow {
+                        MarkerStroke()
+                            .stroke(mood.person, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                            .frame(height: 6)
+                            .offset(y: -2)
+                    }
                 }
-            }
-            .accessibilityAddTraits(.isHeader)
+            Text("\(count)")
+                .font(mood.mono(12, weight: .medium))
+                .foregroundStyle(mood.ink)
+        }
+        .fixedSize()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(count == 1 ? "\(title), 1 thing" : "\(title), \(count) things")
+        .accessibilityAddTraits(.isHeader)
     }
 
     private struct MarkerStroke: Shape {
@@ -153,74 +127,13 @@ struct CornerLabel: View {
     }
 }
 
-struct EnvelopeBack: View {
-    @Environment(\.mood) private var mood
-
-    var body: some View {
-        ZStack(alignment: .top) {
-            Rectangle()
-                .fill(mood.lilac.mix(with: mood.paper, by: 0.35).mix(with: mood.shade, by: 0.06))
-            FlapShape()
-                .fill(mood.lilac.mix(with: mood.paper, by: 0.45))
-                .frame(height: 26)
-                .offset(y: -24)
-        }
-        .paperShadow()
-        .accessibilityHidden(true)
-    }
-
-    private struct FlapShape: Shape {
-        func path(in rect: CGRect) -> Path {
-            var path = Path()
-            path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
-            path.addLine(to: CGPoint(x: rect.midX - 6, y: rect.minY + 2))
-            path.addQuadCurve(to: CGPoint(x: rect.midX + 6, y: rect.minY + 2), control: CGPoint(x: rect.midX, y: rect.minY - 1))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-            path.closeSubpath()
-            return path
-        }
-    }
-}
-
-struct EnvelopeFront: View {
-    @Environment(\.mood) private var mood
-
-    var body: some View {
-        PocketShape(dip: 20)
-            .fill(mood.lilac.mix(with: mood.paper, by: 0.3))
-            .overlay(PocketShape(dip: 20).stroke(mood.lilac.mix(with: mood.ink, by: 0.45).opacity(0.5), lineWidth: 0.8))
-            .shadow(color: mood.shade.opacity(0.16), radius: 2, y: -1)
-            .accessibilityHidden(true)
-    }
-}
-
 struct DonePocket: View {
-    @Environment(\.mood) private var mood
-
     var body: some View {
-        ZStack(alignment: .top) {
-            Rectangle().fill(mood.paper.mix(with: mood.shade, by: 0.05))
-            Rectangle().fill(mood.mint).frame(height: 9)
-            PocketShape(dip: 14)
-                .fill(mood.paper)
-                .overlay(PocketShape(dip: 14).stroke(mood.shade.opacity(0.14), lineWidth: 0.8))
-                .padding(.top, 16)
+        ZStack {
+            Image("Kit/done-pocket-back")
+            Image("Kit/done-pocket-front")
         }
         .paperShadow()
         .accessibilityHidden(true)
-    }
-}
-
-struct PocketShape: Shape {
-    let dip: CGFloat
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        path.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.minY), control: CGPoint(x: rect.midX, y: rect.minY + dip))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
-        path.closeSubpath()
-        return path
     }
 }
