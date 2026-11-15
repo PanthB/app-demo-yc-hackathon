@@ -8,6 +8,7 @@ struct AppDemoApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .dropPipeline()
         }
         .modelContainer(container)
     }
