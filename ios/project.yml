@@ -2,7 +2,7 @@ name: AppDemo
 options:
   bundleIdPrefix: com.panthb
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "26.0"
   createIntermediateGroups: true
 settings:
   base:
@@ -38,6 +38,8 @@ targets:
       - path: Ingest
         excludes: ["*.md", "**/*.md"]
       - path: Sync
+        excludes: ["*.md", "**/*.md"]
+      - path: Glass
         excludes: ["*.md", "**/*.md"]
       - path: Assets
         excludes: ["*.md", "**/*.md"]

@@ -4,6 +4,17 @@
 <dict>
 	<key>APP_GROUP_ID</key>
 	<string>$(APP_GROUP_ID)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>appdemo</string>
+			</array>
+		</dict>
+	</array>
 	<key>CONVEX_URL</key>
 	<string>$(CONVEX_URL)</string>
 </dict>
