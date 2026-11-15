@@ -47,7 +47,6 @@ struct GlassBoard: View {
         .overlay(alignment: .bottomLeading) {
             GlassDoneTray(drops: drops.filter { $0.zone == .done }, now: now, isOpen: $doneOpen)
         }
-        .accessibilityIdentifier("glassBoard")
     }
 
     private func label(_ zone: Zone, layout: GlassLayout) -> some View {
