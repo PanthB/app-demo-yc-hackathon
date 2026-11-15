@@ -5,15 +5,20 @@ struct ClusterShape {
     static let captionHeight: CGFloat = 26
     static let captionSpacing: CGFloat = 8
     static let minWidth: CGFloat = 128
+    static let maxCaption: CGFloat = 190
     static let disc: CGFloat = 102
     static let stripOverlap: CGFloat = 8
 
     let native: CGSize
     let face: CGSize
     let stripHeight: CGFloat
+    let caption: String
+    let isRecord: Bool
+    private let captionWidth: CGFloat
 
-    init(_ drop: Drop) {
-        if drop.objectKind == .record, !drop.showsRawThing {
+    init(_ drop: Drop, now: Date) {
+        isRecord = drop.objectKind == .record && !drop.showsRawThing
+        if isRecord {
             native = CGSize(width: 120, height: 120)
             let words = CGFloat((drop.title ?? "").count) * 7.4
             stripHeight = words > Self.minWidth - 20 ? 48 : 30
@@ -23,10 +28,16 @@ struct ClusterShape {
             face = CGSize(width: (native.width * Self.faceScale).rounded(), height: (native.height * Self.faceScale).rounded())
             stripHeight = 0
         }
+        caption = drop.cardMeta(now: now, beside: drop.previewFace(now: now)) ?? drop.authorLabel
+        captionWidth = min(Self.maxCaption, (37 + CGFloat(caption.count) * 7).rounded())
     }
 
     var size: CGSize {
-        CGSize(width: max(face.width, Self.minWidth), height: face.height + Self.captionSpacing + Self.captionHeight)
+        CGSize(width: max(face.width, Self.minWidth, captionWidth), height: face.height + Self.captionSpacing + Self.captionHeight)
+    }
+
+    var fastener: CGPoint {
+        isRecord ? CGPoint(x: face.width / 2 + 29, y: 9) : CGPoint(x: face.width - 30, y: 0)
     }
 }
 
@@ -45,9 +56,7 @@ struct ClusterItem: View {
     @Environment(BoardClock.self) private var clock
 
     var body: some View {
-        let now = clock.now
-        let preview = drop.previewFace(now: now)
-        let meta = drop.cardMeta(now: now, beside: preview)
+        let preview = drop.previewFace(now: clock.now)
         VStack(spacing: ClusterShape.captionSpacing) {
             Button {
                 select(drop)
@@ -58,20 +67,23 @@ struct ClusterItem: View {
             }
             .buttonStyle(.plain)
             .overlay(alignment: .topLeading) {
-                KindPill(kind: drop.kind)
-                    .padding(.leading, 8)
-                    .padding(.top, 16)
+                fastener
+                    .position(shape.fastener)
                     .allowsHitTesting(false)
             }
-            .overlay(alignment: .top) { fastener }
+            .overlay(alignment: .topLeading) {
+                KindPill(kind: drop.kind)
+                    .offset(x: 6, y: -15)
+                    .allowsHitTesting(false)
+            }
             .contextMenu { menu }
             .matchedTransitionSource(id: drop.id, in: namespace)
             .modifier(Morph(id: drop.id, namespace: namespace, active: morphs))
-            caption(meta ?? drop.authorLabel)
+            caption(shape.caption)
         }
         .frame(width: shape.size.width, height: shape.size.height, alignment: .top)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(spoken(meta: meta, preview: preview))
+        .accessibilityLabel(spoken(preview: preview))
         .accessibilityValue(reasons.joined(separator: " "))
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { select(drop) }
@@ -80,7 +92,7 @@ struct ClusterItem: View {
 
     @ViewBuilder
     private var face: some View {
-        if drop.objectKind == .record, !drop.showsRawThing {
+        if shape.isRecord {
             VStack(spacing: -ClusterShape.stripOverlap) {
                 PaperObject(drop: drop, size: shape.native)
                     .scaleEffect(ClusterShape.faceScale)
@@ -106,9 +118,11 @@ struct ClusterItem: View {
     @ViewBuilder
     private var fastener: some View {
         if drop.isPinned {
-            PinHead().offset(y: -3)
+            PinHead()
+        } else if shape.isRecord {
+            TapeStrip(seed: drop.id).rotationEffect(.degrees(24))
         } else {
-            TapeStrip(seed: drop.id).offset(y: -9)
+            TapeStrip(seed: drop.id)
         }
     }
 
@@ -150,11 +164,11 @@ struct ClusterItem: View {
         }
     }
 
-    private func spoken(meta: String?, preview: PreviewFace) -> String {
+    private func spoken(preview: PreviewFace) -> String {
         [
             drop.kind.word,
             drop.cardTitle(beside: preview) ?? preview.words,
-            meta,
+            shape.caption == drop.authorLabel ? nil : shape.caption,
             "saved by \(drop.authorLabel)",
             drop.isPinned ? "pinned" : clusterLabel.map { "in \($0)" }
         ]

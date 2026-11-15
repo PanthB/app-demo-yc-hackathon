@@ -9,6 +9,7 @@ struct ClusterBoardView: View {
     var select: (Drop) -> Void = { _ in }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(BoardClock.self) private var clock
     @State private var known: Set<UUID>?
     @State private var held: [UUID: Hold] = [:]
     @State private var flights: [UUID: Flight] = [:]
@@ -176,12 +177,13 @@ struct ClusterBoardView: View {
 
     private func makePlan(width: CGFloat, holding: Set<UUID>) -> Plan {
         let facts = Dictionary(drops.map { ($0.id, ClusterFacts($0)) }, uniquingKeysWith: { first, _ in first })
+        let now = clock.now
         var shapes: [UUID: ClusterShape] = [:]
         for drop in drops {
-            shapes[drop.id] = ClusterShape(drop)
+            shapes[drop.id] = ClusterShape(drop, now: now)
         }
         func member(_ drop: Drop) -> ClusterLayout.Member {
-            let shape = shapes[drop.id] ?? ClusterShape(drop)
+            let shape = shapes[drop.id] ?? ClusterShape(drop, now: now)
             return ClusterLayout.Member(id: drop.id, size: shape.size, faceHeight: shape.face.height)
         }
         let byAge: (Drop, Drop) -> Bool = { ($0.createdAt, $0.id.uuidString) < ($1.createdAt, $1.id.uuidString) }
@@ -210,6 +212,8 @@ struct ClusterBoardView: View {
 
         var groups: [ClusterLayout.Group] = []
         var labels: [UUID: String] = [:]
+        var pairOrder: [UUID] = []
+        var home: [UUID: String] = [:]
         if !pinned.isEmpty {
             let sorted = pinned.sorted { ($0.pinnedAt ?? .distantPast) > ($1.pinnedAt ?? .distantPast) }
             groups.append(ClusterLayout.Group(id: "pinned", label: "pinned", shelf: .pinned, members: sorted.map(member)))
@@ -220,6 +224,8 @@ struct ClusterBoardView: View {
             let label = members.reversed().lazy.compactMap { CardWords.clean(facts[$0.id]?.clusterLabel) }.first ?? "together"
             for drop in members {
                 labels[drop.id] = label
+                pairOrder.append(drop.id)
+                home[drop.id] = clusterId
             }
             groups.append(ClusterLayout.Group(id: "cluster-\(clusterId)", label: label, shelf: .cluster, members: members.map(member)))
         }
@@ -230,12 +236,9 @@ struct ClusterBoardView: View {
             groups.append(ClusterLayout.Group(id: "done", label: "done", shelf: .done, members: done.sorted { $0.updatedAt > $1.updatedAt }.map(member)))
         }
 
-        let layout = ClusterLayout(groups: groups, width: width)
-        let links = ClusterLayout.links(
-            order: layout.order,
-            spots: layout.spots,
-            neighbors: facts.mapValues(\.neighbors)
-        )
+        let pairs = ClusterLayout.pairs(order: pairOrder, cluster: home, neighbors: facts.mapValues(\.neighbors))
+        let layout = ClusterLayout(groups: groups, pairs: pairs, width: width)
+        let links = layout.links(pairs)
         let titles = Dictionary(drops.map { ($0.id, $0.title?.lowercased() ?? $0.kind.word) }, uniquingKeysWith: { first, _ in first })
         var reasons: [UUID: [String]] = [:]
         for link in links {

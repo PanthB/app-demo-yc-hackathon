@@ -64,14 +64,20 @@ struct ClusterLayout {
         }
     }
 
+    struct Pair {
+        let first: UUID
+        let second: UUID
+        let reason: String
+    }
+
     static let margin: CGFloat = 16
     static let top: CGFloat = 16
     static let labelHeight: CGFloat = 44
-    static let labelGap: CGFloat = 20
+    static let labelGap: CGFloat = 28
     static let columnGap: CGFloat = 20
-    static let rowGap: CGFloat = 26
-    static let stagger: CGFloat = 8
-    static let groupGap: CGFloat = 72
+    static let rowGap: CGFloat = 30
+    static let stagger: CGFloat = 6
+    static let groupGap: CGFloat = 96
     static let maxTilt = 1.4
 
     private(set) var spots: [UUID: Spot] = [:]
@@ -79,14 +85,14 @@ struct ClusterLayout {
     private(set) var order: [UUID] = []
     private(set) var height: CGFloat = 0
 
-    init(groups: [Group], width: CGFloat) {
+    init(groups: [Group], pairs: [Pair], width: CGFloat) {
         var y = Self.top
         var placed = 0
         for group in groups where !group.members.isEmpty {
             let labelTop = y
             y += Self.labelHeight + Self.labelGap
             let rows = group.shelf == .cluster
-                ? Self.packRows(group.members, width: width - 2 * Self.margin)
+                ? Self.orient(Self.packRows(Self.arrange(group.members, pairs: pairs), width: width - 2 * Self.margin), pairs: pairs)
                 : Self.flowRows(group.members, width: width - 2 * Self.margin)
             var leading = width
             for (rowIndex, row) in rows.enumerated() {
@@ -171,37 +177,101 @@ struct ClusterLayout {
         return rows
     }
 
-    static func links(
+    static func arrange(_ members: [Member], pairs: [Pair]) -> [Member] {
+        let index = Dictionary(members.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var adjacent: [Int: [Int]] = [:]
+        for pair in pairs {
+            guard let a = index[pair.first], let b = index[pair.second] else { continue }
+            adjacent[a, default: []].append(b)
+            adjacent[b, default: []].append(a)
+        }
+        var seen = Set<Int>()
+        var arranged: [Int] = []
+        for start in members.indices where !seen.contains(start) {
+            var queue = [start]
+            seen.insert(start)
+            while !queue.isEmpty {
+                let current = queue.removeFirst()
+                arranged.append(current)
+                for next in (adjacent[current] ?? []).sorted() where !seen.contains(next) {
+                    seen.insert(next)
+                    queue.append(next)
+                }
+            }
+        }
+        return arranged.map { members[$0] }
+    }
+
+    static func orient(_ rows: [[Member]], pairs: [Pair]) -> [[Member]] {
+        var partners: [UUID: [UUID]] = [:]
+        for pair in pairs {
+            partners[pair.first, default: []].append(pair.second)
+            partners[pair.second, default: []].append(pair.first)
+        }
+        var column: [UUID: CGFloat] = [:]
+        var result: [[Member]] = []
+        for row in rows {
+            var chosen = row
+            if row.count == 2 {
+                func cost(_ candidate: [Member]) -> CGFloat {
+                    var total: CGFloat = 0
+                    for (index, member) in candidate.enumerated() {
+                        for partner in partners[member.id] ?? [] {
+                            if let other = column[partner] { total += abs(CGFloat(index) - other) }
+                        }
+                    }
+                    return total
+                }
+                let swapped = [row[1], row[0]]
+                if cost(swapped) < cost(row) { chosen = swapped }
+            }
+            for (index, member) in chosen.enumerated() {
+                column[member.id] = chosen.count == 1 ? 0.5 : CGFloat(index)
+            }
+            result.append(chosen)
+        }
+        return result
+    }
+
+    static func pairs(
         order: [UUID],
-        spots: [UUID: Spot],
+        cluster: [UUID: String],
         neighbors: [UUID: [ClusterFacts.Neighbor]]
-    ) -> [Link] {
+    ) -> [Pair] {
         var counts: [UUID: Int] = [:]
-        var pairs = Set<String>()
+        var taken = Set<String>()
         var bridges = Set<String>()
-        var result: [Link] = []
-        let obstacles = spots.values.map { $0.frame.insetBy(dx: -4, dy: -4) }
+        var result: [Pair] = []
         for rank in 0..<2 {
             for id in order {
-                guard let spot = spots[id], spot.shelf == .cluster,
+                guard let home = cluster[id],
                       let list = neighbors[id], rank < list.count,
                       let other = UUID(uuidString: list[rank].clientId), other != id,
-                      let partner = spots[other], partner.shelf == .cluster
+                      let away = cluster[other]
                 else { continue }
                 let key = [id.uuidString, other.uuidString].sorted().joined(separator: "|")
-                guard !pairs.contains(key), counts[id, default: 0] < 2, counts[other, default: 0] < 2 else { continue }
-                if spot.group != partner.group {
-                    let bridge = [spot.group, partner.group].sorted().joined(separator: "|")
+                guard !taken.contains(key), counts[id, default: 0] < 2, counts[other, default: 0] < 2 else { continue }
+                if home != away {
+                    let bridge = [home, away].sorted().joined(separator: "|")
                     guard !bridges.contains(bridge) else { continue }
                     bridges.insert(bridge)
                 }
-                pairs.insert(key)
+                taken.insert(key)
                 counts[id, default: 0] += 1
                 counts[other, default: 0] += 1
-                result.append(link(key: key, first: id, second: other, reason: list[rank].reason, from: spot.faceCenter, to: partner.faceCenter, obstacles: obstacles))
+                result.append(Pair(first: id, second: other, reason: list[rank].reason))
             }
         }
         return result
+    }
+
+    func links(_ pairs: [Pair]) -> [Link] {
+        let obstacles = spots.values.map { $0.frame.insetBy(dx: -4, dy: -4) }
+        return pairs.compactMap { pair in
+            guard let spot = spots[pair.first], let partner = spots[pair.second] else { return nil }
+            let key = [pair.first.uuidString, pair.second.uuidString].sorted().joined(separator: "|")
+            return Self.link(key: key, first: pair.first, second: pair.second, reason: pair.reason, from: spot.faceCenter, to: partner.faceCenter, obstacles: obstacles)
+        }
     }
 
     private static func link(key: String, first: UUID, second: UUID, reason: String, from: CGPoint, to: CGPoint, obstacles: [CGRect]) -> Link {
