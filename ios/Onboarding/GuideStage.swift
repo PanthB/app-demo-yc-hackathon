@@ -472,11 +472,12 @@ struct GuideBottomBar: View {
                 .glassEffect(.regular, in: .circle)
             Image(systemName: "plus")
                 .font(.system(size: 18, weight: .bold))
-                .frame(width: 44, height: 44)
+                .frame(width: 42, height: 42)
                 .glassEffect(.regular, in: .circle)
                 .guideTarget(.plus)
         }
         .foregroundStyle(.white)
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 }
 
