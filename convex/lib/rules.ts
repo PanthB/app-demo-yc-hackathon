@@ -28,8 +28,8 @@ const MUSIC_HOSTS = /(^|\.)(spotify\.com|music\.apple\.com|soundcloud\.com|bandc
 export const isMusicLink = (url?: string) => MUSIC_HOSTS.test(hostOf(url) ?? "");
 
 const STREET = /^\d*\s*[a-z0-9 .'-]+\s(st|street|ave|avenue|blvd|boulevard|rd|road|way|dr|drive|ln|lane|pl|ct|court|ter|terrace|hwy|highway)\.?$/i;
-export const namedPlace = (hint: string | undefined, ...others: (string | undefined)[]) =>
-  hint && STREET.test(hint.trim()) ? (others.find((o) => o && !STREET.test(o.trim())) ?? hint) : (hint ?? others.find(Boolean));
+export const namedPlace = (hint: string | undefined, found: string | undefined, linkTitle: string | undefined) =>
+  hint && STREET.test(hint.trim()) ? ([found, linkTitle].find((o) => o && !STREET.test(o.trim())) ?? hint) : (hint ?? found);
 
 const CLIP_HOSTS = /(^|\.)(tiktok\.com|instagram\.com|youtube\.com|youtu\.be)$/;
 export const isClipLink = (url?: string) => CLIP_HOSTS.test(hostOf(url) ?? "");
