@@ -16,6 +16,7 @@ struct NightBoardView: View {
     @State private var following: UUID?
     @State private var touchedSinceFollow = false
     @State private var toast: NightToastItem?
+    @State private var unreadArrival: UUID?
     @State private var sectionInView: String?
     @State private var landed = 0
     @State private var grouped = 0
@@ -116,14 +117,15 @@ struct NightBoardView: View {
                         .navigationTransition(.zoom(sourceID: id, in: namespace))
                 }
             }
-            .overlay(alignment: .top) {
+            .overlay(alignment: .bottom) {
                 if let toast {
                     NightToast(text: toast.text) {
                         reveal(toast.id, in: sections, proxy: proxy)
                         withAnimation(reduceMotion ? nil : .smooth) { self.toast = nil }
                     }
-                    .padding(.top, 8)
-                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    .padding(.horizontal, NightStyle.margin)
+                    .padding(.bottom, 84)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -149,9 +151,16 @@ struct NightBoardView: View {
                     touchedSinceFollow = false
                     landed += 1
                     reveal(drop.id, in: sections, proxy: proxy)
+                } else if drop.isArriving {
+                    unreadArrival = drop.id
                 } else {
                     withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: drop.id, text: ShellToast.words(for: drop)) }
                 }
+            }
+            .onChange(of: unreadArrival.flatMap { id in drops.first { $0.id == id }?.isArriving }) { _, arriving in
+                guard arriving == false, let id = unreadArrival, let drop = drops.first(where: { $0.id == id }) else { return }
+                unreadArrival = nil
+                withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: drop.id, text: ShellToast.words(for: drop)) }
             }
             .onChange(of: following.flatMap { Self.section(of: $0, in: sections) }) { before, after in
                 guard let id = following, before != nil, let after else { return }
@@ -170,6 +179,13 @@ struct NightBoardView: View {
             try? await Task.sleep(for: .seconds(3.5))
             guard !Task.isCancelled else { return }
             withAnimation(reduceMotion ? nil : .smooth) { toast = nil }
+        }
+        .task(id: unreadArrival) {
+            guard let id = unreadArrival else { return }
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled, unreadArrival == id, let drop = allDrops.first(where: { $0.id == id }) else { return }
+            unreadArrival = nil
+            withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: id, text: "\(CardWords.clean(drop.authorName) ?? "someone") dropped something.") }
         }
         .task(id: following) {
             guard following != nil else { return }
