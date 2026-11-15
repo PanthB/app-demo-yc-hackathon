@@ -12,7 +12,10 @@ export default defineSchema({
     personId: v.string(),
     name: v.string(),
     personalBoardId: v.optional(v.string()),
-  }).index("by_personId", ["personId"]),
+    tokenIdentifier: v.optional(v.string()),
+  })
+    .index("by_personId", ["personId"])
+    .index("by_tokenIdentifier", ["tokenIdentifier"]),
   boards: defineTable({
     boardId: v.string(),
     name: v.string(),
