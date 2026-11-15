@@ -412,7 +412,7 @@ private struct Postcard: View {
                     Text(drop.frontTitle ?? drop.linkHost ?? "")
                         .font(mood.ui(15, weight: .medium))
                         .foregroundStyle(mood.ink)
-                        .lineLimit(2)
+                        .lineLimit(3)
                         .minimumScaleFactor(0.85)
                         .padding(.top, 4)
                     Spacer(minLength: 6)
