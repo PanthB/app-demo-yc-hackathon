@@ -4,10 +4,16 @@ import UIKit
 
 final class ShareViewController: UIViewController {
     private let state = ShareState()
+    private let boardId = AppGroup.defaults.string(forKey: "currentBoardId")
+    private let sharedBoardName = AppGroup.defaults.bool(forKey: "currentBoardShared")
+        ? AppGroup.defaults.string(forKey: "currentBoardName")
+        : nil
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        let host = UIHostingController(rootView: ShareNote(state: state, close: { [weak self] in self?.close() }))
+        view.backgroundColor = .clear
+        let host = UIHostingController(rootView: ShareNote(state: state, boardName: sharedBoardName, close: { [weak self] in self?.close() }))
+        host.view.backgroundColor = .clear
         addChild(host)
         host.view.frame = view.bounds
         host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -41,10 +47,13 @@ final class ShareViewController: UIViewController {
         }
         let items = extensionContext?.inputItems as? [NSExtensionItem] ?? []
         let saved = await ShareCollector.save(items, to: inbox)
-        if saved == 0 {
+        for id in saved {
+            if let boardId { AppGroup.defaults.set(boardId, forKey: "inboxBoard.\(id.uuidString)") }
+        }
+        if saved.isEmpty {
             Logger.share.error("nothing in this share could be kept")
         }
-        return saved > 0
+        return !saved.isEmpty
     }
 }
 

@@ -1,5 +1,36 @@
 # Sync
 
-Owner: the share and ingest thread (PAN-5). The Convex sync client. It uses the one `convex` client from `ios/App/Convex.swift`, and it applies pipeline zones through `Drop.applyDecidedZone(_:unsure:)` so a zone the person set is never overridden.
+Owner: the share and ingest thread (PAN-5). Identity, boards, and the two-way sync between SwiftData and Convex. It uses the one `convex` client from `ios/App/Convex.swift` and follows `handoffs/APPD-1/convex-contract.md`.
 
 Compiled into the app target by folder (see `ios/project.yml`), so a new file here needs no project edit. Markdown files are excluded from the build.
+
+## What the shell uses
+
+`.dropPipeline()` on the root view puts two objects in the environment for everything under it.
+
+- **`BoardsStore`** (`@Environment(BoardsStore.self)`), observable:
+  - `boards`: every board the person is in, "my board" first. Each `RemoteBoard` has `name`, `shared`, `inviteCode`, `inviteLink` (`appdemo://join/<code>`) and `members` with `name` and `color`.
+  - `currentBoardId`, `currentBoard` and `currentBoardName`. Show the drops whose `boardId == currentBoardId`.
+  - `show(boardId)` switches boards.
+  - `entry = .create` or `entry = .join(code: nil)` opens the sheet that makes or joins a shared board. The sheet asks for the person's name the first time and switches to the new board.
+  - `personId` is "me" for the everyone and mine filter.
+- **`BoardSync`** (`@Environment(BoardSync.self)`): `setPinned(_:_:)`, `move(_:to:)`, `markDone(_:)` and `undoMove(_:)`. Each changes SwiftData at once and sends the mutation. The shell builds `DropActions` from them.
+- **`AddMenu()`** is the add slot's control: a native menu with photo (PhotosPicker), paste link and note. It has no button style of its own, so the shell styles it. What it adds goes through the same inbox as a share.
+
+An `appdemo://join/<code>` link opens the join sheet with the code filled in.
+
+## How the sync works
+
+- **On every wake** (launch and each return to the foreground): ingest the inbox, register the person with `people:upsert`, subscribe to `boards:mine`, subscribe to `drops:list` for every board the person is in, and send drops that are still waiting.
+- **Sending a drop.** A drop with no `remoteId` and status `pending` is read on the phone first (see `ios/Ingest`), its pictures are uploaded through `files:generateUploadUrl` (at most 4), and then `drops:submit` is called with the drop's id as `clientId`. Submit is idempotent, so a drop that didn't get through is sent again 8 seconds later and on the next wake. Seed drops are never sent, because they're already `processed`.
+- **Reading a board.** Each `drops:list` push is matched to local drops by `clientId`. New ones are inserted, so a friend's drop appears live. Fields the backend read are filled in, the author's name and color and the suggestion are copied as they are, and a preview picture is downloaded to `media/<drop id>/remote.jpg` when the phone has none.
+- **Zones.** A pipeline zone goes through `applyDecidedZone`, so it never moves a drop a person placed. A zone a person set (`zoneSetByUser`) goes through `moveByUser`, whoever in the board set it.
+- **Pins and moves.** While a pin or move is on its way out, older lists don't undo it.
+- **A row the app can't read** is skipped and logged, and the rest of the board still arrives.
+- **Numbers** are always sent as `Double`, and times as milliseconds.
+
+## Identity
+
+`DeviceIdentity.personId` is the person. The personal board id the backend returns is kept in the app group, with the person's name and the current board, so the share extension can name the board. In DEBUG, `-BoardDebugPerson <personId>` makes the device that person, and a `seed-` person opens on their first shared board.
+
+Errors are logged with `Logger.sync`.

@@ -6,7 +6,7 @@ This target compiles `ios/ShareExtension` and `ios/Shared` by folder, with `APPL
 
 ## What it does
 
-`ShareViewController` hands the shared items to `ShareCollector`, which writes them to the app group inbox with `Inbox.shared`, then shows `ShareNote` ("dropped it, i'll find it a spot.") for 2 seconds, or until it is tapped, and closes. It makes no network calls and reads nothing but file metadata. The app does the slow work after it ingests the inbox.
+`ShareViewController` hands the shared items to `ShareCollector`, which writes them to the app group inbox with `Inbox.shared`, then shows `ShareNote`, a native glass card over the app the person shared from, for 2 seconds or until it is tapped, and closes. The card says "dropped it, i'll find it a spot.", or "dropped it in sf crew." when the current board is a shared one. The extension records that board for each item it saved, so the drop lands where the card said. It makes no network calls and reads nothing but file metadata. The app does the slow work after it ingests the inbox.
 
 Files are copied on disk with `loadFileRepresentation`, never loaded into memory. An image that arrives only as an object, with no file behind it, is the one exception, because it is already in memory.
 
