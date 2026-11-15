@@ -25,6 +25,8 @@ const EVENT_WORDS = /\b(concert|show|tickets?|festival|party|gig|screening|class
 const PLACE_WORDS = /\b(ramen|sushi|tacos?|pizza|burgers?|noodles?|dumplings?|bakery|brunch|dinner|lunch|coffee|matcha|cafe|caf\u00e9|bar|restaurant|museum|gallery|park|beach|hike|trail|thrift|vintage|market|shop|store|bookstore|spot)\b/i;
 const MUSIC_HOSTS = /(^|\.)(spotify\.com|music\.apple\.com|soundcloud\.com|bandcamp\.com|tidal\.com)$/;
 
+export const isMusicLink = (url?: string) => MUSIC_HOSTS.test(hostOf(url) ?? "");
+
 export const hostOf = (url?: string) => {
   if (!url) return undefined;
   try {

@@ -1,11 +1,13 @@
 import { env } from "../_generated/server";
 
 const OPENROUTER = "https://openrouter.ai/api";
-export const JEV_MODEL = "typesafe/jev-1.14";
 export const CLAIRIC = "cloudflare/clairic";
-export const VISION_STAND_IN = "deepseek/deepseek-v4.1-flash-1017";
+export const FREE_READER = "particle-ai/particle-1:free";
+export const FREE_READER_BACKUP = "nvidia/nemotron-3.5-super-vl:free";
+export const FREE_DECIDER = "perplexity/pplx-decider-v1.3:free";
 
-export const readerModel = () => env.READER_MODEL?.trim() || CLAIRIC;
+export const readerModel = () => env.READER_MODEL?.trim() || FREE_READER;
+export const deciderModel = () => env.DECIDER_MODEL?.trim() || FREE_DECIDER;
 export const hasOpenRouter = () => Boolean(env.OPENROUTER_API_KEY);
 export const hasSupermemory = () => Boolean(env.SUPERMEMORY_API_KEY);
 
@@ -78,8 +80,8 @@ async function post(path: string, body: unknown, timeoutMs: number) {
   return JSON.parse(text) as Record<string, unknown>;
 }
 
-export async function jevDecide(state: unknown, questions: Record<string, unknown>) {
-  const result = await post("/alpha/decisions", { model: JEV_MODEL, state, questions }, 20_000);
+export async function decide(state: unknown, questions: Record<string, unknown>) {
+  const result = await post("/alpha/decisions", { model: deciderModel(), state, questions }, 20_000);
   return result.answers as Record<string, DecisionAnswer>;
 }
 
