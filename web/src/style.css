@@ -111,6 +111,10 @@ main,
   padding-left: 8px;
 }
 
+.members:empty {
+  display: none;
+}
+
 .live {
   display: inline-flex;
   align-items: center;

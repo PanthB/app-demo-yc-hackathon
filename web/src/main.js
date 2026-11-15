@@ -3,7 +3,7 @@ import { anyApi } from "convex/server";
 import { icon } from "./icons.js";
 
 const DEPLOYMENT = "https://adorable-coyote-696.convex.cloud";
-const BOARD_ID = "sf-crew";
+const BOARD_ID = import.meta.env.VITE_BOARD_ID ?? "sf-crew";
 
 const PALETTE = {
   orange: "#ff9f0a",
@@ -36,7 +36,8 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const state = { drops: null, ideas: [], view: "mood" };
 const cards = new Map();
 const ideaRows = new Map();
-let seen = null;
+const arrivals = new Set();
+let known = null;
 let toastTimer = 0;
 
 const client = new ConvexClient(DEPLOYMENT);
@@ -83,7 +84,7 @@ function update() {
   if (first || reduceMotion.matches || !document.startViewTransition) {
     render();
   } else {
-    document.startViewTransition(render);
+    document.startViewTransition(render).ready.catch(() => {});
   }
 }
 
@@ -177,7 +178,7 @@ function sectionNode(section, used) {
     }),
   );
   node.append(heading, grid);
-  if (section.ideas) node.append(ideasNode(section.ideas));
+  if (section.ideas && (section.ideas.searching || section.ideas.suggestions.length > 0)) node.append(ideasNode(section.ideas));
   return node;
 }
 
@@ -189,7 +190,7 @@ function cardFor(drop) {
 
   const el = linkOrBlock(face.link, "card");
   el.style.viewTransitionName = "d-" + slug(drop.clientId);
-  if (!cached && seen && !seen.has(drop.clientId)) el.classList.add("arrived");
+  if (arrivals.delete(drop.clientId)) el.classList.add("arrived");
 
   const media = document.createElement("div");
   media.className = "media";
@@ -273,7 +274,7 @@ function ideasNode(group) {
   wrap.className = "ideas";
   wrap.append(text("h3", "ideas for this group"));
   if (group.suggestions.length === 0) {
-    wrap.append(text("p", group.searching ? "looking for some…" : "none yet.", "quiet small"));
+    wrap.append(text("p", "looking for some…", "quiet small"));
     return wrap;
   }
   const list = document.createElement("div");
@@ -327,16 +328,17 @@ function renderMembers() {
 }
 
 function announceNew(drops) {
-  if (seen) {
-    const added = drops.find((drop) => !seen.has(drop.clientId));
-    if (added) showToast(added);
+  if (known) {
+    const added = drops.filter((drop) => !known.has(drop.clientId));
+    for (const drop of added) arrivals.add(drop.clientId);
+    if (added.length > 0) showToast(added[0]);
   }
-  seen = new Set(drops.map((drop) => drop.clientId));
+  known = new Set(drops.map((drop) => drop.clientId));
 }
 
 function showToast(drop) {
   toastEl.dataset.clientId = drop.clientId;
-  toastEl.textContent = (clean(drop.authorName) ?? "someone") + " just saved something. tap to see it.";
+  toastEl.textContent = (clean(drop.authorName) ?? "someone") + " just added something.";
   toastEl.hidden = false;
   requestAnimationFrame(() => toastEl.classList.add("shown"));
   clearTimeout(toastTimer);
