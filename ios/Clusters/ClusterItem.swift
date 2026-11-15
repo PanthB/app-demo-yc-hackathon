@@ -230,12 +230,29 @@ struct ClusterReasonNote: View {
 }
 
 struct ClusterString: Shape {
-    let link: ClusterLayout.Link
+    var from: CGPoint
+    var control: CGPoint
+    var to: CGPoint
+
+    init(link: ClusterLayout.Link) {
+        from = link.from
+        control = link.control
+        to = link.to
+    }
+
+    var animatableData: AnimatablePair<AnimatablePair<CGPoint.AnimatableData, CGPoint.AnimatableData>, CGPoint.AnimatableData> {
+        get { AnimatablePair(AnimatablePair(from.animatableData, control.animatableData), to.animatableData) }
+        set {
+            from.animatableData = newValue.first.first
+            control.animatableData = newValue.first.second
+            to.animatableData = newValue.second
+        }
+    }
 
     func path(in rect: CGRect) -> Path {
         var path = Path()
-        path.move(to: link.from)
-        path.addQuadCurve(to: link.to, control: link.control)
+        path.move(to: from)
+        path.addQuadCurve(to: to, control: control)
         return path
     }
 }

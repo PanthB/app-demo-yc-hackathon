@@ -12,6 +12,9 @@ struct ClusterBoardView: View {
     @Environment(BoardClock.self) private var clock
     @State private var known: Set<UUID>?
     @State private var held: [UUID: Hold] = [:]
+    @State private var readySince: [UUID: Date] = [:]
+    @State private var scroll = ScrollPosition(edge: .top)
+    @State private var aimed = false
     @State private var flights: [UUID: Flight] = [:]
     @State private var viewport: CGRect = .zero
     @State private var boardWidth: CGFloat = 0
@@ -20,7 +23,7 @@ struct ClusterBoardView: View {
 
     private let mood = Mood.sunny
     private static let dwell: Duration = .milliseconds(1100)
-    private static let flight: Animation = .spring(response: 0.62, dampingFraction: 0.84)
+    private static let flight: Animation = .spring(response: 0.55, dampingFraction: 0.86)
 
     private struct Hold {
         let point: CGPoint
@@ -47,6 +50,14 @@ struct ClusterBoardView: View {
         return nil
     }
 
+    private static var debugCluster: String? {
+        #if DEBUG
+        return UserDefaults.standard.string(forKey: "ClusterDebugCluster").map { "cluster-\($0)" }
+        #else
+        return nil
+        #endif
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
@@ -62,7 +73,15 @@ struct ClusterBoardView: View {
                     }
             }
             .scrollIndicators(.hidden)
+            .scrollPosition($scroll)
             .defaultScrollAnchor(Self.debugAnchor)
+            .onChange(of: plan.layout.labels.count, initial: true) {
+                guard !aimed, let target = Self.debugCluster,
+                      let label = plan.layout.labels.first(where: { $0.id == target })
+                else { return }
+                aimed = true
+                scroll.scrollTo(y: label.origin.y - 12)
+            }
             .onScrollGeometryChange(for: CGRect.self, of: { $0.visibleRect }) { _, rect in
                 viewport = rect
             }
@@ -310,10 +329,10 @@ struct ClusterBoardView: View {
     private func watch(_ id: UUID) {
         Task { @MainActor in
             try? await Task.sleep(for: Self.dwell)
-            for _ in 0..<24 {
+            for _ in 0..<48 {
                 guard held[id] != nil else { return }
                 releaseReady()
-                try? await Task.sleep(for: .milliseconds(500))
+                try? await Task.sleep(for: .milliseconds(250))
             }
             guard held[id] != nil else { return }
             Logger.app.error("drop \(id.uuidString, privacy: .public) waited too long for its cluster, so it goes on its own")
@@ -325,19 +344,23 @@ struct ClusterBoardView: View {
         let now = Date.now
         for (id, hold) in held {
             let waited = now.timeIntervalSince(hold.since)
-            guard waited >= 1.1, flights[id] == nil, let drop = drops.first(where: { $0.id == id }) else { continue }
+            guard flights[id] == nil, let drop = drops.first(where: { $0.id == id }) else { continue }
             let facts = ClusterFacts(drop)
             let ready = facts.clusterId != nil
                 || drop.status == .failed
                 || drop.zone == .done
                 || drop.isPinned
                 || (drop.status == .processed && facts.vibes.isEmpty && waited >= 3)
-            if ready { fly(id) }
+            guard ready else { continue }
+            let since = readySince[id] ?? now
+            if readySince[id] == nil { readySince[id] = now }
+            if waited >= 1.1, now.timeIntervalSince(since) >= 0.6 { fly(id) }
         }
     }
 
     private func fly(_ id: UUID) {
         guard let hold = held[id], flights[id] == nil else { return }
+        readySince[id] = nil
         if reduceMotion {
             withAnimation(.easeInOut(duration: 0.25)) { held[id] = nil }
             settles += 1
