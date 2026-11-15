@@ -4,6 +4,7 @@ struct NightCard: View {
     let drop: Drop
     var wide = false
     @Environment(BoardClock.self) private var clock
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let now = clock.now
@@ -65,10 +66,10 @@ struct NightCard: View {
         VStack(alignment: .leading, spacing: 4) {
             lead(face)
             if let title = drop.cardTitle(beside: face) {
-                Text(title).font(NightStyle.itemTitle).lineLimit(2)
+                Text(title).font(NightStyle.itemTitle).lineLimit(typeSize.isAccessibilitySize ? nil : 2)
             }
             if let meta = meta(face: face, now: now) {
-                Text(meta).font(NightStyle.body).foregroundStyle(NightStyle.secondary).monospacedDigit().lineLimit(1)
+                Text(meta).font(NightStyle.body).foregroundStyle(NightStyle.secondary).monospacedDigit().lineLimit(2)
             }
             if let suggestion = drop.liveSuggestion(now: now) {
                 SuggestionLine(suggestion: suggestion).font(NightStyle.body)
@@ -119,8 +120,12 @@ struct NightCard: View {
     }
 
     private func background(_ face: PreviewFace) -> Color {
-        guard drop.kind == .song, case .image(let art) = face else { return NightStyle.surface }
-        return ArtworkTone.color(of: art, key: drop.thumbnailPath ?? drop.id.uuidString)
+        switch face {
+        case .image(let picture), .cutout(let picture):
+            ArtworkTone.color(of: picture, key: drop.thumbnailPath ?? drop.cutoutPath ?? drop.mediaPaths.first ?? drop.id.uuidString)
+        default:
+            NightStyle.surface
+        }
     }
 }
 
@@ -165,6 +170,7 @@ struct NightKindTag: View {
         .padding(.horizontal, 8)
         .frame(height: NightStyle.pillHeight)
         .glassEffect(.regular, in: .capsule)
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(length.map { "\(kind.word), \($0)" } ?? kind.word)
     }
@@ -176,6 +182,7 @@ struct NightPinBadge: View {
             .font(NightStyle.caption)
             .frame(width: NightStyle.pillHeight, height: NightStyle.pillHeight)
             .glassEffect(.regular, in: .circle)
+            .dynamicTypeSize(...DynamicTypeSize.xxLarge)
             .accessibilityLabel("pinned")
     }
 }

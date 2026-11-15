@@ -19,6 +19,8 @@ struct NightHeader: View {
     let isShared: Bool
     @Binding var filter: DropFilter
     let showBoard: (String) -> Void
+    let startBoard: () -> Void
+    let joinBoard: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -34,6 +36,9 @@ struct NightHeader: View {
                         }
                     }
                 }
+                Divider()
+                Button("start a shared board", systemImage: "plus") { startBoard() }
+                Button("join with a code", systemImage: "person.badge.plus") { joinBoard() }
             } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(boardName)
@@ -98,6 +103,7 @@ struct NightFilterPicker: View {
         }
         .padding(4)
         .glassEffect(.regular, in: .capsule)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .sensoryFeedback(.selection, trigger: filter)
     }
 }
@@ -114,19 +120,6 @@ struct NightMembers: View {
                     NightAvatar(name: member.name, colorName: member.color, personId: member.id)
                         .padding(1.5)
                         .background(NightStyle.ink, in: .circle)
-                        .overlay(alignment: .bottomTrailing) {
-                            if let streak = streaks[member.id], streak.days > 1 {
-                                Text("\(streak.days)")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .monospacedDigit()
-                                    .foregroundStyle(.black)
-                                    .frame(minWidth: 15, minHeight: 15)
-                                    .background(NightStyle.flame, in: .circle)
-                                    .padding(1)
-                                    .background(NightStyle.ink, in: .circle)
-                                    .offset(x: 4, y: 4)
-                            }
-                        }
                 }
             }
             .padding(.horizontal, 8)

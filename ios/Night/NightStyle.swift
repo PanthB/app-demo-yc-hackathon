@@ -20,6 +20,7 @@ enum NightStyle {
     static let target: CGFloat = 44
 
     static let pageTitle = Font.largeTitle.bold()
+    static let sectionHeading = Font.title2.weight(.semibold)
     static let heading = Font.title3.weight(.semibold)
     static let itemTitle = Font.headline
     static let body = Font.subheadline

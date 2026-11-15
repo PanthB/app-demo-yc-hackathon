@@ -40,7 +40,7 @@ struct BoardStreaks: Equatable, Sendable {
         let createdAt: Date
     }
 
-    let mine: DailyStreak
+    var mine: DailyStreak
     let crew: DailyStreak
     let members: [String: DailyStreak]
     let myWeek: [Bool]
