@@ -94,6 +94,7 @@ struct CardsView: View {
         }
         .contentMargins(.horizontal, 16, for: .scrollContent)
         .scrollTargetBehavior(.viewAligned)
+        .scrollClipDisabled()
         .scrollIndicators(.hidden)
     }
 
@@ -109,6 +110,7 @@ struct CardsView: View {
             source.clipShape(DropCard.shape)
         }
         .matchedGeometryEffect(id: drop.id, in: namespace)
+        .transition(.asymmetric(insertion: .opacity, removal: .opacity.animation(.easeOut(duration: 0.15))))
     }
 
     private var motion: Animation? {
