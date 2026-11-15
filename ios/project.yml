@@ -41,6 +41,12 @@ targets:
         excludes: ["*.md", "**/*.md"]
       - path: Glass
         excludes: ["*.md", "**/*.md"]
+      - path: Clusters
+        excludes: ["*.md", "**/*.md"]
+      - path: Onboarding
+        excludes: ["*.md", "**/*.md"]
+      - path: Auth
+        excludes: ["*.md", "**/*.md"]
       - path: Assets
         excludes: ["*.md", "**/*.md"]
     configFiles:
