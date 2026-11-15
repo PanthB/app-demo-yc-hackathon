@@ -4,7 +4,7 @@ struct SettingsButton: View {
     @State private var showsSettings = false
 
     var body: some View {
-        Button("views") { showsSettings = true }
+        Button("settings") { showsSettings = true }
             .accessibilityHint("opens settings")
             .accessibilityIdentifier("settingsButton")
             .sheet(isPresented: $showsSettings) { SettingsSheet() }
