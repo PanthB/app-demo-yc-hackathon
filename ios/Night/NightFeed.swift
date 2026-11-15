@@ -3,6 +3,7 @@ import SwiftUI
 struct NightFeed: View {
     let sections: [DropSection]
     let namespace: Namespace.ID
+    let moves: Namespace.ID
     let select: (Drop) -> Void
 
     @State private var showsDone = false
@@ -29,6 +30,8 @@ struct NightFeed: View {
                 .id(section.id)
             }
         }
+        .scrollTargetLayout()
+        .animation(reduceMotion ? .easeInOut(duration: 0.25) : .smooth(duration: 0.6), value: sections.map { section in section.drops.map(\.id) })
     }
 
     private func header(_ section: DropSection) -> some View {
@@ -84,10 +87,36 @@ struct NightFeed: View {
             label()
         }
         .buttonStyle(NightPressStyle())
+        .overlay {
+            if drop.isArriving, drop.createdAt > clock.now.addingTimeInterval(-60) || drop.createdAt > .now.addingTimeInterval(-60) {
+                NightReadingRing(createdAt: drop.createdAt)
+            }
+        }
+        .modifier(NightMove(id: drop.id, in: moves, isOn: !reduceMotion))
         .id(drop.id)
         .contextMenu { NightDropMenu(drop: drop) }
         .matchedTransitionSource(id: drop.id, in: namespace) { source in
             source.clipShape(NightStyle.card)
+        }
+    }
+}
+
+struct NightMove: ViewModifier {
+    let id: UUID
+    let space: Namespace.ID
+    let isOn: Bool
+
+    init(id: UUID, in space: Namespace.ID, isOn: Bool) {
+        self.id = id
+        self.space = space
+        self.isOn = isOn
+    }
+
+    func body(content: Content) -> some View {
+        if isOn {
+            content.matchedGeometryEffect(id: id, in: space)
+        } else {
+            content
         }
     }
 }

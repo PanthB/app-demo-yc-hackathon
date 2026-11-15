@@ -60,6 +60,15 @@ struct NightEmber: View {
 }
 
 struct NightStreakSheet: View {
+    static func crewLine(_ crew: DailyStreak) -> String {
+        switch (crew.days, crew.droppedToday) {
+        case (0, _): "the crew's streak starts with the next drop."
+        case (1, true): "the crew dropped something today, so its streak just started."
+        case (1, false): "the crew dropped something yesterday. one today keeps it going."
+        default: "the crew is on a \(crew.days) day run."
+        }
+    }
+
     let boardName: String
     let streaks: BoardStreaks
     let members: [NightMember]
@@ -105,7 +114,7 @@ struct NightStreakSheet: View {
 
                 if isShared {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text(streaks.crew.days > 1 ? "the crew is on a \(streaks.crew.days) day run." : "the crew's streak starts with the next drop.")
+                        Text(Self.crewLine(streaks.crew))
                             .font(NightStyle.itemTitle)
                         WeekStrip(days: streaks.crewWeek, label: "the crew's week")
                         VStack(spacing: 12) {
