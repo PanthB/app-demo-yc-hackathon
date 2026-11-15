@@ -11,8 +11,8 @@
 import type * as board from "../board.js";
 import type * as boards from "../boards.js";
 import type * as clusters from "../clusters.js";
+import type * as crons from "../crons.js";
 import type * as drops from "../drops.js";
-import type * as events from "../events.js";
 import type * as files from "../files.js";
 import type * as lib_enrich from "../lib/enrich.js";
 import type * as lib_models from "../lib/models.js";
@@ -25,6 +25,7 @@ import type * as people from "../people.js";
 import type * as pipeline from "../pipeline.js";
 import type * as seed from "../seed.js";
 import type * as spend from "../spend.js";
+import type * as suggestions from "../suggestions.js";
 
 import type {
   ApiFromModules,
@@ -36,8 +37,8 @@ declare const fullApi: ApiFromModules<{
   board: typeof board;
   boards: typeof boards;
   clusters: typeof clusters;
+  crons: typeof crons;
   drops: typeof drops;
-  events: typeof events;
   files: typeof files;
   "lib/enrich": typeof lib_enrich;
   "lib/models": typeof lib_models;
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   pipeline: typeof pipeline;
   seed: typeof seed;
   spend: typeof spend;
+  suggestions: typeof suggestions;
 }>;
 
 /**
