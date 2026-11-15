@@ -77,10 +77,11 @@ export async function scheduleSearches(ctx: MutationCtx, boardId: string, cluste
   for (const [clusterId, members] of clusters) {
     if (today >= SEARCHES_PER_DAY) return;
     const last = searches.find((s) => s.clusterId === clusterId);
-    if (last && now - last.startedAt < COOLDOWN) continue;
+    if (last?.status === "scheduled") continue;
     if (last && last.status !== "failed" && members.every((m) => last.members.includes(m))) continue;
-    const searchId = await ctx.db.insert("suggestionSearches", { boardId, clusterId, status: "scheduled", startedAt: now + DEBOUNCE, members });
-    await ctx.scheduler.runAfter(DEBOUNCE, internal.suggestions.search, { searchId });
+    const wait = last ? Math.max(DEBOUNCE, last.startedAt + COOLDOWN - now) : DEBOUNCE;
+    const searchId = await ctx.db.insert("suggestionSearches", { boardId, clusterId, status: "scheduled", startedAt: now + wait, members });
+    await ctx.scheduler.runAfter(wait, internal.suggestions.search, { searchId });
     today++;
   }
 }
@@ -185,7 +186,9 @@ export const list = query({
       .map(([clusterId, c]) => ({
         clusterId,
         clusterLabel: c.label,
-        searching: searches.some((s) => s.clusterId === clusterId && (s.status === "scheduled" || s.status === "searching") && now - s.startedAt < COOLDOWN),
+        searching: searches.some(
+          (s) => s.clusterId === clusterId && ((s.status === "searching" && now - s.startedAt < COOLDOWN) || (s.status === "scheduled" && s.startedAt - now <= DEBOUNCE)),
+        ),
         suggestions: views.filter((x) => x.clusterId === clusterId).map((x) => x.view),
       }));
   },
