@@ -4,47 +4,46 @@ import UIKit
 
 enum NightStyle {
     static let ink = Color(red: 0.027, green: 0.027, blue: 0.043)
-    static let surface = Color(red: 0.085, green: 0.085, blue: 0.11)
-    static let hairline = Color.white.opacity(0.09)
+    static let surface = Color(red: 0.09, green: 0.09, blue: 0.11)
+    static let hairline = Color.white.opacity(0.08)
     static let secondary = Color.white.opacity(0.62)
     static let tertiary = Color.white.opacity(0.4)
-    static let cardRadius: CGFloat = 26
+
+    static let cardRadius: CGFloat = 24
     static let card = RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+    static let margin: CGFloat = 20
+    static let gutter: CGFloat = 12
+    static let inset: CGFloat = 12
+    static let avatar: CGFloat = 24
+    static let pillHeight: CGFloat = 24
+    static let target: CGFloat = 44
 
-    static func title(_ size: CGFloat) -> Font {
-        .system(size: size, weight: .heavy, design: .default)
-    }
-
-    static let sectionTitle = Font.system(.title, design: .serif).italic()
+    static let pageTitle = Font.largeTitle.bold()
+    static let heading = Font.title3.weight(.semibold)
+    static let itemTitle = Font.headline
+    static let body = Font.subheadline
+    static let caption = Font.caption.weight(.semibold)
+    static let symbolWeight = Font.Weight.semibold
 
     static func motion(_ reduceMotion: Bool, _ animation: Animation = .smooth(duration: 0.35)) -> Animation {
         reduceMotion ? .easeOut(duration: 0.2) : animation
     }
 }
 
-enum NightPlate {
-    private static let pairs: [(Color, Color)] = [
-        (Color(red: 0.98, green: 0.45, blue: 0.20), Color(red: 0.45, green: 0.08, blue: 0.30)),
-        (Color(red: 0.15, green: 0.35, blue: 0.95), Color(red: 0.05, green: 0.08, blue: 0.30)),
-        (Color(red: 0.05, green: 0.62, blue: 0.58), Color(red: 0.03, green: 0.14, blue: 0.22)),
-        (Color(red: 0.80, green: 0.30, blue: 0.85), Color(red: 0.16, green: 0.06, blue: 0.32)),
-        (Color(red: 0.98, green: 0.72, blue: 0.30), Color(red: 0.50, green: 0.16, blue: 0.08)),
-    ]
+struct NightPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    static func colors(for id: UUID) -> (Color, Color) {
-        pairs[PersonMark.colorIndex(for: id.uuidString, count: pairs.count)]
-    }
-}
-
-struct NightGradientPlate: View {
-    let seed: UUID
-
-    var body: some View {
-        let (glow, deep) = NightPlate.colors(for: seed)
-        var random = StableRandom(seed, salt: 11)
-        let center = UnitPoint(x: random.value(in: 0.15...0.85), y: random.value(in: 0.1...0.5))
-        RadialGradient(colors: [glow, deep, NightStyle.surface], center: center, startRadius: 4, endRadius: 260)
-            .overlay { NightGrain(opacity: 0.22) }
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(NightStyle.body.weight(.semibold))
+            .foregroundStyle(.black)
+            .frame(minHeight: NightStyle.target)
+            .padding(.horizontal, 16)
+            .background(.white, in: .capsule)
+            .contentShape(.capsule)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(.snappy(duration: 0.18), value: configuration.isPressed)
     }
 }
 
@@ -63,7 +62,7 @@ enum ArtworkTone {
         let average = UIColor(red: CGFloat(pixel[0]) / 255, green: CGFloat(pixel[1]) / 255, blue: CGFloat(pixel[2]) / 255, alpha: 1)
         var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
         average.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
-        let tone = UIColor(hue: hue, saturation: min(saturation * 1.15, 0.85), brightness: min(max(brightness * 0.42, 0.12), 0.3), alpha: 1)
+        let tone = UIColor(hue: hue, saturation: min(saturation, 0.6), brightness: min(max(brightness * 0.35, 0.1), 0.22), alpha: 1)
         cache.setObject(tone, forKey: key as NSString)
         return Color(uiColor: tone)
     }
