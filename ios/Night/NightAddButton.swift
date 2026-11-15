@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NightAddButton: View {
     @State private var showsCamera = false
+    @Namespace private var camera
 
     var body: some View {
         GlassEffectContainer(spacing: 16) {
@@ -15,6 +16,7 @@ struct NightAddButton: View {
                 .controlSize(.large)
                 .font(.title3.weight(NightStyle.symbolWeight))
                 .accessibilityIdentifier("nightCamera")
+                .matchedTransitionSource(id: "camera", in: camera)
                 AddMenu()
                     .menuStyle(.button)
                     .controlSize(.extraLarge)
@@ -27,6 +29,7 @@ struct NightAddButton: View {
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .fullScreenCover(isPresented: $showsCamera) {
             DropCamera()
+                .navigationTransition(.zoom(sourceID: "camera", in: camera))
         }
     }
 }
