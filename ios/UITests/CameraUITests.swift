@@ -75,23 +75,23 @@ final class CameraUITests: XCTestCase {
     }
 
     func testTheStatusNamesTheBoardChosenOffline() {
-        let board = XCUIApplication()
-        board.launchArguments = ["-BoardDebugSeed", "YES", "-view", "night"]
-        board.launch()
-        let menu = element(board, "nightBoardMenu")
-        XCTAssertTrue(menu.waitForExistence(timeout: 20))
-        board.terminate()
-        board.launch()
-        XCTAssertTrue(menu.waitForExistence(timeout: 20))
-        menu.tap()
-        let crew = board.buttons["sf crew"]
+        let app = XCUIApplication()
+        app.launchArguments = ["-BoardDebugSeed", "YES", "-view", "cards"]
+        app.launch()
+        let title = app.navigationBars.buttons["my board"]
+        XCTAssertTrue(title.waitForExistence(timeout: 20))
+        title.tap()
+        let crew = app.buttons["sf crew"]
         XCTAssertTrue(crew.waitForExistence(timeout: 3))
         crew.tap()
-        board.terminate()
+        XCTAssertTrue(app.navigationBars.buttons["sf crew"].waitForExistence(timeout: 3))
 
-        let app = launch(["-view", "night"])
+        element(app, "addMenu").tap()
+        let takePhoto = app.buttons["take a photo"]
+        XCTAssertTrue(takePhoto.waitForExistence(timeout: 3))
+        takePhoto.tap()
         let shutter = element(app, "cameraShutter")
-        XCTAssertTrue(shutter.waitForExistence(timeout: 20))
+        XCTAssertTrue(shutter.waitForExistence(timeout: 10))
         shutter.tap()
         let status = element(app, "cameraStatus")
         XCTAssertTrue(status.waitForExistence(timeout: 2))
