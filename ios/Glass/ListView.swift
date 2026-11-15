@@ -8,9 +8,13 @@ struct ListView: View {
     @State private var showsDone = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dropActions) private var actions
+    @Environment(BoardsStore.self) private var boards
 
     var body: some View {
         List {
+            PinnedGroupCard(boardId: boards.currentBoardId)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
             ForEach(sections) { section in
                 Section {
                     if section.style != .done || showsDone {

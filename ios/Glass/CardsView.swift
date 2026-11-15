@@ -8,10 +8,14 @@ struct CardsView: View {
     @State private var showsDone = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(BoardsStore.self) private var boards
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
+                PinnedGroupCard(boardId: boards.currentBoardId)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
                 ForEach(sections) { section in
                     switch section.style {
                     case .pinned:
