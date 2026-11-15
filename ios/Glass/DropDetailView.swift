@@ -62,6 +62,8 @@ struct DropDetailView: View {
                         withAnimation(motion) { actions.pin(drop, !drop.isPinned) }
                     } label: {
                         Label(drop.isPinned ? "unpin" : "pin", systemImage: drop.isPinned ? "pin.slash" : "pin")
+                            .frame(width: 24, height: 24)
+                            .foregroundStyle(.primary)
                     }
                     .buttonStyle(.glass)
                     .buttonBorderShape(.circle)
@@ -69,12 +71,14 @@ struct DropDetailView: View {
                         ZoneMenu(drop: drop)
                     } label: {
                         Label("move to", systemImage: "arrow.right")
+                            .frame(width: 24, height: 24)
+                            .foregroundStyle(.primary)
                     }
                     .buttonStyle(.glass)
                     .buttonBorderShape(.circle)
                     if drop.url != nil {
                         if drop.zone != .done {
-                            doneButton.buttonStyle(.glass).buttonBorderShape(.circle)
+                            doneButton.foregroundStyle(.primary).buttonStyle(.glass).buttonBorderShape(.circle)
                         }
                         Button {
                             actions.open(drop)
@@ -89,7 +93,6 @@ struct DropDetailView: View {
                     }
                 }
                 .labelStyle(.iconOnly)
-                .foregroundStyle(.primary)
                 .font(.headline)
                 .controlSize(.large)
             }
@@ -104,7 +107,7 @@ struct DropDetailView: View {
             withAnimation(motion) { actions.done(drop) }
             dismiss()
         } label: {
-            Label("mark done", systemImage: "checkmark").frame(maxWidth: drop.url == nil ? .infinity : nil)
+            Label("mark done", systemImage: "checkmark").frame(minWidth: 24, maxWidth: drop.url == nil ? .infinity : 24, minHeight: 24)
         }
     }
 
