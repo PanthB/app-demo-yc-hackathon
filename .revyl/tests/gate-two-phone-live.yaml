@@ -1,0 +1,63 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 44ed3270-5dc3-4cf1-941b-318cd611a303
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T21:58:24Z"
+    checksum: beafa1c40285416b80bb9eb5e48a03a82907adc4c5f163dd05bfe4fe3055aade
+test:
+    metadata:
+        name: gate-two-phone-live
+        platform: ios
+        tags:
+            - gate
+            - shared
+            - two-phones
+            - qa-board
+    build:
+        name: app-demo-yc-hackathon
+    variables:
+        person-name: revyl gate b
+        qa-code: <qa board code>
+        title: tacos
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: if
+          condition: Is the app showing a welcome or first-run screen instead of a board?
+          then:
+            - type: instructions
+              step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://join/{{qa-code}}
+        - type: if
+          condition: Is a dialog asking whether to open this in the app visible?
+          then:
+            - type: instructions
+              step_description: Tap Open.
+        - type: validation
+          step_description: A sheet titled join a board is showing, and the invite code field already reads {{qa-code}}.
+        - type: if
+          condition: Is the sheet asking for your name?
+          then:
+            - type: instructions
+              step_description: Type {{person-name}} in the your name field.
+        - type: instructions
+          step_description: Tap join at the top right of the sheet.
+        - type: manual
+          step_type: wait
+          step_description: "3"
+        - type: validation
+          step_description: '{{title}} is showing and is not in a pinned section.'
+        - type: manual
+          step_type: wait
+          step_description: "30"
+        - type: validation
+          step_description: '{{title}} is in the pinned section at the top, without reopening the app.'

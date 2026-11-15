@@ -1,0 +1,81 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 5f35b4b7-1a15-42a3-9f0e-d36bbeb2da30
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T21:58:17Z"
+    checksum: 3cd9958ffb37fca0ed6c56ad31dd1f9861a18d82cb8bde9da7d070cd8b4ceb32
+test:
+    metadata:
+        name: gate-pin-move-done-undo
+        platform: ios
+        tags:
+            - gate
+            - actions
+            - qa-board
+    build:
+        name: app-demo-yc-hackathon
+    variables:
+        person-name: revyl gate
+        qa-code: <qa board code>
+        someday-title: learn to surf
+        tonight-title: tacos
+        weekend-title: picnic
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: if
+          condition: Is the app showing a welcome or first-run screen instead of a board?
+          then:
+            - type: instructions
+              step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://join/{{qa-code}}
+        - type: if
+          condition: Is a dialog asking whether to open this in the app visible?
+          then:
+            - type: instructions
+              step_description: Tap Open.
+        - type: validation
+          step_description: A sheet titled join a board is showing, and the invite code field already reads {{qa-code}}.
+        - type: if
+          condition: Is the sheet asking for your name?
+          then:
+            - type: instructions
+              step_description: Type {{person-name}} in the your name field.
+        - type: instructions
+          step_description: Tap join at the top right of the sheet.
+        - type: manual
+          step_type: wait
+          step_description: "3"
+        - type: instructions
+          step_description: Long-press the {{tonight-title}} card and choose pin from the menu.
+        - type: validation
+          step_description: '{{tonight-title}} is now in the pinned section at the top.'
+        - type: instructions
+          step_description: Long-press the {{weekend-title}} card, choose move to, then now.
+        - type: validation
+          step_description: '{{weekend-title}} is now under the now heading.'
+        - type: instructions
+          step_description: Long-press the {{weekend-title}} card again and choose put it back.
+        - type: validation
+          step_description: '{{weekend-title}} is back under this weekend.'
+        - type: instructions
+          step_description: Long-press the {{someday-title}} card and choose mark done.
+        - type: validation
+          step_description: '{{someday-title}} is no longer under someday, and a done section with a count of 1 is at the bottom.'
+        - type: instructions
+          step_description: Tap the done heading at the bottom to open it, long-press {{someday-title}} and choose put it back.
+        - type: validation
+          step_description: '{{someday-title}} is back under someday.'
+        - type: instructions
+          step_description: Long-press the {{tonight-title}} card in the pinned row and choose unpin.
+        - type: validation
+          step_description: '{{tonight-title}} is back under tonight and is not in the pinned section.'

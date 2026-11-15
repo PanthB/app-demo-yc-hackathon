@@ -7,41 +7,42 @@ _meta:
     last_synced_at: "2026-11-15T21:11:54Z"
     checksum: d2f6177c04819e1ffc0d5fff6c2cc2c46413626ed2dca23f16f8449da39e31ee
 test:
-    metadata:
-        name: views-4-join-by-code
-        platform: ios
-        tags:
-            - views
-            - shared
-    build:
-        name: app-demo-yc-hackathon
-    variables:
-        invite-code: SFCREW
-        person-name: revyl
-    blocks:
-        - type: manual
-          step_type: open_app
-        - type: if
-          condition: Is a system permission prompt (location or notifications) visible?
-          then:
-            - type: instructions
-              step_description: Tap the button that allows it (Allow While Using App, or Allow).
-        - type: validation
-          step_description: No drops by maya, sam or alex are showing yet.
-        - type: manual
-          step_type: navigate
-          step_description: appdemo://join/{{invite-code}}
-        - type: if
-          condition: Is a dialog asking whether to open this in the app visible?
-          then:
-            - type: instructions
-              step_description: Tap Open.
-        - type: validation
-          step_description: A sheet titled "join a board" is showing.
+  metadata:
+    name: views-4-join-by-code
+    platform: ios
+    tags:
+      - views
+      - shared
+  build:
+    name: app-demo-yc-hackathon
+  variables:
+    invite-code: "SFCREW"
+    person-name: "revyl"
+  blocks:
+    - type: manual
+      step_type: open_app
+    - type: if
+      condition: Is a system permission prompt (location or notifications) visible?
+      then:
         - type: instructions
-          step_description: In the join a board sheet, type {{person-name}} as your name if it asks for one, make sure the code field reads {{invite-code}} (type it if it's empty), then tap join.
-        - type: manual
-          step_type: wait
-          step_description: "5"
-        - type: validation
-          step_description: The title now reads sf crew, and drops saved by several people (such as panth, maya, sam and alex) are showing.
+          step_description: Tap the button that allows it (Allow While Using App, or Allow).
+    - type: if
+      condition: Is the app showing a welcome or first-run screen instead of a board?
+      then:
+        - type: instructions
+          step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
+    - type: validation
+      step_description: No drops by maya, sam or alex are showing yet.
+    - type: instructions
+      step_description: Tap the board's title at the top to open the board menu, and choose join with a code.
+    - type: instructions
+      step_description: In the join a board sheet, type {{person-name}} as your name if it asks for one, type the code {{invite-code}}, then tap join.
+    - type: manual
+      step_type: wait
+      step_description: "5"
+    - type: validation
+      step_description: The title now reads sf crew, and drops saved by several people (such as panth, maya, sam and alex) are showing.
+    - type: instructions
+      step_description: Tap the title sf crew at the top to open the board menu again.
+    - type: validation
+      step_description: The board menu lists both my board and sf crew.
