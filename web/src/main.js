@@ -4,7 +4,7 @@ import { icon } from "./icons.js";
 
 const DEPLOYMENT = "https://adorable-coyote-696.convex.cloud";
 const SF_CREW = { id: "sf-crew" };
-const SF_CREW_LEDE = "a board some friends keep in moments. when one of them saves something on their phone, it shows up here.";
+const SF_CREW_LEDE = "a board some friends keep in resona. when one of them saves something on their phone, it shows up here.";
 const GUEST_LEDE = "paste a link from tiktok, instagram, spotify, youtube or maps, and watch it get read and placed.";
 const GUEST_KEY = "moments-guest";
 const GUEST_LIMIT = 8;
@@ -91,7 +91,7 @@ function openBoard(next) {
   const own = next !== SF_CREW;
   titleEl.textContent = own ? "your board" : "sf crew";
   ledeEl.textContent = own ? GUEST_LEDE : SF_CREW_LEDE;
-  document.title = titleEl.textContent + " on moments";
+  document.title = titleEl.textContent + " on resona";
   otherBoardEl.textContent = own ? "sf crew" : "try it";
   otherBoardEl.href = own ? "#" : "#try";
   addForm.hidden = !next?.personId;
