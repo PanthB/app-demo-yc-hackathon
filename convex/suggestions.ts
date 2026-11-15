@@ -28,6 +28,11 @@ const wantedKinds = (people: Doc<"people">[]): Kind[] => [
   ...(people.length === 0 || people.some((p) => p.recsEvents ?? true) ? (["event", "place"] as const) : []),
   ...(people.length === 0 || people.some((p) => p.recsMedia ?? true) ? (["song", "watch"] as const) : []),
 ];
+const plain = (text: string) =>
+  text
+    .replace(/\s*\(\[[^\]]*\]\([^)]*\)\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .trim();
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 300);
 const isSaved = (d: Doc<"drops">) => !d.found && d.status === "processed" && d.zone !== "done";
 const titleOf = (d: Doc<"drops">) => (d.extraction?.title ?? d.hints?.linkTitle ?? d.enrichment?.title ?? "").trim();
@@ -169,7 +174,7 @@ export const list = query({
           url: s.url,
           price: s.price,
           reason: s.reason,
-          description: s.description,
+          description: s.description ? plain(s.description) || undefined : undefined,
           thumbnailUrl: s.thumbnailUrl,
           inspiredBy: await Promise.all(
             s.inspiredBy.map(async (clientId) => {
@@ -385,7 +390,8 @@ export const search = internalAction({
           const page = await enrichLink(s.url).catch(() => undefined);
           const first = inspiring[0];
           const who = job.shared ? nameLabel(job.names[first.authorId]) : "you";
-          const what = (artistOf(first) ?? titleOf(first)).toLowerCase().replace(/[.!?]+$/, "");
+          const named = (artistOf(first) ?? titleOf(first)).toLowerCase().replace(/[.!?]+$/, "");
+          const what = named.length > 0 && named.length <= 40 ? named : `that ${nounFor(first)}`;
           return {
             boardId: job.boardId,
             clusterId: job.clusterId,
