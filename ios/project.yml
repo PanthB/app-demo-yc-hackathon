@@ -104,6 +104,19 @@ targets:
         GENERATE_INFOPLIST_FILE: "YES"
     dependencies:
       - target: AppDemo
+  AppDemoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+        excludes: ["*.md", "**/*.md"]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.panthb.appdemo.uitests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: AppDemo
+    dependencies:
+      - target: AppDemo
 schemes:
   AppDemo:
     build:
@@ -115,5 +128,6 @@ schemes:
       config: Debug
       targets:
         - AppDemoTests
+        - AppDemoUITests
     archive:
       config: Release
