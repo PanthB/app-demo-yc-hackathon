@@ -119,6 +119,7 @@ struct OnboardingFlow: View {
                         .accessibilityAddTraits(.isHeader)
                     if detailsShown {
                         WordsText(lead: "", rest: GuideStep.welcomeLine, size: 18)
+                            .frame(maxWidth: 300)
                     }
                 }
                 .multilineTextAlignment(.center)
