@@ -16,10 +16,7 @@ enum DropFace {
 
     static func tag(dueAt: Date?, startsAt: Date?, whenLabel: String?, now: Date, calendar: Calendar = .current) -> String? {
         if let dueAt { return countdown(until: dueAt, now: now, calendar: calendar) }
-        if let startsAt {
-            if startsAt.timeIntervalSince(now) > 6 * 86400, let whenLabel { return whenLabel }
-            return dateTag(startsAt, now: now, calendar: calendar)
-        }
+        if let startsAt { return dateTag(startsAt, now: now, calendar: calendar) }
         return whenLabel
     }
 

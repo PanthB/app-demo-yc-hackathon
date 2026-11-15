@@ -2,45 +2,34 @@ import SwiftUI
 
 struct CorkboardLayout {
     enum Fastener {
-        case pin, ringedPin, tape, none
+        case pin, tape
     }
 
     struct Item: Identifiable {
         let drop: Drop
-        let zone: Zone?
+        let sectionId: String
         let center: CGPoint
         let size: CGSize
         let tilt: Double
-        let scale: CGFloat
-        let tag: String?
+        let labelWidth: CGFloat
         let fastener: Fastener
         let order: Int
         var id: UUID { drop.id }
 
-        func boardPoint(_ local: CGPoint) -> CGPoint {
-            let radians = tilt * .pi / 180
-            let x = local.x * scale
-            let y = local.y * scale
-            return CGPoint(
-                x: center.x + x * cos(radians) - y * sin(radians),
-                y: center.y + x * sin(radians) + y * cos(radians)
-            )
-        }
-
         var pinPoint: CGPoint {
-            boardPoint(CGPoint(x: 0, y: -size.height / 2 + 5))
-        }
-
-        var tagCorner: CGPoint {
-            boardPoint(CGPoint(x: size.width / 2 + 6, y: size.height / 2 - 11))
+            let radians = tilt * .pi / 180
+            let y = -size.height / 2 + 5
+            return CGPoint(x: center.x - y * sin(radians), y: center.y + y * cos(radians))
         }
     }
 
-    struct Label: Identifiable {
-        let zone: Zone
-        let origin: CGPoint
+    struct Header: Identifiable {
+        let id: String
+        let title: String
+        let count: Int
+        let isNow: Bool
+        let top: CGFloat
         let order: Int
-        var id: Zone { zone }
     }
 
     struct Thread: Identifiable {
@@ -49,82 +38,51 @@ struct CorkboardLayout {
         let to: CGPoint
     }
 
-    static let labelLeading: CGFloat = 32
-    static let objectLeading: CGFloat = 44
-    static let trailing: CGFloat = 14
-    static let cornerInset: CGFloat = 12
-    static let envelopeSize = CGSize(width: 96, height: 64)
+    static let margin: CGFloat = 16
+    static let gutter: CGFloat = 12
+    static let rowGap: CGFloat = 24
+    static let labelDrop: CGFloat = 11
     static let pocketSize = CGSize(width: 64, height: 52)
-    static let vibeScale: CGFloat = 0.62
-    static let shownVibes = 3
 
     private(set) var items: [Item] = []
-    private(set) var vibes: [Item] = []
-    private(set) var labels: [Label] = []
+    private(set) var headers: [Header] = []
     private(set) var threads: [Thread] = []
-    private(set) var height: CGFloat = 0
-    private(set) var envelope: CGRect = .zero
-    private(set) var pocket: CGRect = .zero
+    private(set) var pocket: CGRect?
+    private(set) var doneCount = 0
     private(set) var emptyNoteCenter: CGPoint?
+    private(set) var height: CGFloat = 0
     private var order = 0
 
-    init(contents: BoardContents, width: CGFloat, minHeight: CGFloat, now: Date) {
-        var y: CGFloat = 0
-        if !contents.arriving.isEmpty {
-            y = placeObjects(contents.arriving, zone: nil, top: 18, width: width, now: now) - 18
+    init(sections: [DropSection], width: CGFloat, minHeight: CGFloat) {
+        guard !sections.isEmpty else {
+            emptyNoteCenter = CGPoint(x: width / 2, y: max(minHeight * 0.4, 160))
+            height = minHeight
+            return
         }
-        for zone in Zone.timeOrder {
-            let labelTop = y + (zone == .now ? 24 : 6)
-            labels.append(Label(zone: zone, origin: CGPoint(x: Self.labelLeading, y: labelTop), order: nextOrder()))
-            let objectsTop = labelTop + (zone == .now ? 50 : 36) + 14
-            let drops = contents.drops(in: zone)
-            if zone == .now, contents.isEmpty {
-                emptyNoteCenter = CGPoint(x: (Self.objectLeading + width - Self.trailing) / 2, y: objectsTop + 70)
-                y = objectsTop + 160
-            } else if drops.isEmpty {
-                y = objectsTop + 40
-            } else {
-                y = placeObjects(drops, zone: zone, top: objectsTop, width: width, now: now)
+        let column = (width - 2 * Self.margin - Self.gutter) / 2
+        var y: CGFloat = 8
+        for section in sections {
+            if section.style == .done {
+                let frame = CGRect(origin: CGPoint(x: Self.margin, y: y + 8), size: Self.pocketSize)
+                pocket = frame
+                doneCount = section.drops.count
+                y = frame.maxY + Self.rowGap
+                continue
             }
+            let isNow = section.id == Zone.now.rawValue
+            let top = y + (isNow ? 16 : 8)
+            headers.append(Header(id: section.id, title: section.title, count: section.drops.count, isNow: isNow, top: top, order: nextOrder()))
+            y = placeRows(section, top: top + (isNow ? 50 : 36) + 14, width: width, column: column)
         }
+        height = max(y, minHeight)
 
-        let shown = Array(contents.drops(in: .vibes).prefix(Self.shownVibes))
-        let peek = shown.map { Self.size(for: $0).height * Self.vibeScale / 2 }.max() ?? 0
-        let footerBottom = max(y + 24 + peek + Self.envelopeSize.height + 6, minHeight - 8)
-        envelope = CGRect(
-            x: width - Self.cornerInset - Self.envelopeSize.width,
-            y: footerBottom - Self.envelopeSize.height,
-            width: Self.envelopeSize.width,
-            height: Self.envelopeSize.height
-        )
-        pocket = CGRect(
-            x: Self.cornerInset,
-            y: footerBottom - Self.pocketSize.height,
-            width: Self.pocketSize.width,
-            height: Self.pocketSize.height
-        )
-        placeVibes(shown)
-        height = footerBottom + 8
-
-        let everything = Dictionary((items + vibes).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        for item in items + vibes {
+        let placed = Dictionary(items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        for item in items {
             for other in item.drop.relatedDropIds where item.id.uuidString < other.uuidString {
-                guard let partner = everything[other] else { continue }
+                guard let partner = placed[other] else { continue }
                 threads.append(Thread(id: "\(item.id)-\(other)", from: item.pinPoint, to: partner.pinPoint))
             }
         }
-    }
-
-    var threadedIds: Set<UUID> {
-        var ids = Set<UUID>()
-        let all = Dictionary((items + vibes).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        for item in items + vibes {
-            for other in item.drop.relatedDropIds where all[other] != nil {
-                ids.insert(item.id)
-                ids.insert(other)
-            }
-        }
-        return ids
     }
 
     static func size(for drop: Drop) -> CGSize {
@@ -136,25 +94,19 @@ struct CorkboardLayout {
         }
         switch drop.objectKind {
         case .sticky: return CGSize(width: 120, height: 120)
-        case .polaroid: return CGSize(width: 136, height: 166)
+        case .polaroid: return CGSize(width: 136, height: 184)
         case .record: return CGSize(width: 120, height: 120)
-        case .slip: return CGSize(width: 160, height: 64)
+        case .slip: return CGSize(width: 160, height: 84)
         case .stub: return CGSize(width: 160, height: 76)
-        case .postcard: return CGSize(width: 190, height: 128)
+        case .postcard: return CGSize(width: 176, height: 118)
         case .cutout:
             let width: CGFloat = 140
             guard let image = MediaStore.image(at: drop.cutoutPath ?? drop.thumbnailPath), image.size.width > 0 else {
                 return CGSize(width: 160, height: 150)
             }
-            return CGSize(width: width, height: min(190, max(90, width * image.size.height / image.size.width)))
+            let picture = min(164, max(90, width * image.size.height / image.size.width))
+            return CGSize(width: width, height: (picture + PaperObject.captionHeight).rounded())
         }
-    }
-
-    static func tag(for drop: Drop, zone: Zone?, now: Date) -> String? {
-        guard let zone, Zone.timeOrder.contains(zone), !drop.isHeldByTape else { return nil }
-        if drop.objectKind == .sticky, drop.dueAt != nil { return nil }
-        if drop.objectKind == .stub { return nil }
-        return drop.frontTag(now: now)
     }
 
     private mutating func nextOrder() -> Int {
@@ -162,58 +114,31 @@ struct CorkboardLayout {
         return order
     }
 
-    private mutating func placeObjects(_ drops: [Drop], zone: Zone?, top: CGFloat, width: CGFloat, now: Date) -> CGFloat {
-        let left = Self.objectLeading
-        let right = width - Self.trailing
-        var bottoms: [CGFloat] = [top, top + 22]
-        var previous: (top: CGFloat, height: CGFloat)?
-
-        for (index, drop) in drops.enumerated() {
-            var random = StableRandom(drop.id)
-            let size = Self.size(for: drop)
-            let column = index % 2
-            var itemTop = bottoms[column]
-            if let previous {
-                itemTop = max(itemTop, previous.top + previous.height * 0.35)
+    private mutating func placeRows(_ section: DropSection, top: CGFloat, width: CGFloat, column: CGFloat) -> CGFloat {
+        let centers = [Self.margin + column / 2, width - Self.margin - column / 2]
+        var rowTop = top
+        for start in stride(from: 0, to: section.drops.count, by: 2) {
+            var tallest: CGFloat = 0
+            for (index, drop) in section.drops[start..<min(start + 2, section.drops.count)].enumerated() {
+                var random = StableRandom(drop.id)
+                let natural = Self.size(for: drop)
+                let size = natural.width > column
+                    ? CGSize(width: column, height: (natural.height * column / natural.width).rounded())
+                    : natural
+                items.append(Item(
+                    drop: drop,
+                    sectionId: section.id,
+                    center: CGPoint(x: centers[index], y: rowTop + size.height / 2),
+                    size: size,
+                    tilt: (index == 0 ? -1 : 1) * random.value(in: 0.5...1.5),
+                    labelWidth: (size.width + column) / 2 - 10,
+                    fastener: drop.isPinned ? .pin : .tape,
+                    order: nextOrder()
+                ))
+                tallest = max(tallest, size.height)
             }
-            itemTop += random.value(in: 0...10)
-            let nudge = random.value(in: 0...18)
-            let preferred = column == 0 ? left + size.width / 2 + nudge : right - size.width / 2 - nudge
-            let x = min(max(preferred, left + size.width / 2), right - size.width / 2)
-            let sign: Double = column == 0 ? -1 : 1
-            items.append(Item(
-                drop: drop,
-                zone: zone,
-                center: CGPoint(x: x, y: itemTop + size.height / 2),
-                size: size,
-                tilt: sign * random.value(in: 1.5...4),
-                scale: 1,
-                tag: Self.tag(for: drop, zone: zone, now: now),
-                fastener: drop.isHeldByTape ? .tape : (drop.zoneSetByUser ? .ringedPin : .pin),
-                order: nextOrder()
-            ))
-            bottoms[column] = itemTop + size.height + 28
-            previous = (itemTop, size.height)
+            rowTop += tallest + Self.labelDrop + Self.rowGap
         }
-        return bottoms.max() ?? top
-    }
-
-    private mutating func placeVibes(_ drops: [Drop]) {
-        let spread: [CGFloat] = drops.count == 1 ? [0] : (drops.count == 2 ? [-14, 10] : [-20, -2, 14])
-        let fan: [Double] = drops.count == 1 ? [-3] : (drops.count == 2 ? [-8, 5] : [-10, -1, 9])
-        for (index, drop) in drops.reversed().enumerated() {
-            let size = Self.size(for: drop)
-            vibes.append(Item(
-                drop: drop,
-                zone: .vibes,
-                center: CGPoint(x: envelope.midX + spread[index], y: envelope.minY + 4),
-                size: size,
-                tilt: fan[index],
-                scale: Self.vibeScale,
-                tag: nil,
-                fastener: .none,
-                order: nextOrder()
-            ))
-        }
+        return rowTop
     }
 }

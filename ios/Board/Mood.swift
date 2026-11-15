@@ -17,11 +17,14 @@ struct Mood {
     let tilt: ClosedRange<Double>
     let land: Animation
     let move: Animation
+    var handwriting = true
 
     var quietInk: Color { ink.opacity(0.7) }
 
     func hand(_ size: CGFloat, relativeTo style: Font.TextStyle = .title2) -> Font {
-        .custom(Self.handFontName, size: size, relativeTo: style)
+        handwriting
+            ? .custom(Self.handFontName, size: size, relativeTo: style)
+            : .system(size: (size * 0.75).rounded(), weight: .semibold, design: .rounded)
     }
 
     func ui(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
@@ -33,6 +36,7 @@ struct Mood {
     }
 
     static let handFontName = UIFont.fontNames(forFamilyName: "Caveat").first ?? "Caveat"
+    static let handwritingKey = "Handwriting"
 
     static let sunny = Mood(
         board: Color(hex: 0xEAD9BE),
@@ -46,8 +50,8 @@ struct Mood {
         mint: Color(hex: 0x8FDDB0),
         lilac: Color(hex: 0xBFA2FF),
         shade: Color(hex: 0x5B3A21),
-        speckle: 0.06,
-        tilt: -4...4,
+        speckle: 0.14,
+        tilt: -2...2,
         land: .spring(response: 0.45, dampingFraction: 0.65),
         move: .spring(response: 0.55, dampingFraction: 0.8)
     )
