@@ -82,7 +82,9 @@ final class ShellUITests: XCTestCase {
     func testTheTitleMenuOpensSfCrewByMoodWithItsPeople() {
         let app = launch()
         XCTAssertTrue(element(app, "cardsView").waitForExistence(timeout: 20))
-        title(app, "my board").tap()
+        let home = title(app, "my board")
+        XCTAssertTrue(home.waitForExistence(timeout: 10))
+        home.tap()
         let crew = app.buttons["sf crew"]
         XCTAssertTrue(crew.waitForExistence(timeout: 5))
         crew.tap()
