@@ -23,7 +23,7 @@ struct GlassBoardRoot: View {
         .sheet(item: $selected) { drop in
             DropDetailView(drop: drop)
                 .navigationTransition(.zoom(sourceID: drop.id, in: namespace))
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
         .tint(Color(red: 1.0, green: 0.42, blue: 0.29))

@@ -89,6 +89,7 @@ struct DropDetailView: View {
                     }
                 }
                 .labelStyle(.iconOnly)
+                .foregroundStyle(.primary)
                 .font(.headline)
                 .controlSize(.large)
             }

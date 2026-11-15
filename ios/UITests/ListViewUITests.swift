@@ -114,8 +114,8 @@ final class ListViewUITests: XCTestCase {
     func testTheDetailButtonsWork() {
         XCUIDevice.shared.appearance = .dark
         let app = launch()
+        XCTAssertTrue(header(app, "now").waitForExistence(timeout: 20))
         let song = row(app, saying: "pink pony club")
-        XCTAssertTrue(song.waitForExistence(timeout: 20))
         for _ in 0..<6 where !song.isHittable { list(app).swipeUp(velocity: .slow) }
         song.tap()
         let detail = app.descendants(matching: .any)["dropDetail"].firstMatch
