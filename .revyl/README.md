@@ -44,7 +44,7 @@ Every test is a plain-English YAML file in `tests/`. Revyl's agent reads the scr
 | `views-1-switch` | Switch from cards to list to board and back. Each view shows the same sections, and a pinned drop stays at the top. | Draft, waits on the views shell |
 | `views-2-pin` | Pin a drop from its context menu, see it at the top in cards and list, then unpin it. | Draft, waits on pins |
 | `views-3-filter-mine` | Switch the everyone/mine control and check that only the current person's drops remain. | Draft, waits on the filter |
-| `views-4-join-by-code` | Join "sf crew" from the title menu with an invite code, and see both boards in the menu. Set `invite-code` once the backend seed has one. | Draft, waits on boards and the seed code |
+| `views-4-join-by-code` | Join "sf crew" from the title menu with an invite code, and see both boards in the menu. The code is `SFCREW` (board `sf-crew`). | Draft, waits on boards and the deployed seed |
 | `phase1-1-share-into-board` | Share a link from Safari and a photo from Photos, and see the "dropped it" confirmation. | Draft |
 | `phase1-2-drop-lands-on-board` | A shared link shows up as an item right away, then settles under a section. | Draft |
 | `phase1-5-countdown-notification` | "remind me in 1 hr" shows a live countdown, and "remind me in 1 minute" fires a real local notification. | Draft |
