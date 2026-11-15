@@ -18,6 +18,8 @@ struct ClusterBoardView: View {
     @State private var boardWidth: CGFloat = 0
     @State private var chosenLink: String?
     @State private var settles = 0
+    @State private var scroll = ScrollPosition()
+    @State private var aimed = false
 
     private let mood = Mood.sunny
     private static let dwell: Duration = .milliseconds(1100)
@@ -64,23 +66,26 @@ struct ClusterBoardView: View {
             let width = proxy.size.width
             let holds = currentHolds(width: width)
             let plan = makePlan(width: width, holding: Set(holds.keys))
-            ScrollViewReader { reader in
-                ScrollView(.vertical) {
-                    board(plan, holds: holds, width: width)
-                        .background {
-                            CorkSurface()
-                                .padding(.vertical, -400)
-                                .contentShape(.rect)
-                                .onTapGesture { choose(nil) }
-                        }
-                }
-                .scrollIndicators(.hidden)
-                .defaultScrollAnchor(Self.debugAnchor)
-                .task {
-                    guard let target = Self.debugCluster else { return }
-                    try? await Task.sleep(for: .milliseconds(1500))
-                    reader.scrollTo("aim-\(target)", anchor: .top)
-                }
+            ScrollView(.vertical) {
+                board(plan, holds: holds, width: width)
+                    .background {
+                        CorkSurface()
+                            .padding(.vertical, -400)
+                            .contentShape(.rect)
+                            .onTapGesture { choose(nil) }
+                    }
+            }
+            .scrollIndicators(.hidden)
+            .defaultScrollAnchor(Self.debugAnchor)
+            .scrollPosition($scroll)
+            .task(id: plan.layout.labels.map { "\($0.id)@\(Int($0.origin.y))" }) {
+                guard !aimed, let target = Self.debugCluster,
+                      let label = plan.layout.labels.first(where: { $0.id == target })
+                else { return }
+                try? await Task.sleep(for: .milliseconds(900))
+                guard !Task.isCancelled else { return }
+                aimed = true
+                scroll.scrollTo(y: max(label.origin.y - 12, 0))
             }
             .onScrollGeometryChange(for: CGRect.self, of: { $0.visibleRect }) { _, rect in
                 viewport = rect
@@ -108,14 +113,6 @@ struct ClusterBoardView: View {
                     .opacity(live ? 1 : 0)
                     .allowsHitTesting(live)
                     .transition(.opacity)
-            }
-
-            ForEach(plan.layout.labels) { label in
-                Color.clear
-                    .frame(width: 1, height: 1)
-                    .id("aim-\(label.id)")
-                    .position(x: 1, y: max(label.origin.y - 12, 0))
-                    .accessibilityHidden(true)
             }
 
             ForEach(plan.layout.labels) { label in

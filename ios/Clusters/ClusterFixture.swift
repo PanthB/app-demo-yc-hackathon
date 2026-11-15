@@ -26,53 +26,68 @@ enum ClusterFixture {
     private static let night = ("late-night", "late night")
     private static let golden = ("golden-hour", "golden hour, by the water")
 
+    static let copies = max(1, UserDefaults.standard.integer(forKey: "ClusterDebugCopies"))
+
     private static func facts(
         _ cluster: (String, String),
         _ vibes: [String],
         genre: String? = nil,
+        copy: Int = 0,
         _ neighbors: [(Int, String)]
     ) -> ClusterFacts {
         ClusterFacts(
             vibes: vibes,
             clusterId: cluster.0,
             clusterLabel: cluster.1,
-            neighbors: neighbors.map { ClusterFacts.Neighbor(clientId: seedId($0.0).uuidString, reason: $0.1) },
+            neighbors: neighbors.map { ClusterFacts.Neighbor(clientId: seedId($0.0 + 100 * copy).uuidString, reason: $0.1) },
             genre: genre
         )
     }
 
     static let facts: [UUID: ClusterFacts] = {
-        var table: [UUID: ClusterFacts] = [
-            seedId(1): facts(sunny, ["upbeat", "outdoors", "mission"], [(5, "both upbeat, outdoors."), (2, "both in the mission.")]),
-            seedId(2): facts(sunny, ["cozy", "morning", "food", "mission"], [(3, "both morning, in the mission."), (1, "both in the mission.")]),
-            seedId(3): facts(sunny, ["calm", "morning", "mission"], [(2, "both morning, in the mission.")]),
-            seedId(4): facts(sunny, ["upbeat", "folk", "steady"], genre: "folk", [(1, "both upbeat."), (5, "both upbeat.")]),
-            seedId(5): facts(sunny, ["upbeat", "outdoors"], [(1, "both upbeat, outdoors.")]),
-            seedId(6): facts(night, ["late night", "food", "mission"], [(7, "both late night, food."), (10, "both late night, in the mission.")]),
-            seedId(7): facts(night, ["cozy", "late night", "food", "japantown"], [(6, "both late night, food.")]),
-            seedId(8): facts(night, ["dreamy", "late night", "rock", "steady"], genre: "rock", [(9, "both late night."), (14, "both dreamy.")]),
-            seedId(9): facts(night, ["moody", "late night", "r&b", "slow"], genre: "r&b", [(8, "both late night.")]),
-            seedId(10): facts(night, ["late night", "live music", "mission"], [(6, "both late night, in the mission.")]),
-            seedId(11): facts(golden, ["golden hour", "by the water", "calm", "presidio"], [(12, "both golden hour, by the water."), (15, "both golden hour, by the water.")]),
-            seedId(12): facts(golden, ["golden hour", "by the water", "dreamy"], [(11, "both golden hour, by the water."), (14, "both dreamy, golden hour.")]),
-            seedId(13): facts(golden, ["calm", "by the water", "soul", "slow"], genre: "soul", [(11, "both calm, by the water.")]),
-            seedId(14): facts(golden, ["dreamy", "golden hour", "r&b", "steady"], genre: "r&b", [(12, "both dreamy, golden hour.")]),
-            seedId(15): facts(golden, ["golden hour", "by the water", "outdoors", "lands end"], [(11, "both golden hour, by the water.")]),
-        ]
+        var table: [UUID: ClusterFacts] = [:]
+        for copy in 0..<copies {
+            for (number, entry) in seedFacts(copy: copy) {
+                table[seedId(number + 100 * copy)] = entry
+            }
+        }
         table[arrivalId] = facts(sunny, ["upbeat", "indie", "steady"], genre: "indie", [(4, "both upbeat, steady."), (5, "both upbeat.")])
         return table
     }()
 
+    private static func seedFacts(copy: Int) -> [Int: ClusterFacts] {
+        [
+            1: facts(sunny, ["upbeat", "outdoors", "mission"], copy: copy, [(5, "both upbeat, outdoors."), (2, "both in the mission.")]),
+            2: facts(sunny, ["cozy", "morning", "food", "mission"], copy: copy, [(3, "both morning, in the mission."), (1, "both in the mission.")]),
+            3: facts(sunny, ["calm", "morning", "mission"], copy: copy, [(2, "both morning, in the mission.")]),
+            4: facts(sunny, ["upbeat", "folk", "steady"], genre: "folk", copy: copy, [(1, "both upbeat."), (5, "both upbeat.")]),
+            5: facts(sunny, ["upbeat", "outdoors"], copy: copy, [(1, "both upbeat, outdoors.")]),
+            6: facts(night, ["late night", "food", "mission"], copy: copy, [(7, "both late night, food."), (10, "both late night, in the mission.")]),
+            7: facts(night, ["cozy", "late night", "food", "japantown"], copy: copy, [(6, "both late night, food.")]),
+            8: facts(night, ["dreamy", "late night", "rock", "steady"], genre: "rock", copy: copy, [(9, "both late night."), (14, "both dreamy.")]),
+            9: facts(night, ["moody", "late night", "r&b", "slow"], genre: "r&b", copy: copy, [(8, "both late night.")]),
+            10: facts(night, ["late night", "live music", "mission"], copy: copy, [(6, "both late night, in the mission.")]),
+            11: facts(golden, ["golden hour", "by the water", "calm", "presidio"], copy: copy, [(12, "both golden hour, by the water."), (15, "both golden hour, by the water.")]),
+            12: facts(golden, ["golden hour", "by the water", "dreamy"], copy: copy, [(11, "both golden hour, by the water."), (14, "both dreamy, golden hour.")]),
+            13: facts(golden, ["calm", "by the water", "soul", "slow"], genre: "soul", copy: copy, [(11, "both calm, by the water.")]),
+            14: facts(golden, ["dreamy", "golden hour", "r&b", "steady"], genre: "r&b", copy: copy, [(12, "both dreamy, golden hour.")]),
+            15: facts(golden, ["golden hour", "by the water", "outdoors", "lands end"], copy: copy, [(11, "both golden hour, by the water.")]),
+        ]
+    }
+
     @MainActor
     static func fill(_ context: ModelContext, now: Date = .now) {
         func drop(_ number: Int, _ person: Person, minutesAgo: Double, _ zone: Zone, configure: (Drop) -> Void) {
-            let drop = Drop(id: seedId(number), createdAt: now.addingTimeInterval(-minutesAgo * 60), authorId: person.id, boardId: boardId, sourceKind: .url)
-            drop.authorName = person.name
-            drop.authorColor = person.color
-            drop.status = .processed
-            configure(drop)
-            drop.applyDecidedZone(zone, unsure: false)
-            context.insert(drop)
+            for copy in 0..<copies {
+                let drop = Drop(id: seedId(number + 100 * copy), createdAt: now.addingTimeInterval(-(minutesAgo + Double(copy) * 37) * 60), authorId: person.id, boardId: boardId, sourceKind: .url)
+                drop.authorName = person.name
+                drop.authorColor = person.color
+                drop.status = .processed
+                configure(drop)
+                if copy > 0 { drop.pinnedAt = nil }
+                drop.applyDecidedZone(zone, unsure: false)
+                context.insert(drop)
+            }
         }
         func clip(_ drop: Drop, _ url: String, _ title: String, image: String) {
             drop.url = url
