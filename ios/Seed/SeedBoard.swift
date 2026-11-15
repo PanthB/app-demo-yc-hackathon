@@ -143,12 +143,11 @@ enum SeedBoard {
             $0.thumbnailPath = media("seed-dolores", jpeg: true)
             $0.pinnedAt = now.addingTimeInterval(-3 * 3600)
         }
-        let show = drop(9, sam, .video, .someday, minutesAgo: 4000) {
+        let show = drop(9, sam, .video, .vibes, minutesAgo: 4000) {
             $0.url = "https://www.tiktok.com/@soundcheck/video/7311"
             $0.title = "the warehouse show"
-            $0.type = .event
+            $0.type = .mood
             $0.objectKind = .polaroid
-            $0.whenLabel = "sometime in march"
             $0.thumbnailPath = media("seed-concert", jpeg: true)
             $0.suggestion = "alex saved something that goes with this."
         }
