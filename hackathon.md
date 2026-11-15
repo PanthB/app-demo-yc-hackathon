@@ -9,7 +9,7 @@
 - **Convex deployment:** https://adorable-coyote-696.convex.cloud
 - **Components:** none
 - **Convex features:** schema, tables, indexes, full-text search, queries, mutations, actions, internal functions, scheduled functions, file storage, realtime subscriptions, typed environment variables, auth (OIDC)
-- **Auth:** sign-in with Apple or Google links an account to its person; access checks are next, so functions still trust the person id the app sends
+- **Auth:** Sign in with Apple links an account to its person, and guests stay anonymous person ids; access checks are next, so functions still trust the person id the app sends
 - **AI models:** gpt-6-luna through OpenAI only: Chat Completions reads drops and the Decisions API decides, under a $20 cap
 - **Started:** 2026-11-15T18:36:06Z
 - **Last updated:** 2026-11-15T21:16:00Z
@@ -145,7 +145,7 @@ day across kinds of drop (`convex/seed.ts`, `convex/lib/vibes.ts`,
 `convex/lib/rules.ts`, `convex/pipeline.ts`).
 
 ### 2026-11-15 - a5f0002
-Sign-in with Apple or Google links an account to its person: OIDC providers in
+Sign-in links an account to its person: OIDC providers in
 `convex/auth.config.ts` and a `people:link` mutation, so a second phone gets
 the same person back. Access checks are next: functions still trust the person
 id the app sends. Convex features: auth config, indexes (`convex/auth.config.ts`,
@@ -154,5 +154,6 @@ id the app sends. Convex features: auth config, indexes (`convex/auth.config.ts`
 ### 2026-11-15 - 09ee258
 Dropped OpenRouter. The reader and decider run only on OpenAI's gpt-6-luna under
 the $20 cap, with rules as the fallback. A clip's title now comes from its
-caption instead of the share sheet's link title (`convex/lib/models.ts`,
-`convex/pipeline.ts`).
+caption instead of the share sheet's link title. Sign in with Apple is now the
+only sign-in provider (`convex/lib/models.ts`, `convex/pipeline.ts`,
+`convex/auth.config.ts`).
