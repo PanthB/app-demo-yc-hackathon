@@ -68,6 +68,7 @@ export default defineSchema({
     added: v.optional(v.number()),
     usd: v.optional(v.number()),
     note: v.optional(v.string()),
+    manual: v.optional(v.boolean()),
   })
     .index("by_boardId", ["boardId"]),
   suggestions: defineTable({
