@@ -13,7 +13,7 @@ struct DropCard: View {
             DropPreview(face: face, seed: drop.id, pictureRatio: drop.kind == .song ? 1 : nil)
                 .overlay(alignment: .bottomLeading) {
                     if drop.kind == .video, face.fillsItsFrame {
-                        PlayBadge(length: drop.mediaDuration.map(DropFace.duration)).padding(12)
+                        ClipBadge(length: drop.mediaDuration.map(DropFace.duration)).padding(12)
                     }
                 }
             VStack(alignment: .leading, spacing: 4) {

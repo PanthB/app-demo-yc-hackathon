@@ -30,7 +30,7 @@ struct PinBadge: View {
     }
 }
 
-struct PlayBadge: View {
+struct ClipBadge: View {
     let length: String?
     @ScaledMetric(relativeTo: .caption2) private var height: CGFloat = 22
 
