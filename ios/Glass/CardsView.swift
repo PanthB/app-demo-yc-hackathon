@@ -7,8 +7,6 @@ struct CardsView: View {
 
     @State private var showsDone = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.dropActions) private var actions
-    @Environment(BoardClock.self) private var clock
 
     var body: some View {
         ScrollView {
@@ -101,39 +99,9 @@ struct CardsView: View {
             label()
         }
         .buttonStyle(CardPressStyle())
-        .contextMenu { menu(drop) }
+        .contextMenu { DropMenu(drop: drop) }
         .matchedTransitionSource(id: drop.id, in: namespace)
         .matchedGeometryEffect(id: drop.id, in: namespace)
-    }
-
-    @ViewBuilder
-    private func menu(_ drop: Drop) -> some View {
-        Button(drop.isPinned ? "unpin" : "pin", systemImage: drop.isPinned ? "pin.slash" : "pin") {
-            withAnimation(motion) { actions.pin(drop, !drop.isPinned) }
-        }
-        if drop.zone != .done {
-            Button("mark done", systemImage: "checkmark.circle") {
-                withAnimation(motion) { actions.done(drop) }
-            }
-        }
-        if drop.canUndoMove {
-            Button("put it back", systemImage: "arrow.uturn.backward") {
-                withAnimation(motion) { actions.undo(drop) }
-            }
-        }
-        Menu("move to", systemImage: "arrow.right") {
-            let current = drop.boardZone(now: clock.now)
-            ForEach(Zone.allCases.filter { $0 != .done && $0 != current }, id: \.self) { zone in
-                Button(zone.displayName) {
-                    withAnimation(motion) { actions.move(drop, zone) }
-                }
-            }
-        }
-        if drop.url != nil {
-            Button("open link", systemImage: "arrow.up.right") {
-                actions.open(drop)
-            }
-        }
     }
 
     private var motion: Animation? {
