@@ -15,21 +15,19 @@ struct DropDetailView: View {
                 DropPreview(face: face, seed: drop.id, pictureRatio: drop.kind == .song ? 1 : min(face.ratio, 1))
                     .padding(.bottom, face.fillsItsFrame ? 0 : 24)
                     .overlay(alignment: .bottomLeading) {
-                        if drop.kind == .video, face.fillsItsFrame {
-                            ClipBadge(length: drop.mediaDuration.map(DropFace.duration)).padding(12)
-                        }
+                        drop.playBadge(on: face).padding(12)
                     }
                     .overlay(alignment: .topLeading) {
-                        KindPill(kind: drop.kind).padding(12)
+                        KindPill(kind: drop.kind, onPicture: face.isPicture).padding(12)
                     }
                     .overlay(alignment: .topTrailing) {
-                        if drop.isPinned { PinBadge().padding(12) }
+                        if drop.isPinned { PinBadge(onPicture: face.isPicture).padding(12) }
                     }
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(DropCard.shape)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(drop.cardTitle(beside: .plain) ?? drop.linkHost ?? drop.kind.word)
+                    Text(drop.cardTitle(beside: .plain) ?? face.words ?? drop.kind.word)
                         .font(.title2.weight(.bold))
                     if let meta = drop.cardMeta(now: now, beside: .plain) {
                         Text(meta).font(.body).foregroundStyle(.secondary).monospacedDigit()

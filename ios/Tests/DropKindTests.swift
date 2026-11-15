@@ -19,16 +19,26 @@ final class DropKindTests: XCTestCase {
         XCTAssertEqual(DropKind.derive(type: .place, source: .url, hasDueTime: false, link: "https://www.youtube.com/watch?v=zmIgc0SkVgE"), .video)
         XCTAssertEqual(DropKind.derive(type: nil, source: .url, hasDueTime: false, link: "https://youtu.be/zmIgc0SkVgE"), .video)
         XCTAssertEqual(DropKind.derive(type: .mood, source: .url, hasDueTime: false, link: "https://www.instagram.com/reel/DbySW82ILGn/"), .video)
+        XCTAssertEqual(DropKind.derive(type: .mood, source: .url, hasDueTime: false, link: "https://www.instagram.com/p/DWCN6pbgn3F/", hasLength: true), .video)
         XCTAssertEqual(DropKind.video.word, "clip")
+    }
+
+    func testAClipNamesTheSiteItCameFrom() {
+        XCTAssertEqual(DropKind.clipSite(link: "https://www.tiktok.com/@graacciiee/video/7617551860244745503"), "tiktok")
+        XCTAssertEqual(DropKind.clipSite(link: "https://youtu.be/zmIgc0SkVgE"), "youtube")
+        XCTAssertEqual(DropKind.clipSite(link: "https://m.youtube.com/watch?v=zmIgc0SkVgE"), "youtube")
+        XCTAssertEqual(DropKind.clipSite(link: "https://www.instagram.com/reel/DbySW82ILGn/"), "instagram")
+        XCTAssertNil(DropKind.clipSite(link: "https://www.instagram.com/p/DWCN6pbgn3F/"))
+        XCTAssertNil(DropKind.clipSite(link: "https://open.spotify.com/track/3xKsf9qdS1CyvXSMEid6g8"))
     }
 
     func testAPostOrAnOrdinaryLinkIsNotAClip() {
         XCTAssertEqual(DropKind.derive(type: nil, source: .url, hasDueTime: false, link: "https://www.instagram.com/p/DWCN6pbgn3F/"), .link)
         XCTAssertEqual(DropKind.derive(type: .place, source: .url, hasDueTime: false, link: "https://www.stonemillmatcha.com"), .place)
         XCTAssertEqual(DropKind.derive(type: .song, source: .url, hasDueTime: false, link: "https://open.spotify.com/track/3xKsf9qdS1CyvXSMEid6g8"), .song)
-        XCTAssertFalse(DropKind.isClip(link: "https://nottiktok.com/video/1"))
-        XCTAssertFalse(DropKind.isClip(link: nil))
-        XCTAssertFalse(DropKind.isClip(link: "not a link"))
+        XCTAssertNil(DropKind.clipSite(link: "https://nottiktok.com/video/1"))
+        XCTAssertNil(DropKind.clipSite(link: nil))
+        XCTAssertNil(DropKind.clipSite(link: "not a link"))
     }
 
     func testAnUnreadDropFallsBackToItsSource() {
@@ -68,6 +78,23 @@ final class DropKindTests: XCTestCase {
         XCTAssertEqual(CardWords.meta(["instagram.com", "instagram.com"], hiding: []), "instagram.com")
         XCTAssertEqual(CardWords.meta(["12:45pm", "Stonemill Matcha"], hiding: [nil, "stonemill matcha"]), "12:45pm")
         XCTAssertNil(CardWords.meta([nil, nil], hiding: []))
+    }
+
+    func testAnUnreadDropSaysWhatItIsAndWhoseItIs() {
+        XCTAssertEqual(CardWords.unread(.link, from: "Maya"), "a link from maya")
+        XCTAssertEqual(CardWords.unread(.video, from: "sam"), "a clip from sam")
+        XCTAssertEqual(CardWords.unread(.event, from: nil), "an event you saved")
+        XCTAssertEqual(CardWords.unread(.song, from: "  "), "a song you saved")
+    }
+
+    func testTheNeighborhoodAndGenreComeOutOfTheVibes() {
+        XCTAssertEqual(Vibes.neighborhood(in: ["dreamy", "food", "Mission"]), "mission")
+        XCTAssertEqual(Vibes.neighborhood(in: ["late night", "hayes valley", "mission"]), "hayes valley")
+        XCTAssertNil(Vibes.neighborhood(in: ["dreamy", "pop"]))
+        XCTAssertEqual(Vibes.genre(in: ["dreamy", "slow", "indie"]), "indie")
+        XCTAssertNil(Vibes.genre(in: []))
+        XCTAssertEqual(Vibes.neighborhood(in: ["late night", "union square"]), "union square")
+        XCTAssertEqual(Vibes.neighborhoods.count, 20)
     }
 
     func testAPersonKeepsOneInitialAndOneColor() {

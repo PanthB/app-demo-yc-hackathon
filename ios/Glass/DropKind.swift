@@ -30,9 +30,9 @@ enum DropKind: String, CaseIterable, Sendable {
         }
     }
 
-    static func derive(type: DropType?, source: SourceKind, hasDueTime: Bool, link: String? = nil) -> DropKind {
+    static func derive(type: DropType?, source: SourceKind, hasDueTime: Bool, link: String? = nil, hasLength: Bool = false) -> DropKind {
         if hasDueTime { return .reminder }
-        if source == .video || isClip(link: link) { return .video }
+        if source == .video || clipSite(link: link, hasLength: hasLength) != nil { return .video }
         switch type {
         case .song: return .song
         case .event: return .event
@@ -50,13 +50,37 @@ enum DropKind: String, CaseIterable, Sendable {
 }
 
 extension DropKind {
-    private static let clipSites = ["tiktok.com", "youtube.com", "youtu.be", "vimeo.com", "instagram.com"]
+    private static let clipSites = [
+        (host: "tiktok.com", name: "tiktok"),
+        (host: "youtube.com", name: "youtube"),
+        (host: "youtu.be", name: "youtube"),
+        (host: "vimeo.com", name: "vimeo"),
+        (host: "instagram.com", name: "instagram"),
+    ]
 
-    static func isClip(link: String?) -> Bool {
+    static func clipSite(link: String?, hasLength: Bool = false) -> String? {
         guard let link, let parts = URLComponents(string: link), let host = parts.host?.lowercased(),
-              let site = clipSites.first(where: { host == $0 || host.hasSuffix(".\($0)") })
-        else { return false }
-        return site != "instagram.com" || parts.path.hasPrefix("/reel") || parts.path.hasPrefix("/tv")
+              let site = clipSites.first(where: { host == $0.host || host.hasSuffix(".\($0.host)") })
+        else { return nil }
+        if site.name == "instagram", !hasLength, !parts.path.hasPrefix("/reel"), !parts.path.hasPrefix("/tv") { return nil }
+        return site.name
+    }
+}
+
+enum Vibes {
+    static let neighborhoods: Set<String> = [
+        "mission", "castro", "haight", "hayes valley", "nopa", "north beach", "chinatown", "japantown", "marina",
+        "presidio", "golden gate park", "sunset", "richmond", "soma", "embarcadero", "dogpatch", "noe valley", "lands end",
+        "tenderloin", "union square",
+    ]
+    static let genres: Set<String> = ["pop", "indie", "rock", "hip hop", "r&b", "electronic", "jazz", "folk", "country", "soul", "classical"]
+
+    static func neighborhood(in vibes: [String]) -> String? {
+        vibes.lazy.map { $0.lowercased() }.first(where: neighborhoods.contains)
+    }
+
+    static func genre(in vibes: [String]) -> String? {
+        vibes.lazy.map { $0.lowercased() }.first(where: genres.contains)
     }
 }
 
@@ -73,6 +97,12 @@ enum CardWords {
             seen.append(part)
         }
         return seen.count == hidden ? nil : seen.dropFirst(hidden).joined(separator: " · ")
+    }
+
+    static func unread(_ kind: DropKind, from name: String?) -> String {
+        let thing = "\("aeiou".contains(kind.word.prefix(1)) ? "an" : "a") \(kind.word)"
+        guard let name = clean(name) else { return "\(thing) you saved" }
+        return "\(thing) from \(name)"
     }
 
     static func saver(_ name: String?, isMe: Bool) -> String {

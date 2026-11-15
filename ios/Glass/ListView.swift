@@ -31,6 +31,12 @@ struct ListView: View {
         }
         .listStyle(.insetGrouped)
         .listSectionSpacing(8)
+        .scrollEdgeEffectStyle(.hard, for: .top)
+        .scrollContentBackground(.hidden)
+        .overlay {
+            if sections.isEmpty { EmptyBoard() }
+        }
+        .background(Color(.systemGroupedBackground))
         .accessibilityIdentifier("listView")
     }
 

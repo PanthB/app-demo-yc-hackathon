@@ -2,7 +2,7 @@ import SwiftUI
 
 enum DropSuggestion: Equatable {
     case words(String)
-    case startsSoon(Date)
+    case soon(Date, lead: String)
 }
 
 struct SuggestionLine: View {
@@ -13,11 +13,11 @@ struct SuggestionLine: View {
             switch suggestion {
             case .words(let words):
                 Text(words)
-            case .startsSoon(let date):
-                Text("starts \(Text(.currentDate, format: .reference(to: date, allowedFields: [.hour, .minute], maxFieldCount: 1))).")
+            case .soon(let date, let lead):
+                Text("\(lead) \(Text(.currentDate, format: .reference(to: date, allowedFields: [.hour, .minute], maxFieldCount: 1))).")
             }
         }
-        .font(.footnote)
+        .font(.subheadline)
         .foregroundStyle(.tint)
         .lineLimit(2)
     }

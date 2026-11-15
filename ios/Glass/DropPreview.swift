@@ -4,7 +4,7 @@ struct DropPreview: View {
     let face: PreviewFace
     let seed: UUID
     var pictureRatio: CGFloat?
-    @ScaledMetric(relativeTo: .caption2) private var pillHeight: CGFloat = 22
+    @ScaledMetric(relativeTo: .caption) private var pillHeight: CGFloat = 22
 
     var body: some View {
         switch face {

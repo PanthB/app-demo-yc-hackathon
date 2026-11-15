@@ -7,6 +7,7 @@ struct CardsView: View {
 
     @State private var showsDone = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         ScrollView {
@@ -15,7 +16,7 @@ struct CardsView: View {
                     switch section.style {
                     case .pinned:
                         header(section)
-                        pinnedRow(section.drops)
+                        if typeSize.isAccessibilitySize { grid(section.drops) } else { pinnedRow(section.drops) }
                     case .zone:
                         header(section)
                         grid(section.drops)
@@ -26,6 +27,10 @@ struct CardsView: View {
                 }
             }
             .padding(.bottom, 24)
+        }
+        .scrollEdgeEffectStyle(.hard, for: .top)
+        .overlay {
+            if sections.isEmpty { EmptyBoard() }
         }
         .background(Color(.systemGroupedBackground))
         .accessibilityIdentifier("cardsView")
@@ -57,19 +62,19 @@ struct CardsView: View {
                     .foregroundStyle(.secondary)
                     .rotationEffect(.degrees(showsDone ? 90 : 0))
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 24)
+            .padding(.bottom, 8)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(.isHeader)
         .accessibilityValue(showsDone ? "open" : "closed")
         .accessibilityIdentifier("section-\(section.id)")
-        .padding(.horizontal, 16)
-        .padding(.top, 24)
-        .padding(.bottom, 8)
     }
 
     private func grid(_ drops: [Drop]) -> some View {
-        MasonryLayout(columns: 2, spacing: 12) {
+        MasonryLayout(columns: typeSize.isAccessibilitySize ? 1 : 2, spacing: 12) {
             ForEach(drops) { drop in
                 item(drop) { DropCard(drop: drop) }
             }
@@ -100,7 +105,9 @@ struct CardsView: View {
         }
         .buttonStyle(CardPressStyle())
         .contextMenu { DropMenu(drop: drop) }
-        .matchedTransitionSource(id: drop.id, in: namespace)
+        .matchedTransitionSource(id: drop.id, in: namespace) { source in
+            source.clipShape(DropCard.shape)
+        }
         .matchedGeometryEffect(id: drop.id, in: namespace)
     }
 
