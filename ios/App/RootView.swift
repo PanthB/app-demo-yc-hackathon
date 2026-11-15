@@ -11,6 +11,7 @@ struct RootView: View {
     @Environment(BoardSync.self) private var sync
     @Environment(BoardsStore.self) private var boards
     @State private var clock = BoardClock()
+    @State private var onboarding = RootView.needsOnboarding
 
     var body: some View {
         ZStack {
@@ -22,6 +23,14 @@ struct RootView: View {
                 BoardShell()
                     .tint(ShellTint.accent)
                     .transition(.opacity)
+            }
+            if onboarding {
+                OnboardingFlow { result in
+                    storedView = (result.start == .demo ? ViewMode.board : ViewMode.cards).rawValue
+                    withAnimation(.smooth(duration: 0.45)) { onboarding = false }
+                }
+                .transition(.onboardingExit)
+                .zIndex(1)
             }
         }
         .environment(clock)
@@ -74,6 +83,14 @@ struct RootView: View {
             #endif
             Logger.app.error("ignored a link the app doesn't handle: \(url.absoluteString, privacy: .public)")
         }
+    }
+
+    private static var needsOnboarding: Bool {
+        #if DEBUG
+        let defaults = UserDefaults.standard
+        if defaults.bool(forKey: "BoardDebugSeed"), !defaults.bool(forKey: "OnboardingReset") { return false }
+        #endif
+        return Onboarding.isNeeded
     }
 
     #if DEBUG
