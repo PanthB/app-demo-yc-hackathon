@@ -8,11 +8,11 @@
 - **Frontend:** not deployed
 - **Convex deployment:** https://adorable-coyote-696.convex.cloud
 - **Components:** none
-- **Convex features:** schema, tables, indexes, full-text search, queries, mutations, actions, internal functions, scheduled functions, file storage, realtime subscriptions, typed environment variables
-- **Auth:** none
-- **AI models:** gpt-6-luna (OpenAI Decisions API and Chat Completions); perplexity/pplx-decider-v1.3:free, particle-ai/particle-1:free and nvidia/nemotron-3.5-super-vl:free (through OpenRouter); cloudflare/clairic and typesafe/jev-1.14 selectable by env
+- **Convex features:** schema, tables, indexes, full-text search, queries, mutations, actions, internal functions, scheduled functions, file storage, realtime subscriptions, typed environment variables, auth (OIDC)
+- **Auth:** sign-in with Apple or Google links an account to its person; access checks are next, so functions still trust the person id the app sends
+- **AI models:** gpt-6-luna through OpenAI only: Chat Completions reads drops and the Decisions API decides, under a $20 cap
 - **Started:** 2026-11-15T18:36:06Z
-- **Last updated:** 2026-11-15T20:45:23Z
+- **Last updated:** 2026-11-15T21:16:00Z
 
 ## Log
 
@@ -135,3 +135,24 @@ that is already seeded. A drop with a time now takes its zone from that time,
 so "saturday 7pm" saved on a Sunday lands in this weekend. Convex features:
 internal actions and mutations, scheduled functions, file storage
 (`convex/seed.ts`, `scripts/seed.mjs`, `convex/pipeline.ts`).
+
+### 2026-11-15 - 70f40e0
+Seeded "sf crew" in its stated state: fifteen drops already read, three vibe
+clusters with their labels, two connected pairs and two pins, the same on every
+run. TikTok, Instagram and YouTube links always read as clips, a drop with no
+time is only asked "someday or vibes", and clusters group by feel and time of
+day across kinds of drop (`convex/seed.ts`, `convex/lib/vibes.ts`,
+`convex/lib/rules.ts`, `convex/pipeline.ts`).
+
+### 2026-11-15 - a5f0002
+Sign-in with Apple or Google links an account to its person: OIDC providers in
+`convex/auth.config.ts` and a `people:link` mutation, so a second phone gets
+the same person back. Access checks are next: functions still trust the person
+id the app sends. Convex features: auth config, indexes (`convex/auth.config.ts`,
+`convex/people.ts`, `convex/schema.ts`).
+
+### 2026-11-15 - 09ee258
+Dropped OpenRouter. The reader and decider run only on OpenAI's gpt-6-luna under
+the $20 cap, with rules as the fallback. A clip's title now comes from its
+caption instead of the share sheet's link title (`convex/lib/models.ts`,
+`convex/pipeline.ts`).
