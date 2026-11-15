@@ -13,6 +13,7 @@ struct AppDemoApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .cameraDebugLauncher()
                 .dropPipeline()
         }
         .modelContainer(container)

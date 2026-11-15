@@ -62,6 +62,7 @@ struct RootView: View {
             clock.tick()
         }
         .onOpenURL { url in
+            guard BoardsStore.inviteCode(in: url) == nil else { return }
             if let mode = ViewMode(url: url) {
                 Logger.app.info("switching to the \(mode.rawValue, privacy: .public) view")
                 withAnimation(reduceMotion ? nil : .smooth(duration: 0.45)) { storedView = mode.rawValue }
