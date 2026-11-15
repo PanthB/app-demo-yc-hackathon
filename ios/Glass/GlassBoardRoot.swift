@@ -12,6 +12,7 @@ struct GlassBoardRoot: View {
     private var boardId: String {
         #if DEBUG
         if let id = UserDefaults.standard.string(forKey: "BoardDebugBoard") { return id }
+        if UserDefaults.standard.bool(forKey: "BoardDebugSeed") { return SeedBoard.homeBoardId }
         #endif
         return boards.currentBoardId
     }
@@ -35,7 +36,7 @@ struct GlassBoardRoot: View {
                     CardsView(sections: sections, namespace: namespace) { selected = $0 }
                 }
             }
-            .navigationTitle(isCurrent ? boards.currentBoardName : boardId.replacingOccurrences(of: "-", with: " "))
+            .navigationTitle(isCurrent ? boards.currentBoardName : shared ? boardId.replacingOccurrences(of: "-", with: " ") : "my board")
         }
         .sheet(item: $selected) { drop in
             DropDetailView(drop: drop)
