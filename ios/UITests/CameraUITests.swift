@@ -74,6 +74,32 @@ final class CameraUITests: XCTestCase {
         attach("camera-5-closed")
     }
 
+    func testTheStatusNamesTheBoardChosenOffline() {
+        let board = XCUIApplication()
+        board.launchArguments = ["-BoardDebugSeed", "YES", "-view", "night"]
+        board.launch()
+        let menu = element(board, "nightBoardMenu")
+        XCTAssertTrue(menu.waitForExistence(timeout: 20))
+        board.terminate()
+        board.launch()
+        XCTAssertTrue(menu.waitForExistence(timeout: 20))
+        menu.tap()
+        let crew = board.buttons["sf crew"]
+        XCTAssertTrue(crew.waitForExistence(timeout: 3))
+        crew.tap()
+        board.terminate()
+
+        let app = launch(["-view", "night"])
+        let shutter = element(app, "cameraShutter")
+        XCTAssertTrue(shutter.waitForExistence(timeout: 20))
+        shutter.tap()
+        let status = element(app, "cameraStatus")
+        XCTAssertTrue(status.waitForExistence(timeout: 2))
+        expectation(for: NSPredicate(format: "label == %@", "dropped it in sf crew."), evaluatedWith: status)
+        waitForExpectations(timeout: 3)
+        attach("camera-status-sf-crew")
+    }
+
     func testBeforeAskingItExplainsAndThenOpens() {
         let app = launch(["-CameraDebugAccess", "notAsked"])
         let ask = element(app, "cameraAsk")

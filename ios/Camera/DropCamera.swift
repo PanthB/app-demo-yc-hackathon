@@ -1,6 +1,7 @@
 import AVKit
 import os
 import PhotosUI
+import SwiftData
 import SwiftUI
 
 struct DropCamera: View {
@@ -10,6 +11,7 @@ struct DropCamera: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Query private var drops: [Drop]
 
     @State private var camera = CameraModel()
     @State private var flights: [CameraShot] = []
@@ -38,7 +40,14 @@ struct DropCamera: View {
         return justDropped ? .dropped : .idle
     }
 
-    private var boardName: String { boards.currentBoardName }
+    private var boardName: String {
+        Self.boardName(boards.currentBoardId, remote: boards.boards, drops: drops, personal: BoardKeys.personalBoard) ?? boards.currentBoardName
+    }
+
+    static func boardName(_ id: String, remote: [RemoteBoard], drops: [Drop], personal: String) -> String? {
+        remote.first { $0.boardId == id }?.name
+            ?? NightBoardView.choices(remote, drops: drops, personal: personal).first { $0.id == id }?.name
+    }
 
     var body: some View {
         ZStack {
