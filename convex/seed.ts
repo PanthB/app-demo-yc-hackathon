@@ -143,15 +143,17 @@ async function clearEventSearches(ctx: MutationCtx, boardId: string) {
   for (const s of searches) await ctx.db.delete("eventSearches", s._id);
 }
 
-async function resetSuggestions(ctx: MutationCtx, boardId: string, keep: string[]) {
+async function clearSuggestions(ctx: MutationCtx, boardId: string) {
   const suggestions = await ctx.db
     .query("suggestions")
     .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
     .take(300);
-  for (const s of suggestions) {
-    if (s.inspiredBy.some((clientId) => !keep.includes(clientId))) await ctx.db.delete("suggestions", s._id);
-    else if (s.savedAt || s.dismissedAt) await ctx.db.patch("suggestions", s._id, { savedAt: undefined, savedClientId: undefined, dismissedAt: undefined });
-  }
+  for (const s of suggestions) await ctx.db.delete("suggestions", s._id);
+  const searches = await ctx.db
+    .query("suggestionSearches")
+    .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
+    .take(300);
+  for (const s of searches) await ctx.db.delete("suggestionSearches", s._id);
 }
 
 async function removeOtherDrops(ctx: MutationCtx, boardId: string, keep: string[]) {
@@ -284,7 +286,7 @@ export const sfCrew = internalMutation({
     await ensureBoard(ctx, CREW_BOARD, { name: "sf crew", shared: true, inviteCode: INVITE_CODE });
     const removedMembers = await setMembers(ctx, CREW_BOARD, PEOPLE);
     const removedDrops = await removeOtherDrops(ctx, CREW_BOARD, CREW.map((s) => seedClientId(2, s.n)));
-    await resetSuggestions(ctx, CREW_BOARD, CREW.map((s) => seedClientId(2, s.n)));
+    await clearSuggestions(ctx, CREW_BOARD);
     await clearEventSearches(ctx, CREW_BOARD);
     const { created, reset, used } = await writeSeeds(ctx, { id: CREW_BOARD, prefix: 2, pairs: CREW_PAIRS }, CREW, images, enrichments);
     return { created, reset, images: used.size, removedDrops, removedMembers };
@@ -301,7 +303,7 @@ export const myBoard = internalMutation({
     const removedMembers = await setMembers(ctx, MY_BOARD, ["panth"]);
     const seeds = myDrops(Date.now());
     const removedDrops = await removeOtherDrops(ctx, MY_BOARD, seeds.map((s) => seedClientId(1, s.n)));
-    await resetSuggestions(ctx, MY_BOARD, seeds.map((s) => seedClientId(1, s.n)));
+    await clearSuggestions(ctx, MY_BOARD);
     await clearEventSearches(ctx, MY_BOARD);
     const { created, reset, used } = await writeSeeds(ctx, { id: MY_BOARD, prefix: 1, pairs: [] }, seeds, images, enrichments);
     return { created, reset, images: used.size, removedDrops, removedMembers };
