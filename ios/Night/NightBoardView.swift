@@ -17,6 +17,7 @@ struct NightBoardView: View {
     @State private var landing: UUID?
     @State private var settling: UUID?
     @State private var held: Set<UUID> = []
+    @State private var cameBack = Date.distantPast
     @Environment(\.scenePhase) private var scenePhase
     @State private var queueTick = Date.now
     @State private var flight = NightFlightModel()
@@ -184,12 +185,18 @@ struct NightBoardView: View {
             .onScrollTargetVisibilityChange(idType: String.self, threshold: 0.2) { ids in
                 sectionInView = ids.first
             }
-            .onAppear { replay(drops, me: me) }
+            .onAppear {
+                cameBack = .now
+                replay(drops, me: me)
+            }
             .onChange(of: current) { replay(drops, me: me) }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { replay(drops, me: me) }
+                guard phase == .active else { return }
+                cameBack = .now
+                replay(drops, me: me)
             }
             .onReceive(NotificationCenter.default.publisher(for: NightReplay.asked)) { _ in
+                cameBack = .now
                 tab = .board
                 replay(drops, me: me)
             }
@@ -321,9 +328,10 @@ struct NightBoardView: View {
         guard !fresh.isEmpty else { return }
         NightReplay.played(fresh)
         held.formUnion(fresh)
+        let first = Date.now.timeIntervalSince(cameBack) < 4 ? 1200 : 650
         for (index, id) in fresh.enumerated() {
             Task {
-                try? await Task.sleep(for: .milliseconds(650 + index * 1400))
+                try? await Task.sleep(for: .milliseconds(first + index * 1400))
                 held.remove(id)
             }
         }
