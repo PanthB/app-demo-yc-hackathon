@@ -63,7 +63,7 @@ targets:
       Release: Config/AppDemo.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.panthb.appdemo
+        PRODUCT_BUNDLE_IDENTIFIER: app.resona.ios
         INFOPLIST_FILE: Config/App-Info.plist
         GENERATE_INFOPLIST_FILE: "YES"
         CODE_SIGN_ENTITLEMENTS: Config/App.entitlements
@@ -94,7 +94,7 @@ targets:
       Release: Config/AppDemo.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.panthb.appdemo.share
+        PRODUCT_BUNDLE_IDENTIFIER: app.resona.ios.share
         INFOPLIST_FILE: Config/ShareExtension-Info.plist
         GENERATE_INFOPLIST_FILE: "YES"
         CODE_SIGN_ENTITLEMENTS: Config/ShareExtension.entitlements
