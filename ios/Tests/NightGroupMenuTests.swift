@@ -54,5 +54,7 @@ final class NightGroupMenuTests: XCTestCase {
         XCTAssertNil(DropGroups.name("one two three four"))
         XCTAssertNil(DropGroups.name("   "))
         XCTAssertNil(DropGroups.name("supercalifragilistic expialidocious"))
+        XCTAssertNil(DropGroups.name("Late Night"))
+        XCTAssertNil(DropGroups.name("cozy"))
     }
 }

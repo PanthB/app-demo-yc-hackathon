@@ -114,7 +114,7 @@ enum DropGroups {
             .split(whereSeparator: \.isWhitespace)
         guard (1...3).contains(words.count) else { return nil }
         let name = words.joined(separator: " ")
-        return name.count <= 24 ? name : nil
+        return name.count <= 24 && !notKinds.contains(name) ? name : nil
     }
 }
 
