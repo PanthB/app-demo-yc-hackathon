@@ -22,6 +22,7 @@ struct NightBoardView: View {
     @State private var toast: NightToastItem?
     @State private var unreadArrival: UUID?
     @State private var sectionInView: String?
+    @State private var isScrolled = false
     @State private var landed = 0
     @State private var grouped = 0
     @Namespace private var moves
@@ -87,6 +88,9 @@ struct NightBoardView: View {
                 .padding(.bottom, 120)
             }
             .scrollIndicators(.hidden)
+            .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 2 } action: { _, scrolled in
+                isScrolled = scrolled
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background { NightBackdrop(palette: palette, isLiving: false) }
             .overlay {
@@ -160,6 +164,18 @@ struct NightBoardView: View {
                 if tab == .board, jumps.count > 1 {
                     NightJumpRow(sections: jumps, current: sectionInView ?? jumps.first?.id) { id in
                         withAnimation(reduceMotion ? nil : .smooth(duration: 0.5)) { proxy.scrollTo(id, anchor: .top) }
+                    }
+                    .background {
+                        VStack(spacing: 0) {
+                            NightStyle.ink
+                            LinearGradient(colors: [NightStyle.ink, NightStyle.ink.opacity(0)], startPoint: .top, endPoint: .bottom)
+                                .frame(height: 16)
+                                .padding(.bottom, -16)
+                        }
+                        .ignoresSafeArea(edges: .top)
+                        .opacity(isScrolled ? 1 : 0)
+                        .animation(.easeOut(duration: 0.18), value: isScrolled)
+                        .allowsHitTesting(false)
                     }
                 }
             }
