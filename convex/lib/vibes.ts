@@ -1,4 +1,8 @@
 export const FACETS = {
+  kind: [
+    "sad songs", "upbeat songs", "chill songs", "thrillers", "documentaries", "comedies", "dramas", "horror films",
+    "food spots", "coffee spots", "bars", "cozy shops", "sunny outdoors", "beaches", "art", "concerts", "nightlife", "sports", "fashion",
+  ],
   mood: ["dreamy", "cozy", "upbeat", "moody", "wild", "calm"],
   time: ["morning", "golden hour", "late night"],
   setting: ["outdoors", "by the water", "food", "live music", "at home"],
@@ -11,10 +15,21 @@ export const FACETS = {
 } as const;
 
 type Facet = keyof typeof FACETS;
-const FACET_ORDER: Facet[] = ["mood", "time", "neighborhood", "setting", "genre", "energy"];
-const WEIGHT: Record<Facet, number> = { time: 1.5, mood: 1, setting: 0.8, neighborhood: 0.5, genre: 0.1, energy: 0.1 };
+const FACET_ORDER: Facet[] = ["kind", "mood", "time", "neighborhood", "setting", "genre", "energy"];
+const WEIGHT: Record<Facet, number> = { kind: 3, time: 1.5, mood: 1, setting: 0.8, neighborhood: 0.5, genre: 0.1, energy: 0.1 };
 const FACET_OF = new Map<string, Facet>(FACET_ORDER.flatMap((f) => FACETS[f].map((value): [string, Facet] => [value, f])));
-const weightOf = (value: string) => WEIGHT[FACET_OF.get(value) ?? "energy"];
+const facetFor = (value: string): Facet => FACET_OF.get(value) ?? "kind";
+const weightOf = (value: string) => WEIGHT[facetFor(value)];
+const kindOf = (vibes: string[]) => vibes.find((v) => facetFor(v) === "kind");
+const SONG_KIND: Record<string, string> = { moody: "sad songs", calm: "chill songs", dreamy: "chill songs", cozy: "chill songs", upbeat: "upbeat songs", wild: "upbeat songs" };
+
+export function kindFor(named: string | undefined, isSong: boolean, vibes: string[]) {
+  const kind = named?.trim().toLowerCase().replace(/[^a-z0-9&' -]/g, "");
+  if (kind && kind.split(/\s+/).length <= 3 && kind.length <= 24 && facetFor(kind) === "kind") return kind;
+  if (!isSong) return undefined;
+  const mood = vibes.find((v) => facetFor(v) === "mood");
+  return (mood && SONG_KIND[mood]) ?? "songs";
+}
 
 export const JOIN = 0.3;
 const DROPS_PER_CLUSTER = 6;
@@ -134,14 +149,14 @@ export function ruleVibes(input: {
   return orderVibes([...found]);
 }
 
-export function orderVibes(values: string[]) {
-  const rank = (v: string) => FACET_ORDER.indexOf(FACET_OF.get(v) ?? "energy");
+export function orderVibes(values: string[], kind?: string) {
+  const rank = (v: string) => FACET_ORDER.indexOf(facetFor(v));
   const perFacet = new Map<Facet, number>();
-  return [...new Set(values)]
-    .filter((v) => FACET_OF.has(v))
+  return [...new Set([...(kind ? [kind] : []), ...values])]
+    .filter((v) => v === kind || (FACET_OF.has(v) && facetFor(v) !== "kind"))
     .sort((a, b) => rank(a) - rank(b))
     .filter((v) => {
-      const facet = FACET_OF.get(v)!;
+      const facet = facetFor(v);
       const count = perFacet.get(facet) ?? 0;
       perFacet.set(facet, count + 1);
       return count < (facet === "neighborhood" ? 1 : 2);
@@ -150,15 +165,17 @@ export function orderVibes(values: string[]) {
 }
 
 export const facetValues = (facet: "mood" | "time" | "setting") => [...FACETS[facet]];
-export const facetOf = (value: string) => FACET_OF.get(value);
+export const facetOf = (value: string) => facetFor(value);
 
-const timesOf = (vibes: string[]) => vibes.filter((v) => FACET_OF.get(v) === "time");
+const timesOf = (vibes: string[]) => vibes.filter((v) => facetFor(v) === "time");
 
 export function similarity(a: string[], b: string[]) {
   const all = new Set([...a, ...b]);
   if (all.size === 0) return 0;
+  const [ka, kb] = [kindOf(a), kindOf(b)];
+  if (ka && kb && ka !== kb) return 0;
   const [ta, tb] = [timesOf(a), timesOf(b)];
-  if (ta.length > 0 && tb.length > 0 && !ta.some((t) => tb.includes(t))) return 0;
+  if (!(ka && ka === kb) && ta.length > 0 && tb.length > 0 && !ta.some((t) => tb.includes(t))) return 0;
   let shared = 0;
   let total = 0;
   for (const v of all) {
@@ -174,12 +191,12 @@ const PLACE_PHRASE: Record<string, string> = {
   "lands end": "at lands end", "union square": "at union square",
 };
 const phrase = (v: string) => (FACET_OF.get(v) === "neighborhood" ? (PLACE_PHRASE[v] ?? `in ${v}`) : v);
-const byWeight = (values: string[]) => [...values].sort((a, b) => weightOf(b) - weightOf(a) || FACET_ORDER.indexOf(FACET_OF.get(a)!) - FACET_ORDER.indexOf(FACET_OF.get(b)!));
+const byWeight = (values: string[]) => [...values].sort((a, b) => weightOf(b) - weightOf(a) || FACET_ORDER.indexOf(facetFor(a)) - FACET_ORDER.indexOf(facetFor(b)));
 
 export const reasonFor = (a: string[], b: string[]) => {
   const shared = byWeight(a.filter((v) => b.includes(v)))
     .slice(0, 2)
-    .sort((x, y) => FACET_ORDER.indexOf(FACET_OF.get(x)!) - FACET_ORDER.indexOf(FACET_OF.get(y)!));
+    .sort((x, y) => FACET_ORDER.indexOf(facetFor(x)) - FACET_ORDER.indexOf(facetFor(y)));
   return shared.length ? `both ${shared.map(phrase).join(", ")}.` : undefined;
 };
 
@@ -200,7 +217,9 @@ export function clusterBoard(items: ClusterItem[]): Map<string, Placement> {
   const sim = sorted.map((a) => sorted.map((b) => similarity(a.vibes, b.vibes)));
   const pinned = new Set(
     sorted
-      .map((x, i) => (x.jevClusterId && sorted.some((y, j) => j !== i && !y.jevClusterId && y.previousClusterId === x.jevClusterId) ? i : -1))
+      .map((x, i) =>
+        x.jevClusterId && sorted.some((y, j) => j !== i && !y.jevClusterId && y.previousClusterId === x.jevClusterId && similarity(x.vibes, y.vibes) > 0) ? i : -1,
+      )
       .filter((i) => i >= 0),
   );
   const groups: number[][] = sorted.map((_, i) => i).filter((i) => !pinned.has(i)).map((i) => [i]);
@@ -256,9 +275,10 @@ export function clusterBoard(items: ClusterItem[]): Map<string, Placement> {
     if (previous?.split(", ").every((part) => common.some(([v]) => phrase(v) === part))) return previous;
     const pool = common.length ? common : [...counts.entries()];
     return pool
-      .sort((a, b) => b[1] * weightOf(b[0]) - a[1] * weightOf(a[0]) || FACET_ORDER.indexOf(FACET_OF.get(a[0])!) - FACET_ORDER.indexOf(FACET_OF.get(b[0])!))
-      .slice(0, 2)
+      .sort((a, b) => b[1] * weightOf(b[0]) - a[1] * weightOf(a[0]) || FACET_ORDER.indexOf(facetFor(a[0])) - FACET_ORDER.indexOf(facetFor(b[0])))
       .map(([v]) => phrase(v))
+      .filter((v, i, all) => !all.slice(0, i).some((earlier) => earlier.includes(v)))
+      .slice(0, 2)
       .join(", ");
   });
 
