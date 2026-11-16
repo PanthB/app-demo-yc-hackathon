@@ -49,6 +49,14 @@ const localMidnight = (t: number, offset: number) => {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 };
 
+const TIME_WORDS = /\b(morning|afternoon|evening|night|tonight|noon|midnight|brunch|lunch|dinner)\b/i;
+
+export function dayOnly(at: number, said: string, capturedAt: number, offset: number) {
+  if (localMidnight(at, offset) <= localMidnight(capturedAt, offset) || TIME_WORDS.test(said)) return at;
+  const hourSaid = chrono.parse(withDigits(said), { instant: new Date(capturedAt), timezone: offset }, { forwardDate: true }).some((r) => r.start.isCertain("hour"));
+  return hourSaid ? at : localMidnight(at, offset) - offset * 60_000;
+}
+
 export function localStamp(t: number, offset: number) {
   const d = local(t, offset);
   const iso = d.toISOString().slice(0, 16).replace("T", " ");
@@ -149,7 +157,8 @@ export function ruleExtraction(args: {
   const linkText = host && MUSIC_HOSTS.test(host) ? [] : [enrichment?.title, enrichment?.description];
   const timeSource = withDigits([text, hints?.transcript, hints?.pdfText?.slice(0, 4000), ...linkText].filter(Boolean).join("\n"));
   const parsed = chrono.parse(timeSource, { instant: new Date(capturedAt), timezone: utcOffsetMinutes }, { forwardDate: true }).find((r) => !BARE_TIME_OF_DAY.test(r.text.trim()));
-  const at = parsed?.start.date().getTime();
+  const parsedAt = parsed?.start.date().getTime();
+  const at = parsedAt === undefined || !parsed || parsed.start.isCertain("hour") ? parsedAt : dayOnly(parsedAt, timeSource, capturedAt, utcOffsetMinutes);
   const isCountdown = Boolean(parsed && COUNTDOWN.test(parsed.text));
   const dueAt = hints?.dueAt ?? (isCountdown ? at : undefined);
   const startsAt = isCountdown ? undefined : at;
