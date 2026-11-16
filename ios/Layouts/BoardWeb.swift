@@ -47,12 +47,30 @@ struct BoardWeb: View {
                                 .position(x: proxy.size.width / 2, y: group.top + BoardWebLayout.header / 2)
                             Color.clear.frame(width: 1, height: 1).position(x: proxy.size.width / 2, y: group.center.y).id(group.id)
                         }
+                        ForEach(web.groups) { group in
+                            if let spot = group.suggested {
+                                Text("suggested")
+                                    .font(NightStyle.caption)
+                                    .foregroundStyle(NightStyle.flame)
+                                    .fixedSize()
+                                    .position(spot)
+                                    .accessibilityHidden(true)
+                            }
+                        }
                         ForEach(web.satellites) { spot in
                             if let suggestion = spot.suggestion {
                                 Button { picked = suggestion } label: {
                                     BoardWebSuggestion(suggestion: suggestion, side: spot.side)
                                 }
                                 .buttonStyle(.plain)
+                                .popover(
+                                    isPresented: Binding(get: { picked?.id == suggestion.id }, set: { if !$0 { picked = nil } }),
+                                    attachmentAnchor: .rect(.bounds),
+                                    arrowEdge: spot.point.x < proxy.size.width / 2 ? .leading : .trailing
+                                ) {
+                                    menu(suggestion)
+                                        .presentationCompactAdaptation(.popover)
+                                }
                                 .position(spot.point)
                                 .transition(.scale(scale: 0.5).combined(with: .opacity))
                                 .accessibilityIdentifier("webSuggestion")
@@ -104,20 +122,59 @@ struct BoardWeb: View {
             guard !Task.isCancelled else { return }
             note = nil
         }
-        .confirmationDialog(picked?.title ?? "", isPresented: Binding(get: { picked != nil }, set: { if !$0 { picked = nil } }), titleVisibility: .visible, presenting: picked) { suggestion in
-            Button("save to board") {
-                model.save(suggestion, as: boards.personId)
-                note = "saved to \(boards.boards.first { $0.boardId == boardId }?.name ?? "the board")."
-            }
-            if let link = suggestion.link {
-                Button("open it") { openURL(link) }
-            }
-            Button("dismiss", role: .destructive) { model.dismiss(suggestion) }
-        }
         .task(id: boardId) { model.follow(boardId: boardId, personId: boards.personId) }
         .onDisappear { model.stop() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("boardWeb")
+    }
+
+    private func menu(_ suggestion: FeedSuggestion) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(suggestion.title.lowercased())
+                    .font(NightStyle.itemTitle)
+                    .lineLimit(2)
+                if let meta = suggestion.meta(now: clock.now) {
+                    Text(meta.lowercased())
+                        .font(.footnote)
+                        .foregroundStyle(NightStyle.secondary)
+                        .lineLimit(2)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            Button {
+                picked = nil
+                model.save(suggestion, as: boards.personId)
+                note = "saved to \(boards.boards.first { $0.boardId == boardId }?.name ?? "the board")."
+            } label: {
+                Text("save to board").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glassProminent)
+            .accessibilityIdentifier("webSuggestionSave")
+            HStack(spacing: 8) {
+                if let link = suggestion.link {
+                    Button {
+                        picked = nil
+                        openURL(link)
+                    } label: {
+                        Text("open it").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.glass)
+                }
+                Button(role: .destructive) {
+                    picked = nil
+                    model.dismiss(suggestion)
+                } label: {
+                    Text("dismiss").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glass)
+            }
+        }
+        .font(.subheadline.weight(.semibold))
+        .padding(16)
+        .frame(width: 260)
+        .tint(NightStyle.flame)
+        .preferredColorScheme(.dark)
     }
 
     private func label(_ group: BoardWebLayout.Group) -> some View {
@@ -152,6 +209,7 @@ struct BoardWebLayout {
         let id: String
         let label: String
         let together: String?
+        var suggested: CGPoint?
         let top: CGFloat
         let center: CGPoint
     }
@@ -213,10 +271,13 @@ struct BoardWebLayout {
                 nodes.append(Spot(id: drop.id.uuidString, point: point, side: side, drop: drop))
             }
             let extra = Array((suggestions[id] ?? []).prefix(3))
+            let column = row.isMultiple(of: 2) ? center.x + Self.ring + 64 : center.x - Self.ring - 64
             for (index, suggestion) in extra.enumerated() {
-                let x = row.isMultiple(of: 2) ? center.x + Self.ring + 64 : center.x - Self.ring - 64
                 let y = center.y - 56 + CGFloat(index) * 56
-                satellites.append(Spot(id: suggestion.id, point: CGPoint(x: min(max(x, 30), width - 30), y: y), side: 42, suggestion: suggestion))
+                satellites.append(Spot(id: suggestion.id, point: CGPoint(x: min(max(column, 30), width - 30), y: y), side: 42, suggestion: suggestion))
+            }
+            if !extra.isEmpty {
+                groups[groups.count - 1].suggested = CGPoint(x: min(max(column, 40), width - 40), y: center.y - 56 - 21 - 16)
             }
             top += Self.header + Self.block
         }
@@ -337,7 +398,15 @@ private struct BoardWebSuggestion: View {
             }
         }
         .frame(width: side, height: side)
-        .overlay { Circle().strokeBorder(.white.opacity(0.3), lineWidth: 1) }
+        .overlay { Circle().strokeBorder(NightStyle.flame.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])) }
+        .overlay(alignment: .topTrailing) {
+            Image(systemName: "plus")
+                .font(.system(size: 8, weight: .heavy))
+                .foregroundStyle(NightStyle.ink)
+                .frame(width: 15, height: 15)
+                .background(NightStyle.flame, in: .circle)
+                .offset(x: 3, y: -3)
+        }
         .contentShape(.circle)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("suggestion: \(suggestion.title.lowercased())")
