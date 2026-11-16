@@ -65,9 +65,11 @@ struct NightBoardView: View {
                     )
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, 120)
             }
             .scrollIndicators(.hidden)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background { NightBackdrop(palette: palette, isLiving: false) }
             .overlay {
                 if tab == .suggestions {
@@ -77,6 +79,7 @@ struct NightBoardView: View {
                             .tint(palette.ember)
                             .padding(.top, 8)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .transition(.opacity)
                 }
             }
@@ -102,15 +105,25 @@ struct NightBoardView: View {
                 }
             }
             .overlay(alignment: .bottom) {
-                NightAddButton()
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 40)
-                    .padding(.bottom, 4)
-                    .background {
-                        LinearGradient(colors: [NightStyle.ink.opacity(0), NightStyle.ink.opacity(0.85)], startPoint: .top, endPoint: .bottom)
-                            .ignoresSafeArea(edges: .bottom)
-                            .allowsHitTesting(false)
+                VStack(spacing: 0) {
+                    if let toast {
+                        NightToast(text: toast.text) {
+                            reveal(toast.id, in: sections, proxy: proxy)
+                            withAnimation(reduceMotion ? nil : .smooth) { self.toast = nil }
+                        }
+                        .padding(.horizontal, NightStyle.margin)
+                        .transition(.opacity.combined(with: .offset(y: 16)))
                     }
+                    NightAddButton()
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 40)
+                        .padding(.bottom, 4)
+                        .background {
+                            LinearGradient(colors: [NightStyle.ink.opacity(0), NightStyle.ink.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                                .ignoresSafeArea(edges: .bottom)
+                                .allowsHitTesting(false)
+                        }
+                }
             }
             .navigationDestination(item: $web) { stop in
                 BoardWeb(boardId: boards.currentBoardId, focus: stop.focus)
@@ -120,17 +133,6 @@ struct NightBoardView: View {
                 if let drop = allDrops.first(where: { $0.id == id }) {
                     NightDetail(drop: drop, palette: palette)
                         .navigationTransition(.zoom(sourceID: id, in: namespace))
-                }
-            }
-            .overlay(alignment: .bottom) {
-                if let toast {
-                    NightToast(text: toast.text) {
-                        reveal(toast.id, in: sections, proxy: proxy)
-                        withAnimation(reduceMotion ? nil : .smooth) { self.toast = nil }
-                    }
-                    .padding(.horizontal, NightStyle.margin)
-                    .padding(.bottom, 84)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
