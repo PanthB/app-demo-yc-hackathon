@@ -22,6 +22,7 @@ struct NightBoardView: View {
     @State private var queueTick = Date.now
     @State private var flight = NightFlightModel()
     @State private var calibration = SuggestionsModel()
+    @State private var seen: Set<String> = []
     @State private var toast: NightToastItem?
     @State private var unreadArrival: UUID?
     @State private var sectionInView: String?
@@ -35,6 +36,11 @@ struct NightBoardView: View {
     private struct Arrivals: Equatable {
         let board: String
         let ids: [UUID]
+    }
+
+    private struct SeenMark: Equatable {
+        let tab: NightTab
+        let ids: Set<String>
     }
 
     private struct QueueMark: Equatable {
@@ -68,13 +74,15 @@ struct NightBoardView: View {
         let queued = drops.filter { $0.authorId == me && readingIds.contains($0.id) }.sorted { $0.createdAt < $1.createdAt }
         let sections = DropSection.build(drops.filter { !readingIds.contains($0.id) }, grouping: isShared ? .vibe : .when, filter: filter, me: me, now: clock.now)
         let calibrating = Set(calibration.groups?.filter(\.searching).map(\.clusterId) ?? [])
+        let suggestionIds = Set(calibration.groups?.flatMap { $0.suggestions.map(\.id) } ?? []).subtracting(calibration.hidden)
+        let hasNewSuggestions = tab != .suggestions && !suggestionIds.isSubset(of: seen)
 
         NavigationStack(path: $path) {
             ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if tab == .board {
-                    header(name: name, choices: choices, current: current, streaks: streaks, isShared: isShared)
+                    header(name: name, choices: choices, current: current, streaks: streaks, isShared: isShared, hasNewSuggestions: hasNewSuggestions)
                     NightFeed(
                         sections: sections,
                         namespace: namespace,
@@ -261,7 +269,13 @@ struct NightBoardView: View {
             withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: id, text: "\(CardWords.clean(drop.authorName) ?? "someone") dropped something.") }
         }
         .task(id: current) {
+            seen = Set(UserDefaults.standard.stringArray(forKey: Self.seenKey(current)) ?? [])
             calibration.follow(boardId: current, personId: me)
+        }
+        .onChange(of: SeenMark(tab: tab, ids: suggestionIds)) { _, mark in
+            guard mark.tab == .suggestions, !mark.ids.isSubset(of: seen) else { return }
+            seen.formUnion(mark.ids)
+            UserDefaults.standard.set(Array(seen.suffix(300)), forKey: Self.seenKey(current))
         }
         .onDisappear { calibration.stop() }
         .sheet(isPresented: $showsStreaks) {
@@ -294,7 +308,7 @@ struct NightBoardView: View {
         .accessibilityIdentifier("nightBoard")
     }
 
-    private func header(name: String, choices: [NightBoardChoice], current: String, streaks: BoardStreaks, isShared: Bool) -> some View {
+    private func header(name: String, choices: [NightBoardChoice], current: String, streaks: BoardStreaks, isShared: Bool, hasNewSuggestions: Bool = false) -> some View {
         NightHeader(
             boardName: name,
             boards: choices,
@@ -311,7 +325,8 @@ struct NightBoardView: View {
             },
             startBoard: { boards.entry = .create },
             joinBoard: { boards.entry = .join(code: nil) },
-            seeFull: { web = BoardWebStop(focus: nil) }
+            seeFull: { web = BoardWebStop(focus: nil) },
+            hasNewSuggestions: hasNewSuggestions
         )
         .matchedTransitionSource(id: "web-all", in: namespace)
     }
@@ -389,6 +404,10 @@ struct NightBoardView: View {
             try? await Task.sleep(for: .milliseconds(150))
             withAnimation(motion) { proxy.scrollTo(id, anchor: .center) }
         }
+    }
+
+    static func seenKey(_ board: String) -> String {
+        "NightSeenSuggestions-\(board)"
     }
 
     static func settledWords(_ section: DropSection, me: String) -> String {
