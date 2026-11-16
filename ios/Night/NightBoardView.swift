@@ -14,8 +14,10 @@ struct NightBoardView: View {
     @State private var web: BoardWebStop?
     @State private var moment = 0
     @State private var holdsDemoStreak = Self.asksForStreakDemo
-    @State private var following: UUID?
-    @State private var touchedSinceFollow = false
+    @State private var landing: UUID?
+    @State private var queueTick = Date.now
+    @State private var flight = NightFlightModel()
+    @State private var calibration = SuggestionsModel()
     @State private var toast: NightToastItem?
     @State private var unreadArrival: UUID?
     @State private var sectionInView: String?
@@ -29,6 +31,13 @@ struct NightBoardView: View {
         let board: String
         let ids: [UUID]
     }
+
+    private struct QueueMark: Equatable {
+        let board: String
+        let ids: [UUID]
+    }
+
+    private static let queueTime: TimeInterval = 60
 
     private struct StreakMark: Equatable {
         let board: String
@@ -48,7 +57,12 @@ struct NightBoardView: View {
         let streaks = shownStreaks(drops, me: me)
         let mine = streaks.mine
 
-        let sections = DropSection.build(drops, grouping: isShared ? .vibe : .when, filter: filter, me: me, now: clock.now)
+        let now = max(queueTick, Date.now)
+        let reading = drops.filter { $0.isArriving && now.timeIntervalSince($0.createdAt) < Self.queueTime }
+        let readingIds = Set(reading.map(\.id))
+        let queued = reading.filter { $0.authorId == me }.sorted { $0.createdAt < $1.createdAt }
+        let sections = DropSection.build(drops.filter { !readingIds.contains($0.id) }, grouping: isShared ? .vibe : .when, filter: filter, me: me, now: clock.now)
+        let calibrating = Set(calibration.groups?.filter(\.searching).map(\.clusterId) ?? [])
 
         NavigationStack(path: $path) {
             ScrollViewReader { proxy in
@@ -61,7 +75,10 @@ struct NightBoardView: View {
                         namespace: namespace,
                         moves: moves,
                         select: { drop in path.append(drop.id) },
-                        openGroup: { web = BoardWebStop(focus: $0) }
+                        openGroup: { web = BoardWebStop(focus: $0) },
+                        landing: landing,
+                        calibrating: calibrating,
+                        report: { flight.target = $0 }
                     )
                     }
                 }
@@ -114,6 +131,7 @@ struct NightBoardView: View {
                         .padding(.horizontal, NightStyle.margin)
                         .transition(.opacity.combined(with: .offset(y: 16)))
                     }
+                    NightQueue(drops: queued, flight: flight)
                     NightAddButton()
                         .frame(maxWidth: .infinity)
                         .padding(.top, 40)
@@ -135,6 +153,7 @@ struct NightBoardView: View {
                         .navigationTransition(.zoom(sourceID: id, in: namespace))
                 }
             }
+            .overlay { NightFlightLayer(flight: flight) }
             .safeAreaInset(edge: .top, spacing: 0) {
                 let jumps = sections.filter { $0.style != .done }
                 if tab == .board, jumps.count > 1 {
@@ -146,16 +165,12 @@ struct NightBoardView: View {
             .onScrollTargetVisibilityChange(idType: String.self, threshold: 0.2) { ids in
                 sectionInView = ids.first
             }
-            .onScrollPhaseChange { _, phase in
-                if phase == .interacting { touchedSinceFollow = true }
-            }
             .onChange(of: Arrivals(board: current, ids: drops.map(\.id))) { before, after in
                 guard before.board == after.board else { return }
                 let added = Set(after.ids).subtracting(before.ids)
                 guard let drop = drops.first(where: { added.contains($0.id) && $0.createdAt > .now.addingTimeInterval(-120) }) else { return }
                 if drop.authorId == me {
-                    following = drop.id
-                    touchedSinceFollow = false
+                    guard !drop.isArriving else { return }
                     landed += 1
                     reveal(drop.id, in: sections, proxy: proxy)
                 } else if drop.isArriving {
@@ -169,13 +184,19 @@ struct NightBoardView: View {
                 unreadArrival = nil
                 withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: drop.id, text: ShellToast.words(for: drop)) }
             }
-            .onChange(of: following.flatMap { Self.section(of: $0, in: sections) }) { before, after in
-                guard let id = following, before != nil, let after else { return }
-                following = nil
-                if !touchedSinceFollow { reveal(id, in: sections, proxy: proxy) }
-                guard after.hasPrefix("cluster-"), let section = sections.first(where: { $0.id == after }) else { return }
-                grouped += 1
-                withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: id, text: Self.settledWords(section, me: me)) }
+            .onChange(of: QueueMark(board: current, ids: queued.map(\.id))) { before, after in
+                guard before.board == after.board else { return }
+                if !Set(after.ids).subtracting(before.ids).isEmpty { landed += 1 }
+                let left = Set(before.ids).subtracting(after.ids)
+                guard let drop = drops.first(where: { left.contains($0.id) && Self.section(of: $0.id, in: sections) != nil }) else { return }
+                land(drop, sections: sections, proxy: proxy, me: me)
+            }
+            .task(id: reading.map(\.id)) {
+                guard let oldest = reading.map(\.createdAt).min() else { return }
+                let left = Self.queueTime - Date.now.timeIntervalSince(oldest)
+                try? await Task.sleep(for: .seconds(max(left, 0.5)))
+                guard !Task.isCancelled else { return }
+                queueTick = .now
             }
             }
         }
@@ -194,12 +215,10 @@ struct NightBoardView: View {
             unreadArrival = nil
             withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: id, text: "\(CardWords.clean(drop.authorName) ?? "someone") dropped something.") }
         }
-        .task(id: following) {
-            guard following != nil else { return }
-            try? await Task.sleep(for: .seconds(20))
-            guard !Task.isCancelled else { return }
-            following = nil
+        .task(id: current) {
+            calibration.follow(boardId: current, personId: me)
         }
+        .onDisappear { calibration.stop() }
         .sheet(isPresented: $showsStreaks) {
             NightStreakSheet(boardName: name, streaks: streaks, members: members, me: me, isShared: isShared, invite: boards.currentBoard?.inviteLink, inviteCode: boards.currentBoard?.inviteCode)
         }
@@ -250,6 +269,48 @@ struct NightBoardView: View {
             seeFull: { web = BoardWebStop(focus: nil) }
         )
         .matchedTransitionSource(id: "web-all", in: namespace)
+    }
+
+    private func land(_ drop: Drop, sections: [DropSection], proxy: ScrollViewProxy, me: String) {
+        let id = drop.id
+        let banner = Self.section(of: id, in: sections)
+            .flatMap { sectionId in sections.first { $0.id == sectionId } }
+            .flatMap { $0.id.hasPrefix("cluster-") ? Self.settledWords($0, me: me) : nil }
+        let finish: @MainActor () -> Void = {
+            grouped += 1
+            if let banner {
+                withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: id, text: banner) }
+            }
+        }
+        guard tab == .board else {
+            finish()
+            return
+        }
+        guard !reduceMotion, flight.drop == nil, let bubble = flight.bubbleFrames[id] else {
+            landing = id
+            reveal(id, in: sections, proxy: proxy)
+            Task {
+                try? await Task.sleep(for: .milliseconds(60))
+                withAnimation(.easeInOut(duration: 0.3)) { landing = nil }
+                finish()
+            }
+            return
+        }
+        flight.start(drop, from: CGPoint(x: bubble.midX, y: bubble.midY))
+        landing = id
+        Task {
+            try? await Task.sleep(for: .milliseconds(30))
+            withAnimation(.snappy(duration: 0.2)) { flight.lifted = true }
+            reveal(id, in: sections, proxy: proxy)
+            try? await Task.sleep(for: .milliseconds(780))
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                landing = nil
+                flight.popped = true
+            }
+            finish()
+            try? await Task.sleep(for: .milliseconds(380))
+            flight.end()
+        }
     }
 
     private func reveal(_ id: UUID, in sections: [DropSection], proxy: ScrollViewProxy) {
