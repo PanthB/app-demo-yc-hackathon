@@ -183,6 +183,11 @@ struct NightDropMenu: View {
                 }
             }
         }
+        if drop.remoteId != nil, !drop.isArriving {
+            Menu("group", systemImage: "rectangle.3.group") {
+                GroupMenu(drop: drop)
+            }
+        }
         if drop.url != nil {
             Button("open link", systemImage: "arrow.up.right") { actions.open(drop) }
         }
