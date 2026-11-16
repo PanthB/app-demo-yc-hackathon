@@ -22,6 +22,7 @@ import {
 } from "./lib/models";
 import {
   corpus,
+  dayOnly,
   fromLocalIso,
   isClipLink,
   isMusicLink,
@@ -121,8 +122,10 @@ function fromReading(r: Reading, drop: Doc<"drops">, fallback: Extraction): Extr
   const dueIn = num(r.due_in_minutes);
   const dueAt = drop.hints?.dueAt ?? (dueIn && dueIn > 0 ? drop.capturedAt + dueIn * 60_000 : undefined);
   const startsRaw = text(r.starts_at);
-  const read = dueAt ? undefined : startsRaw ? fromLocalIso(startsRaw, offset) : undefined;
   const whenText = text(r.when_text)?.toLowerCase();
+  const said = [whenText, drop.text, drop.hints?.transcript].filter(Boolean).join("\n");
+  const raw = dueAt ? undefined : startsRaw ? fromLocalIso(startsRaw, offset) : undefined;
+  const read = raw === undefined ? undefined : dayOnly(raw, said, drop.capturedAt, offset);
   const startsAt = dueAt
     ? undefined
     : read === undefined
@@ -139,7 +142,7 @@ function fromReading(r: Reading, drop: Doc<"drops">, fallback: Extraction): Extr
     area: text(r.area),
     startsAt,
     dueAt,
-    whenLabel: anchor && (dueAt || !whenText) ? whenLabelFor(anchor, drop.capturedAt, offset) : whenText,
+    whenLabel: anchor && (dueAt || !whenText) ? whenLabelFor(anchor, drop.capturedAt, offset, true, anchor !== read || read === raw) : whenText,
     price: num(r.price),
     kindWords: (r.kind_words ?? []).map((w) => w.toLowerCase()),
     category: text(r.kind_of_thing)?.toLowerCase(),
