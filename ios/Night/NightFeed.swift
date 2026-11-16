@@ -7,6 +7,7 @@ struct NightFeed: View {
     let select: (Drop) -> Void
     var openGroup: ((String) -> Void)? = nil
     var landing: UUID? = nil
+    var glowing: UUID? = nil
     var calibrating: Set<String> = []
     var report: (CGRect) -> Void = { _ in }
 
@@ -121,6 +122,13 @@ struct NightFeed: View {
         .scaleEffect(drop.id == landing ? 0.4 : 1)
         .opacity(drop.id == landing ? 0 : 1)
         .modifier(NightTrack(isOn: drop.id == landing, report: report))
+        .overlay {
+            if drop.id == glowing {
+                NightStyle.card.stroke(.white.opacity(0.9), lineWidth: 2.5)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+        }
         .overlay {
             if drop.isArriving, drop.createdAt > clock.now.addingTimeInterval(-60) || drop.createdAt > .now.addingTimeInterval(-60) {
                 NightReadingRing(createdAt: drop.createdAt)

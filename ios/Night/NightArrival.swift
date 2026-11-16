@@ -75,3 +75,42 @@ struct NightArrivalBanner: View {
         }
     }
 }
+
+struct NightSavedItem: Equatable {
+    let id: UUID
+    let text: String
+}
+
+struct NightSavedBanner: View {
+    let text: String
+    let open: () -> Void
+
+    @State private var left: CGFloat = 1
+
+    var body: some View {
+        Button(action: open) {
+            Text(text)
+                .font(NightStyle.body.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .padding(.horizontal, 18)
+                .frame(minHeight: 44)
+                .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: .capsule)
+        .overlay(alignment: .bottom) {
+            Capsule()
+                .fill(.white.opacity(0.55))
+                .frame(height: 2)
+                .scaleEffect(x: left, anchor: .leading)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 4)
+                .allowsHitTesting(false)
+        }
+        .onAppear { withAnimation(.linear(duration: 4)) { left = 0 } }
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .accessibilityHint("shows it on the board")
+        .accessibilityIdentifier("nightSavedBanner")
+    }
+}
