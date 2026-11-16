@@ -1,6 +1,8 @@
-https://api.capy.ai/pr-assets/v_Zs26VkFTjB4ug3fUeJoCZr10HPFTJbx6wXqK9iiRzts.mp4
+https://api.capy.ai/pr-assets/v_TYmBr9YBxnDkKvaLYeIt3TLK_3mLMLlTk1InIYsn5f4.mp4
 
 [watch the full demo (demo/demo.mp4)](demo/demo.mp4)
+
+The demo is 2:27 of the real app on two phones against the live backend. It opens sf crew, then shares a coffee shop, a sad song and a sunny song, and adds a photo with the + button; each one waits as a bubble and flies into its group. Then it shows the suggestions tab finding a small gig at Bottom of the Hill and two movies and saving the gig to the board, alex's live share arriving as a banner that opens the web on its group, see full, the streak, and a quick run of TikTok and Instagram shares.
 
 see sf crew live on the web: https://panthb.github.io/app-demo-yc-hackathon/
 
