@@ -1,8 +1,8 @@
-https://api.capy.ai/pr-assets/v_TYmBr9YBxnDkKvaLYeIt3TLK_3mLMLlTk1InIYsn5f4.mp4
+https://api.capy.ai/pr-assets/v_sUzzjf_qqaTkjJrI3rzoJbrXS67HJaML2KMOhLM_h4o.mp4
 
 [watch the full demo (demo/demo.mp4)](demo/demo.mp4)
 
-The demo is 2:27 of the real app on two phones against the live backend. It opens sf crew, then shares a coffee shop, a sad song and a sunny song, and adds a photo with the + button; each one waits as a bubble and flies into its group. Then it shows the suggestions tab finding a small gig at Bottom of the Hill and two movies and saving the gig to the board, alex's live share arriving as a banner that opens the web on its group, see full, the streak, and a quick run of TikTok and Instagram shares.
+The demo is 2:46 of the real app against the live backend, recorded as one real-speed session with short captions and no audio. It opens on the welcome screen, taps demo and goes through the intro into sf crew. Then it shares a coffee shop from Safari, which waits as a bubble while resona reads it and shows a 'saved to' banner for where it went, a song from Spotify, and a photo from the + button. After that it opens the suggestions tab and scrolls to a small gig at Bottom of the Hill and the movie columbus, goes back to the board, and ends with a TikTok share.
 
 see sf crew live on the web: https://panthb.github.io/app-demo-yc-hackathon/
 

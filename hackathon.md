@@ -12,7 +12,7 @@
 - **Auth:** Sign in with Apple, guest or demo, and no other provider. Sign in with Apple links an account to its person through `people:link`, a guest stays an anonymous person id, and demo opens the sample sf crew board; access checks are next, so functions still trust the person id the app sends
 - **AI models:** OpenAI only: gpt-6-luna reads drops through Chat Completions and decides through the Decisions API, and gpt-6.1-terra finds suggestions with web search through the Responses API. The backend enforces a hard cap that defaults to $100 and is set by `OPENAI_BUDGET_USD`, with built-in rules as the fallback. The key lives only in the Convex env
 - **Started:** 2026-11-15T18:36:06Z
-- **Last updated:** 2026-11-16T01:40:00Z
+- **Last updated:** 2026-11-16T02:16:00Z
 
 ## Log
 
@@ -217,9 +217,9 @@ dot while the board has suggestions you haven't opened yet (#109). The demo
 video is in `demo/demo.mp4`.
 
 ### 2026-11-16 - f0ba126
-The demo video in `demo/demo.mp4` was replaced with a 2:27 cut, partly reshot on
-89827e4 with the arrival banner (#116): the app with a coffee shop share, two
-song shares and a photo from the + button flying into their groups, the
-suggestions tab saving a Bottom of the Hill gig to the board, a friend's live
-share arriving as a banner that opens the web on its group, see full, the streak
-and a few quick shares.
+The demo video in `demo/demo.mp4` was replaced with a 2:46 v4 cut, recorded as
+one real-speed session on a cleaned sf crew board with the arrival rework from
+#123: the welcome screen and intro into sf crew, a coffee shop share from Safari
+with the 'saved to' banner, a Spotify song, a photo from the + button, the
+suggestions tab with a Bottom of the Hill gig and the movie columbus, and a
+TikTok share. It has lowercase captions and no audio.
