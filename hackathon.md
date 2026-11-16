@@ -1,18 +1,18 @@
 # Hackathon log
 
-- **Project:** app-demo-yc-hackathon
+- **Project:** Resona (repo app-demo-yc-hackathon)
 - **Event:** The Consumer Mobile Hackathon
-- **What it does:** A native iOS app where anything you share, like a place, a clip, a song or a note, lands on your own board or a board shared with friends. The backend reads each drop, places it by when you can act on it (now, tonight, this weekend, someday or vibes), ties related drops together and groups a shared board by vibe.
+- **What it does:** Resona is a native iOS app where anything you share, like a place, a clip, a song or a note, lands on your own board or a board shared with friends. The backend reads each drop, places it by when you can act on it (now, tonight, this weekend, someday or vibes), ties related drops together and groups a shared board by vibe.
 - **Live app:** not deployed
-- **Repo:** private
-- **Frontend:** not deployed
+- **Repo:** public, https://github.com/PanthB/app-demo-yc-hackathon
+- **Frontend:** https://panthb.github.io/app-demo-yc-hackathon/, a live sf crew page built from `web/` and published from the `gh-pages` branch
 - **Convex deployment:** https://adorable-coyote-696.convex.cloud
 - **Components:** none
 - **Convex features:** schema, tables, indexes, full-text search, queries, mutations, actions, internal functions, scheduled functions, file storage, realtime subscriptions, typed environment variables, auth (OIDC)
-- **Auth:** Sign in with Apple links an account to its person, and guests stay anonymous person ids; access checks are next, so functions still trust the person id the app sends
-- **AI models:** gpt-6-luna through OpenAI only: Chat Completions reads drops, the Decisions API decides, and the Responses API's web search finds events, all under a $20 cap
+- **Auth:** Sign in with Apple, guest or demo, and no other provider. Sign in with Apple links an account to its person through `people:link`, a guest stays an anonymous person id, and demo opens the sample sf crew board; access checks are next, so functions still trust the person id the app sends
+- **AI models:** OpenAI only: gpt-6-luna reads drops through Chat Completions and decides through the Decisions API, and gpt-6.1-terra finds suggestions with web search through the Responses API. The backend enforces a hard cap that defaults to $100 and is set by `OPENAI_BUDGET_USD`, with built-in rules as the fallback. The key lives only in the Convex env
 - **Started:** 2026-11-15T18:36:06Z
-- **Last updated:** 2026-11-15T21:34:00Z
+- **Last updated:** 2026-11-16T00:57:00Z
 
 ## Log
 
@@ -123,7 +123,7 @@ that shares a Google Maps place from Safari (`ios/`, `.revyl/`).
 Put the reader and decider on OpenAI's gpt-6-luna, with the decider on the
 Decisions API. `MODEL_PROFILE` picks the order: `test` keeps the free models
 first and overflows to OpenAI on a 429, and `demo` puts OpenAI first. Rules come
-last. Every OpenAI call's cost is recorded, and calls stop at a $20 cap. A drop
+last. Every OpenAI call's cost is recorded, and calls stop at the spending cap. A drop
 costs about $0.0004. Convex features: tables, internal queries and mutations
 (`convex/lib/models.ts`, `convex/spend.ts`, `convex/schema.ts`).
 
@@ -153,7 +153,7 @@ id the app sends. Convex features: auth config, indexes (`convex/auth.config.ts`
 
 ### 2026-11-15 - 09ee258
 Dropped OpenRouter. The reader and decider run only on OpenAI's gpt-6-luna under
-the $20 cap, with rules as the fallback. A clip's title now comes from its
+the backend's spending cap, with rules as the fallback. A clip's title now comes from its
 caption instead of the share sheet's link title. Sign in with Apple is now the
 only sign-in provider (`convex/lib/models.ts`, `convex/pipeline.ts`,
 `convex/auth.config.ts`).
@@ -165,6 +165,53 @@ board's artists, places and moods. Each one is added as a "found for you" drop
 with a reason like "because maya saved otis redding.", lands in the cluster of
 the drop that inspired it, and is kept only when its page turned up in the
 search or names the event. One search per board an hour, five finds a day, and
-every web search is counted against the $20 cap at $0.01 a call. Convex
+every web search is counted against the spending cap at $0.01 a call. Convex
 features: mutations, internal actions, scheduled functions, tables, indexes
 (`convex/events.ts`, `convex/lib/models.ts`, `convex/lib/vibes.ts`).
+
+### 2026-11-15 - b161cb1
+The app got its shell and its first camera: one NavigationStack hosts the cards,
+list and board views with a glass bar to switch them (#53), the in-app camera
+drops each photo onto the board as it's taken (#54, #56), and the sf crew seed
+got real photos and album covers (#51, #52). The backend started finding
+suggestions per cluster with web search (#59) and names a place from its link
+(#60) (`ios/App`, `ios/Camera`, `convex/suggestions.ts`, `convex/seed.ts`).
+
+### 2026-11-15 - d93f882
+Suggestions got a feed grouped by cluster (#65), night got calmer (#61),
+onboarding got plainer (#62), the lines between drops went off by default
+(#66) and cluster labels stay put while they still fit (#67). A live web page
+for sf crew subscribes to the same deployment (#69, #71), and a second round of
+gate tests landed in `.revyl/` (#73).
+
+### 2026-11-15 - 1d0631b
+Night became the default view (#68). A friend's drop now shows a toast (#64),
+the lightbulb and the web page say "suggestions" (#76, #77), the welcome pile
+shows every kind of drop (#74, #78), the streak got Ember and the camera zooms
+out of its button (#79). Links are checked before they name a place or event
+(#72, #80), and anyone on a board can refresh its suggestions by hand (#82).
+Convex features: mutations, scheduled functions.
+
+### 2026-11-15 - d7c5183
+The last batch before the demo: night's header fades and follows your drop
+(#86), suggestions are a tab with a vibe pill and image skeletons (#90, #94),
+the launch screen is dark (#83), a drop with no time reads as a day (#84), the
+welcome pills are crisp (#81), a jump row and a drop moment with a banner
+(#91), "see full" opens the whole board as a web (#93), a settings sheet
+(#92), and the app is called Resona (#87, #96). gpt-6.1-sol is priced so
+suggestions can run on it (#95).
+
+### 2026-11-16 - a250441
+The demo build. Suggestions fill night's tab (#98). A new drop waits as a glass
+bubble, flies to its group with the screen following, pops into a card and
+spins the group's title while suggestions catch up (#100), and after a share
+the extension opens Resona and night replays that landing (#103, #104, #106).
+Drops group by the kind of thing they are, like sad songs or sunny outdoors
+(#102, #105). see full labels its groups and shows suggestions as satellites
+(#101, #107). Convex features: actions, mutations, scheduled functions.
+
+### 2026-11-16 - 5b8461f
+The app icon was redrawn in night's style, a frosted photo and note with a
+flame pin on the gradient (#108), and night's suggestions tab shows a small red
+dot while the board has suggestions you haven't opened yet (#109). The demo
+video is in `demo/demo.mp4`.
