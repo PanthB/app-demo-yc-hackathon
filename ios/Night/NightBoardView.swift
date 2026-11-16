@@ -16,6 +16,8 @@ struct NightBoardView: View {
     @State private var holdsDemoStreak = Self.asksForStreakDemo
     @State private var landing: UUID?
     @State private var settling: UUID?
+    @State private var held: Set<UUID> = []
+    @Environment(\.scenePhase) private var scenePhase
     @State private var queueTick = Date.now
     @State private var flight = NightFlightModel()
     @State private var calibration = SuggestionsModel()
@@ -61,8 +63,8 @@ struct NightBoardView: View {
 
         let now = max(queueTick, Date.now)
         let reading = drops.filter { $0.isArriving && now.timeIntervalSince($0.createdAt) < Self.queueTime }
-        let readingIds = Set(reading.map(\.id))
-        let queued = reading.filter { $0.authorId == me }.sorted { $0.createdAt < $1.createdAt }
+        let readingIds = Set(reading.map(\.id)).union(held)
+        let queued = drops.filter { $0.authorId == me && readingIds.contains($0.id) }.sorted { $0.createdAt < $1.createdAt }
         let sections = DropSection.build(drops.filter { !readingIds.contains($0.id) }, grouping: isShared ? .vibe : .when, filter: filter, me: me, now: clock.now)
         let calibrating = Set(calibration.groups?.filter(\.searching).map(\.clusterId) ?? [])
 
@@ -182,14 +184,21 @@ struct NightBoardView: View {
             .onScrollTargetVisibilityChange(idType: String.self, threshold: 0.2) { ids in
                 sectionInView = ids.first
             }
+            .onAppear { replay(drops, me: me) }
+            .onChange(of: current) { replay(drops, me: me) }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { replay(drops, me: me) }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NightReplay.asked)) { _ in
+                tab = .board
+                replay(drops, me: me)
+            }
             .onChange(of: Arrivals(board: current, ids: drops.map(\.id))) { before, after in
                 guard before.board == after.board else { return }
                 let added = Set(after.ids).subtracting(before.ids)
                 guard let drop = drops.first(where: { added.contains($0.id) && $0.createdAt > .now.addingTimeInterval(-120) }) else { return }
                 if drop.authorId == me {
-                    guard !drop.isArriving else { return }
-                    landed += 1
-                    reveal(drop.id, in: sections, proxy: proxy)
+                    hold([drop.id])
                 } else if drop.isArriving {
                     unreadArrival = drop.id
                 } else {
@@ -298,6 +307,26 @@ struct NightBoardView: View {
             seeFull: { web = BoardWebStop(focus: nil) }
         )
         .matchedTransitionSource(id: "web-all", in: namespace)
+    }
+
+    private func replay(_ drops: [Drop], me: String) {
+        let asked = NightReplay.pending
+        if let asked, drops.contains(where: { $0.id == asked }) { NightReplay.pending = nil }
+        let since = Date.now.addingTimeInterval(-120)
+        hold(drops.filter { $0.authorId == me && ($0.createdAt > since || $0.id == asked) }.sorted { $0.createdAt < $1.createdAt }.map(\.id))
+    }
+
+    private func hold(_ ids: [UUID]) {
+        let fresh = NightReplay.unplayed(ids.filter { !held.contains($0) })
+        guard !fresh.isEmpty else { return }
+        NightReplay.played(fresh)
+        held.formUnion(fresh)
+        for (index, id) in fresh.enumerated() {
+            Task {
+                try? await Task.sleep(for: .milliseconds(650 + index * 1400))
+                held.remove(id)
+            }
+        }
     }
 
     private func land(_ drop: Drop, sections: [DropSection], proxy: ScrollViewProxy, me: String) {

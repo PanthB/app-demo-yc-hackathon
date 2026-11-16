@@ -12,6 +12,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>appdemo</string>
+				<string>resona</string>
 			</array>
 		</dict>
 	</array>
