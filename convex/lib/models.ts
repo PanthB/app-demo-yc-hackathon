@@ -64,7 +64,7 @@ const READING_SCHEMA = {
     price: nullableNumber("price per person or per ticket in US dollars"),
     kind_words: { type: "array", items: { type: "string" }, description: "lowercase words for what kind of thing it is, like ramen, concert or thrift store" },
     kind_of_thing: nullableString(
-      "the category friends would file it under, short, lowercase and plural. Prefer one of: sad songs, upbeat songs, chill songs, thrillers, documentaries, comedies, dramas, horror films, food spots, coffee spots, bars, cozy shops, sunny outdoors, beaches, art, concerts, nightlife, sports, fashion. If none fits, name a close new one in at most three words, like bookstores or vintage shops. Judge what the thing is, not when it happens: a thriller watched at night is still thrillers. null for a plain reminder or to-do",
+      "the category friends would file it under, short, lowercase and plural. Prefer one of: sad songs, sunny songs, thrillers, documentaries, comedies, dramas, horror films, food spots, coffee spots, bars, cozy shops, sunny outdoors, beaches, art, concerts, nightlife, sports, fashion. If none fits, name a close new one in at most three words, like bookstores or vintage shops. Judge what the thing is, not when it happens: a thriller watched at night is still thrillers. null for a plain reminder or to-do",
     ),
     vibe_words: { type: "array", items: { type: "string" }, description: "lowercase mood words, like cozy, loud or sunny" },
     minutes_there: nullableNumber("how long someone would spend there or doing it, in minutes"),
