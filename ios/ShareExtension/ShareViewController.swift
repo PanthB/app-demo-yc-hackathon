@@ -10,6 +10,7 @@ final class ShareViewController: UIViewController {
         : nil
     private var isOnScreen = false
     private var isClosingSoon = false
+    private var sending: Task<ShareSend.Sent?, Never>?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -47,9 +48,44 @@ final class ShareViewController: UIViewController {
         }
         #endif
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(2))
+            let shown = ContinuousClock.now
+            var closeAt = shown + .seconds(2)
+            if let sent = await sending?.value {
+                try? await Task.sleep(until: shown + .milliseconds(400), clock: .continuous)
+                openApp(at: sent)
+                closeAt = max(closeAt, ContinuousClock.now + .seconds(1))
+            }
+            try? await Task.sleep(until: closeAt, clock: .continuous)
             close()
         }
+    }
+
+    private func openApp(at sent: ShareSend.Sent) {
+        var link = URLComponents()
+        link.scheme = "resona"
+        link.host = "drop"
+        link.queryItems = [URLQueryItem(name: "board", value: sent.boardId), URLQueryItem(name: "id", value: sent.clientId)]
+        let open = NSSelectorFromString("openURL:options:completionHandler:")
+        var responder: UIResponder? = self
+        while let current = responder, !(current is UIApplication) {
+            responder = current.next
+        }
+        guard let url = link.url, let app = responder, app.responds(to: open) else {
+            Logger.share.error("the share sheet found no way to open the app")
+            return
+        }
+        typealias OpenURL = @convention(c) (AnyObject, Selector, NSURL, NSDictionary, (@convention(block) (Bool) -> Void)?) -> Void
+        let call = unsafeBitCast(app.method(for: open), to: OpenURL.self)
+        call(app, open, url as NSURL, NSDictionary(), { [weak self] opened in
+            Task { @MainActor in
+                guard opened else {
+                    Logger.share.error("iOS didn't open \(url.absoluteString, privacy: .public) from the share sheet")
+                    return
+                }
+                Logger.share.info("opened the app at \(url.absoluteString, privacy: .public)")
+                self?.close()
+            }
+        })
     }
 
     private func close() {
@@ -74,7 +110,7 @@ final class ShareViewController: UIViewController {
         if saved.isEmpty {
             Logger.share.error("nothing in this share could be kept")
         }
-        Task { [boardId] in await ShareSend.send(saved, boardId: boardId) }
+        sending = Task { [boardId] in await ShareSend.send(saved, boardId: boardId) }
         return !saved.isEmpty
     }
 }
