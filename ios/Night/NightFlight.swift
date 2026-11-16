@@ -147,3 +147,38 @@ struct NightTrack: ViewModifier {
         }
     }
 }
+
+@MainActor
+enum NightReplay {
+    struct Link {
+        let board: String?
+        let drop: UUID
+    }
+
+    static let asked = Notification.Name("NightReplayAsked")
+    static var pending: UUID?
+    private static let playedKey = "NightPlayedDrops"
+
+    static func link(in url: URL) -> Link? {
+        guard url.scheme?.lowercased() == "resona", url.host()?.lowercased() == "drop",
+              let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+              let drop = items.first(where: { $0.name == "id" })?.value.flatMap(UUID.init(uuidString:))
+        else { return nil }
+        return Link(board: items.first { $0.name == "board" }?.value, drop: drop)
+    }
+
+    static func ask(_ drop: UUID) {
+        pending = drop
+        NotificationCenter.default.post(name: asked, object: nil)
+    }
+
+    static func unplayed(_ ids: [UUID]) -> [UUID] {
+        let done = Set(UserDefaults.standard.stringArray(forKey: playedKey) ?? [])
+        return ids.filter { !done.contains($0.uuidString) }
+    }
+
+    static func played(_ ids: [UUID]) {
+        let list = (UserDefaults.standard.stringArray(forKey: playedKey) ?? []) + ids.map(\.uuidString)
+        UserDefaults.standard.set(Array(list.suffix(200)), forKey: playedKey)
+    }
+}

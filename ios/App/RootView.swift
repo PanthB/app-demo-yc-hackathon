@@ -63,6 +63,15 @@ struct RootView: View {
         }
         .onOpenURL { url in
             guard BoardsStore.inviteCode(in: url) == nil else { return }
+            if let link = NightReplay.link(in: url) {
+                Logger.app.info("opening a shared drop on its board in night")
+                if let board = link.board, !board.isEmpty { boards.show(board) }
+                if ViewMode(stored: storedView) != .night {
+                    withAnimation(reduceMotion ? nil : .smooth(duration: 0.45)) { storedView = ViewMode.night.rawValue }
+                }
+                NightReplay.ask(link.drop)
+                return
+            }
             if let mode = ViewMode(url: url) {
                 Logger.app.info("switching to the \(mode.rawValue, privacy: .public) view")
                 withAnimation(reduceMotion ? nil : .smooth(duration: 0.45)) { storedView = mode.rawValue }
