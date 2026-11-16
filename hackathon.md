@@ -217,9 +217,10 @@ dot while the board has suggestions you haven't opened yet (#109). The demo
 video is in `demo/demo.mp4`.
 
 ### 2026-11-16 - f0ba126
-The demo video in `demo/demo.mp4` was replaced with a 2:46 v4 cut, recorded at
+The demo video in `demo/demo.mp4` was replaced with a 2:34 v4 cut, recorded at
 real speed on a cleaned sf crew board with the arrival rework from
 #123: the welcome screen and intro into sf crew, a coffee shop share from Safari
 with the 'saved to' banner, a Spotify song, a photo from the + button, the
-suggestions tab with a Bottom of the Hill gig and the movie columbus, and a
+suggestions tab saving a Bottom of the Hill gig and finding the movie columbus,
+and a
 TikTok share. It has lowercase captions and no audio.
