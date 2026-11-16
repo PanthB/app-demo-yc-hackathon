@@ -25,6 +25,8 @@ struct NightBoardView: View {
     @State private var seen: Set<String> = []
     @State private var spinning: String?
     @State private var toast: NightToastItem?
+    @State private var arrival: NightArrivalItem?
+    @State private var announcing: UUID?
     @State private var unreadArrival: UUID?
     @State private var sectionInView: String?
     @State private var isScrolled = false
@@ -234,15 +236,13 @@ struct NightBoardView: View {
                 } else if drop.isArriving {
                     unreadArrival = drop.id
                 } else {
-                    spin(drop.id, in: sections)
-                    withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: drop.id, text: ShellToast.words(for: drop)) }
+                    announce(drop, in: sections)
                 }
             }
             .onChange(of: unreadArrival.flatMap { id in drops.first { $0.id == id }?.isArriving }) { _, arriving in
                 guard arriving == false, let id = unreadArrival, let drop = drops.first(where: { $0.id == id }) else { return }
                 unreadArrival = nil
-                spin(drop.id, in: sections)
-                withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: drop.id, text: ShellToast.words(for: drop)) }
+                announce(drop, in: sections)
             }
             .onChange(of: QueueMark(board: current, ids: queued.map(\.id))) { before, after in
                 guard before.board == after.board else { return }
@@ -267,6 +267,37 @@ struct NightBoardView: View {
             }
             }
         }
+        .overlay(alignment: .top) {
+            if let arrival, let drop = allDrops.first(where: { $0.id == arrival.id }) {
+                NightArrivalBanner(drop: drop, text: arrival.text) {
+                    let cluster = Self.section(of: drop.id, in: sections).flatMap { $0.hasPrefix("cluster-") ? String($0.dropFirst("cluster-".count)) : nil }
+                    withAnimation(reduceMotion ? nil : .smooth) { self.arrival = nil }
+                    tab = .board
+                    web = BoardWebStop(focus: cluster)
+                } dismiss: {
+                    withAnimation(reduceMotion ? nil : .smooth) { self.arrival = nil }
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 2)
+                .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .onChange(of: announcing.flatMap { Self.section(of: $0, in: sections) }) { _, after in
+            guard let id = announcing, let after, after.hasPrefix("cluster-"), let drop = drops.first(where: { $0.id == id }) else { return }
+            announce(drop, in: sections)
+        }
+        .task(id: announcing) {
+            guard let id = announcing else { return }
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled, announcing == id, let drop = drops.first(where: { $0.id == id }) else { return }
+            announce(drop, in: sections, waits: false)
+        }
+        .task(id: arrival) {
+            guard arrival != nil else { return }
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : .smooth) { arrival = nil }
+        }
         .sensoryFeedback(.impact(weight: .light), trigger: landed)
         .sensoryFeedback(.success, trigger: grouped)
         .task(id: settling) {
@@ -286,7 +317,7 @@ struct NightBoardView: View {
             try? await Task.sleep(for: .seconds(6))
             guard !Task.isCancelled, unreadArrival == id, let drop = allDrops.first(where: { $0.id == id }) else { return }
             unreadArrival = nil
-            withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: id, text: "\(CardWords.clean(drop.authorName) ?? "someone") dropped something.") }
+            withAnimation(reduceMotion ? nil : .snappy) { arrival = NightArrivalItem(id: id, text: "\(CardWords.clean(drop.authorName) ?? "someone") dropped something") }
         }
         .task(id: current) {
             seen = Set(UserDefaults.standard.stringArray(forKey: Self.seenKey(current)) ?? [])
@@ -378,6 +409,20 @@ struct NightBoardView: View {
                 held.remove(id)
             }
         }
+    }
+
+    private func announce(_ drop: Drop, in sections: [DropSection], waits: Bool = true) {
+        var words = ShellToast.words(for: drop)
+        if words.hasSuffix(".") { words.removeLast() }
+        if let id = Self.section(of: drop.id, in: sections), id.hasPrefix("cluster-"), let section = sections.first(where: { $0.id == id }) {
+            words += " · \(section.title)"
+        } else if waits {
+            announcing = drop.id
+            return
+        }
+        announcing = nil
+        spin(drop.id, in: sections)
+        withAnimation(reduceMotion ? nil : .snappy) { arrival = NightArrivalItem(id: drop.id, text: words) }
     }
 
     private func spin(_ id: UUID, in sections: [DropSection]) {
