@@ -15,6 +15,7 @@ struct NightBoardView: View {
     @State private var moment = 0
     @State private var holdsDemoStreak = Self.asksForStreakDemo
     @State private var landing: UUID?
+    @State private var settling: UUID?
     @State private var queueTick = Date.now
     @State private var flight = NightFlightModel()
     @State private var calibration = SuggestionsModel()
@@ -191,6 +192,12 @@ struct NightBoardView: View {
                 guard let drop = drops.first(where: { left.contains($0.id) && Self.section(of: $0.id, in: sections) != nil }) else { return }
                 land(drop, sections: sections, proxy: proxy, me: me)
             }
+            .onChange(of: settling.flatMap { Self.section(of: $0, in: sections) }) { _, after in
+                guard let id = settling, let after, after.hasPrefix("cluster-"), let section = sections.first(where: { $0.id == after }) else { return }
+                settling = nil
+                reveal(id, in: sections, proxy: proxy)
+                withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: id, text: Self.settledWords(section, me: me)) }
+            }
             .task(id: reading.map(\.id)) {
                 guard let oldest = reading.map(\.createdAt).min() else { return }
                 let left = Self.queueTime - Date.now.timeIntervalSince(oldest)
@@ -202,6 +209,12 @@ struct NightBoardView: View {
         }
         .sensoryFeedback(.impact(weight: .light), trigger: landed)
         .sensoryFeedback(.success, trigger: grouped)
+        .task(id: settling) {
+            guard settling != nil else { return }
+            try? await Task.sleep(for: .seconds(20))
+            guard !Task.isCancelled else { return }
+            settling = nil
+        }
         .task(id: toast) {
             guard toast != nil else { return }
             try? await Task.sleep(for: .seconds(3.5))
@@ -280,6 +293,8 @@ struct NightBoardView: View {
             grouped += 1
             if let banner {
                 withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: id, text: banner) }
+            } else {
+                settling = id
             }
         }
         guard tab == .board else {
