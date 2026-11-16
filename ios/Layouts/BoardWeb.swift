@@ -43,8 +43,8 @@ struct BoardWeb: View {
                         .allowsHitTesting(false)
                         ForEach(web.groups) { group in
                             label(group)
-                                .frame(width: proxy.size.width - NightStyle.margin * 2, alignment: .leading)
-                                .position(x: proxy.size.width / 2, y: group.top + 24)
+                                .frame(width: proxy.size.width - NightStyle.margin * 2, height: BoardWebLayout.header, alignment: .bottomLeading)
+                                .position(x: proxy.size.width / 2, y: group.top + BoardWebLayout.header / 2)
                             Color.clear.frame(width: 1, height: 1).position(x: proxy.size.width / 2, y: group.center.y).id(group.id)
                         }
                         ForEach(web.satellites) { spot in
@@ -125,7 +125,9 @@ struct BoardWeb: View {
             Text(group.label)
                 .font(NightStyle.heading)
                 .foregroundStyle(.white)
-                .lineLimit(1)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+                .fixedSize(horizontal: false, vertical: true)
             if let together = group.together {
                 Text(together)
                     .font(NightStyle.body)
@@ -177,7 +179,7 @@ struct BoardWebLayout {
 
     static let perGroup = 7
     static let ring: CGFloat = 92
-    static let header: CGFloat = 64
+    static let header: CGFloat = 76
     static let block: CGFloat = 300
 
     init(drops: [Drop], suggestions: [String: [FeedSuggestion]], width: CGFloat) {
@@ -195,7 +197,7 @@ struct BoardWebLayout {
             guard let newest = shown.first else { continue }
             let center = CGPoint(x: width / 2 + (row.isMultiple(of: 2) ? -18 : 18), y: top + Self.header + Self.block / 2 - 16)
             let people = Self.people(members[id] ?? [])
-            groups.append(Group(id: id, label: newest.clusterLabel ?? "a vibe", together: people.count > 1 ? Self.together(people) : nil, top: top, center: center))
+            groups.append(Group(id: id, label: newest.clusterLabel ?? "a vibe", together: Self.together(people), top: top, center: center))
             for (index, drop) in shown.enumerated() {
                 let point: CGPoint
                 let side: CGFloat
@@ -223,19 +225,28 @@ struct BoardWebLayout {
         links = Self.links(drops: drops, place: place, width: width)
     }
 
-    static func people(_ drops: [Drop]) -> [String] {
-        var seen: [String] = []
+    static func people(_ drops: [Drop]) -> [(name: String, count: Int)] {
+        var counts: [(name: String, count: Int)] = []
         for drop in drops {
             let name = drop.authorLabel.lowercased()
-            if !seen.contains(name) { seen.append(name) }
+            if let index = counts.firstIndex(where: { $0.name == name }) {
+                counts[index].count += 1
+            } else {
+                counts.append((name, 1))
+            }
         }
-        return seen
+        return counts.enumerated()
+            .sorted { ($0.element.count, -$0.offset) > ($1.element.count, -$1.offset) }
+            .map(\.element)
     }
 
-    static func together(_ people: [String]) -> String {
-        let names = people.count > 3 ? Array(people.prefix(2)) + ["\(people.count - 2) more"] : people
-        let list = names.count == 2 ? names.joined(separator: " and ") : names.dropLast().joined(separator: ", ") + " and " + (names.last ?? "")
-        return "\(list) are into this."
+    static func together(_ people: [(name: String, count: Int)]) -> String? {
+        guard let first = people.first else { return nil }
+        guard people.count > 1 else { return "all from \(first.name)." }
+        let second = people[1]
+        if people.count == 2 { return "from \(first.name) and \(second.name)." }
+        if first.count > second.count * 2 { return "mostly \(first.name)." }
+        return "mostly \(first.name) and \(second.name)."
     }
 
     static func links(drops: [Drop], place: [UUID: CGPoint], width: CGFloat) -> [Link] {
