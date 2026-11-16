@@ -13,6 +13,7 @@ struct BoardWeb: View {
     @State private var model = SuggestionsModel()
     @State private var picked: FeedSuggestion?
     @State private var note: String?
+    @State private var position = ScrollPosition(edge: .top)
 
     private var suggestions: [String: [FeedSuggestion]] {
         var byGroup: [String: [FeedSuggestion]] = [:]
@@ -28,76 +29,76 @@ struct BoardWeb: View {
         }
         GeometryReader { proxy in
             let web = BoardWebLayout(drops: drops, suggestions: suggestions, width: proxy.size.width)
-            ScrollViewReader { reader in
-                ScrollView {
-                    ZStack(alignment: .topLeading) {
-                        Canvas { context, _ in
-                            for link in web.links {
-                                var path = Path()
-                                path.move(to: link.from)
-                                path.addQuadCurve(to: link.to, control: link.control)
-                                context.stroke(path, with: .color(.white.opacity(0.12)), style: StrokeStyle(lineWidth: 1, lineCap: .round))
-                            }
-                        }
-                        .frame(width: proxy.size.width, height: web.height)
-                        .allowsHitTesting(false)
-                        ForEach(web.groups) { group in
-                            label(group)
-                                .frame(width: proxy.size.width - NightStyle.margin * 2, height: BoardWebLayout.header, alignment: .bottomLeading)
-                                .position(x: proxy.size.width / 2, y: group.top + BoardWebLayout.header / 2)
-                            Color.clear.frame(width: 1, height: 1).position(x: proxy.size.width / 2, y: group.center.y).id(group.id)
-                        }
-                        ForEach(web.groups) { group in
-                            if let spot = group.suggested {
-                                Text("suggested")
-                                    .font(NightStyle.caption)
-                                    .foregroundStyle(NightStyle.flame)
-                                    .fixedSize()
-                                    .position(spot)
-                                    .accessibilityHidden(true)
-                            }
-                        }
-                        ForEach(web.satellites) { spot in
-                            if let suggestion = spot.suggestion {
-                                Button { picked = suggestion } label: {
-                                    BoardWebSuggestion(suggestion: suggestion, side: spot.side)
-                                }
-                                .buttonStyle(.plain)
-                                .popover(
-                                    isPresented: Binding(get: { picked?.id == suggestion.id }, set: { if !$0 { picked = nil } }),
-                                    attachmentAnchor: .rect(.bounds),
-                                    arrowEdge: spot.point.x < proxy.size.width / 2 ? .leading : .trailing
-                                ) {
-                                    menu(suggestion)
-                                        .presentationCompactAdaptation(.popover)
-                                }
-                                .position(spot.point)
-                                .transition(.scale(scale: 0.5).combined(with: .opacity))
-                                .accessibilityIdentifier("webSuggestion")
-                            }
-                        }
-                        ForEach(web.nodes) { spot in
-                            if let drop = spot.drop {
-                                Button {
-                                    if let link = drop.url.flatMap({ URL(string: $0) }) { openURL(link) }
-                                } label: {
-                                    BoardWebDrop(drop: drop, side: spot.side, now: clock.now)
-                                }
-                                .buttonStyle(.plain)
-                                .position(spot.point)
-                                .transition(.scale(scale: 0.6).combined(with: .opacity))
-                                .accessibilityIdentifier("webDrop")
-                            }
+            ScrollView {
+                ZStack(alignment: .topLeading) {
+                    Canvas { context, _ in
+                        for link in web.links {
+                            var path = Path()
+                            path.move(to: link.from)
+                            path.addQuadCurve(to: link.to, control: link.control)
+                            context.stroke(path, with: .color(.white.opacity(0.12)), style: StrokeStyle(lineWidth: 1, lineCap: .round))
                         }
                     }
-                    .frame(width: proxy.size.width, height: web.height, alignment: .topLeading)
-                    .animation(NightStyle.motion(reduceMotion), value: web.signature)
+                    .frame(width: proxy.size.width, height: web.height)
+                    .allowsHitTesting(false)
+                    ForEach(web.groups) { group in
+                        label(group)
+                            .frame(width: proxy.size.width - NightStyle.margin * 2, height: BoardWebLayout.header, alignment: .bottomLeading)
+                            .position(x: proxy.size.width / 2, y: group.top + BoardWebLayout.header / 2)
+                    }
+                    ForEach(web.groups) { group in
+                        if let spot = group.suggested {
+                            Text("suggested")
+                                .font(NightStyle.caption)
+                                .foregroundStyle(NightStyle.flame)
+                                .fixedSize()
+                                .position(spot)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    ForEach(web.satellites) { spot in
+                        if let suggestion = spot.suggestion {
+                            Button { picked = suggestion } label: {
+                                BoardWebSuggestion(suggestion: suggestion, side: spot.side)
+                            }
+                            .buttonStyle(.plain)
+                            .popover(
+                                isPresented: Binding(get: { picked?.id == suggestion.id }, set: { if !$0 { picked = nil } }),
+                                attachmentAnchor: .rect(.bounds),
+                                arrowEdge: spot.point.x < proxy.size.width / 2 ? .leading : .trailing
+                            ) {
+                                menu(suggestion)
+                                    .presentationCompactAdaptation(.popover)
+                            }
+                            .position(spot.point)
+                            .transition(.scale(scale: 0.5).combined(with: .opacity))
+                            .accessibilityIdentifier("webSuggestion")
+                        }
+                    }
+                    ForEach(web.nodes) { spot in
+                        if let drop = spot.drop {
+                            Button {
+                                if let link = drop.url.flatMap({ URL(string: $0) }) { openURL(link) }
+                            } label: {
+                                BoardWebDrop(drop: drop, side: spot.side, now: clock.now)
+                            }
+                            .buttonStyle(.plain)
+                            .position(spot.point)
+                            .transition(.scale(scale: 0.6).combined(with: .opacity))
+                            .accessibilityIdentifier("webDrop")
+                        }
+                    }
                 }
-                .scrollIndicators(.hidden)
-                .onAppear {
-                    guard let focus else { return }
-                    reader.scrollTo(focus, anchor: .center)
-                }
+                .frame(width: proxy.size.width, height: web.height, alignment: .topLeading)
+                .animation(NightStyle.motion(reduceMotion), value: web.signature)
+            }
+            .scrollIndicators(.hidden)
+            .scrollPosition($position)
+            .task {
+                guard let top = web.groups.first(where: { $0.id == focus })?.top else { return }
+                position.scrollTo(y: max(top - 16, 0))
+                try? await Task.sleep(for: .milliseconds(600))
+                position.scrollTo(y: max(top - 16, 0))
             }
         }
         .background { NightBackdrop() }
