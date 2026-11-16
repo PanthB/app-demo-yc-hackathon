@@ -26,6 +26,7 @@ struct NightBoardView: View {
     @State private var spinning: String?
     @State private var toast: NightToastItem?
     @State private var arrival: NightArrivalItem?
+    @State private var announcing: UUID?
     @State private var unreadArrival: UUID?
     @State private var sectionInView: String?
     @State private var isScrolled = false
@@ -281,6 +282,16 @@ struct NightBoardView: View {
                 .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
         }
+        .onChange(of: announcing.flatMap { Self.section(of: $0, in: sections) }) { _, after in
+            guard let id = announcing, let after, after.hasPrefix("cluster-"), let drop = drops.first(where: { $0.id == id }) else { return }
+            announce(drop, in: sections)
+        }
+        .task(id: announcing) {
+            guard let id = announcing else { return }
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled, announcing == id, let drop = drops.first(where: { $0.id == id }) else { return }
+            announce(drop, in: sections, waits: false)
+        }
         .task(id: arrival) {
             guard arrival != nil else { return }
             try? await Task.sleep(for: .seconds(4))
@@ -400,13 +411,17 @@ struct NightBoardView: View {
         }
     }
 
-    private func announce(_ drop: Drop, in sections: [DropSection]) {
-        spin(drop.id, in: sections)
+    private func announce(_ drop: Drop, in sections: [DropSection], waits: Bool = true) {
         var words = ShellToast.words(for: drop)
         if words.hasSuffix(".") { words.removeLast() }
         if let id = Self.section(of: drop.id, in: sections), id.hasPrefix("cluster-"), let section = sections.first(where: { $0.id == id }) {
             words += " · \(section.title)"
+        } else if waits {
+            announcing = drop.id
+            return
         }
+        announcing = nil
+        spin(drop.id, in: sections)
         withAnimation(reduceMotion ? nil : .snappy) { arrival = NightArrivalItem(id: drop.id, text: words) }
     }
 
