@@ -70,6 +70,10 @@ final class BoardSync {
         push("drops:setZone", for: drop, ["zone": drop.zoneRaw])
     }
 
+    func setKind(_ drop: Drop, _ kind: String) {
+        push("drops:setKind", for: drop, ["kind": kind])
+    }
+
     private func follow() {
         guard context != nil, !Self.staysOffline else { return }
         let wanted = Set(boards.boardIds)
