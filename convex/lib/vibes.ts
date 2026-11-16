@@ -20,12 +20,22 @@ const WEIGHT: Record<Facet, number> = { kind: 3, time: 1.5, mood: 1, setting: 0.
 const FACET_OF = new Map<string, Facet>(FACET_ORDER.flatMap((f) => FACETS[f].map((value): [string, Facet] => [value, f])));
 const facetFor = (value: string): Facet => FACET_OF.get(value) ?? "kind";
 const weightOf = (value: string) => WEIGHT[facetFor(value)];
-const kindOf = (vibes: string[]) => vibes.find((v) => facetFor(v) === "kind");
+export const kindOf = (vibes: string[]) => vibes.find((v) => facetFor(v) === "kind");
 const SONG_KIND: Record<string, string> = { moody: "sad songs", calm: "sad songs", dreamy: "sad songs", upbeat: "sunny songs", wild: "sunny songs", cozy: "sunny songs" };
 
+export function normalKind(named: string | undefined) {
+  const kind = named
+    ?.normalize("NFD")
+    .toLowerCase()
+    .replace(/[^a-z0-9&' -]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return kind && kind.split(" ").length <= 3 && kind.length <= 24 && facetFor(kind) === "kind" ? kind : undefined;
+}
+
 export function kindFor(named: string | undefined, isSong: boolean, vibes: string[]) {
-  const kind = named?.trim().toLowerCase().replace(/[^a-z0-9&' -]/g, "");
-  if (kind && kind.split(/\s+/).length <= 3 && kind.length <= 24 && facetFor(kind) === "kind") return kind;
+  const kind = normalKind(named);
+  if (kind) return kind;
   if (!isSong) return undefined;
   const mood = vibes.find((v) => facetFor(v) === "mood");
   if (mood) return SONG_KIND[mood];
@@ -183,7 +193,7 @@ export function similarity(a: string[], b: string[]) {
     total += weightOf(v);
     if (a.includes(v) && b.includes(v)) shared += weightOf(v);
   }
-  return shared / total;
+  return ka && ka === kb ? Math.max(JOIN, shared / total) : shared / total;
 }
 
 const PLACE_PHRASE: Record<string, string> = {

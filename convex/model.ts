@@ -167,6 +167,8 @@ export const dropFields = {
   pinnedAt: v.optional(v.number()),
   suggestion: v.optional(v.string()),
   vibes: v.optional(v.array(v.string())),
+  userKind: v.optional(v.string()),
+  autoKind: v.optional(v.string()),
   clusterId: v.optional(v.string()),
   clusterLabel: v.optional(v.string()),
   neighbors: v.optional(v.array(neighbor)),
@@ -194,6 +196,7 @@ export const dropView = v.object({
   authorName: v.optional(v.string()),
   authorColor: v.optional(v.string()),
   vibes: v.array(v.string()),
+  groupKind: v.optional(v.string()),
   neighbors: v.array(neighbor),
 });
 
