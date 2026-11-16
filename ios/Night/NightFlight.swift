@@ -6,14 +6,17 @@ final class NightFlightModel {
     var drop: Drop?
     var from: CGPoint = .zero
     var target: CGRect?
+    var dest: CGRect?
     var lifted = false
     var popped = false
     @ObservationIgnored var bubbleFrames: [UUID: CGRect] = [:]
+    @ObservationIgnored var viewport: CGRect = .zero
 
     func start(_ drop: Drop, from: CGPoint) {
         self.drop = drop
         self.from = from
         target = nil
+        dest = nil
         lifted = false
         popped = false
     }
@@ -21,6 +24,7 @@ final class NightFlightModel {
     func end() {
         drop = nil
         target = nil
+        dest = nil
         lifted = false
         popped = false
     }
@@ -98,11 +102,11 @@ struct NightBubbleRing: View {
                 Circle().strokeBorder(.tint.opacity(0.6), lineWidth: 2)
             } else {
                 TimelineView(.animation) { context in
-                    let turn = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.2) / 1.2
+                    let turn = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.6) / 1.6
                     Circle()
-                        .inset(by: 1.25)
+                        .inset(by: 0.75)
                         .trim(from: 0, to: 0.3)
-                        .stroke(.tint, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                        .stroke(.tint, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
                         .rotationEffect(.degrees(turn * 360))
                 }
             }
@@ -119,14 +123,13 @@ struct NightFlightLayer: View {
         GeometryReader { proxy in
             if let drop = flight.drop {
                 let origin = proxy.frame(in: .global).origin
-                let spot = flight.lifted ? (flight.target.map { CGPoint(x: $0.midX, y: $0.midY) } ?? flight.from) : flight.from
-                let scale = flight.popped ? max((flight.target?.width ?? 56) / 56, 1) : (flight.lifted ? 1.12 : 1)
+                let spot = flight.dest.map { CGPoint(x: $0.midX, y: $0.midY) } ?? flight.from
+                let scale = flight.popped ? (flight.dest.map { max($0.width / 56, 1) } ?? 0.6) : (flight.lifted ? 1.12 : 1)
                 NightBubble(drop: drop, reading: false)
                     .shadow(color: .black.opacity(flight.lifted ? 0.35 : 0), radius: 16, y: 8)
                     .scaleEffect(scale)
                     .opacity(flight.popped ? 0 : 1)
                     .position(x: spot.x - origin.x, y: spot.y - origin.y)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.86), value: spot)
             }
         }
         .ignoresSafeArea()
