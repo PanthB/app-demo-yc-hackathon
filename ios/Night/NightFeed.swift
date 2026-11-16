@@ -6,6 +6,9 @@ struct NightFeed: View {
     let moves: Namespace.ID
     let select: (Drop) -> Void
     var openGroup: ((String) -> Void)? = nil
+    var landing: UUID? = nil
+    var calibrating: Set<String> = []
+    var report: (CGRect) -> Void = { _ in }
 
     @State private var showsDone = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -20,6 +23,7 @@ struct NightFeed: View {
                     switch section.style {
                     case .pinned, .zone:
                         header(section)
+                            .opacity(landing != nil && section.drops.allSatisfy { $0.id == landing } ? 0 : 1)
                         grid(section.drops)
                     case .done:
                         doneHeader(section)
@@ -56,6 +60,13 @@ struct NightFeed: View {
             Text("\(section.drops.count)").font(NightStyle.sectionHeading).monospacedDigit().foregroundStyle(NightStyle.tertiary)
             if opens {
                 Image(systemName: "chevron.right").font(NightStyle.body.weight(.semibold)).foregroundStyle(NightStyle.tertiary)
+            }
+            if section.id.hasPrefix("cluster-"), calibrating.contains(String(section.id.dropFirst("cluster-".count))) {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(.white.opacity(0.75))
+                    .transition(.opacity)
+                    .accessibilityLabel("finding suggestions for this group")
             }
         }
         .contentShape(.rect)
@@ -107,6 +118,9 @@ struct NightFeed: View {
             label()
         }
         .buttonStyle(NightPressStyle())
+        .scaleEffect(drop.id == landing ? 0.4 : 1)
+        .opacity(drop.id == landing ? 0 : 1)
+        .modifier(NightTrack(isOn: drop.id == landing, report: report))
         .overlay {
             if drop.isArriving, drop.createdAt > clock.now.addingTimeInterval(-60) || drop.createdAt > .now.addingTimeInterval(-60) {
                 NightReadingRing(createdAt: drop.createdAt)
