@@ -23,6 +23,7 @@ struct NightHeader: View {
     let startBoard: () -> Void
     let joinBoard: () -> Void
     var seeFull: (() -> Void)? = nil
+    var hasNewSuggestions = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -81,7 +82,7 @@ struct NightHeader: View {
 
     @ViewBuilder
     private var controls: some View {
-        NightSegments(options: NightTab.allCases, selection: $tab, label: \.rawValue, idPrefix: "nightTab")
+        NightSegments(options: NightTab.allCases, selection: $tab, label: \.rawValue, idPrefix: "nightTab", dots: hasNewSuggestions ? [.suggestions] : [])
         if isShared, tab == .board {
             NightFilterPicker(filter: $filter).transition(.opacity)
         }
@@ -97,14 +98,16 @@ struct NightSegments<Option: Hashable>: View {
     @Binding var selection: Option
     let label: (Option) -> String
     let idPrefix: String
+    let dots: Set<Option>
     @Namespace private var namespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(options: [Option], selection: Binding<Option>, label: @escaping (Option) -> String, idPrefix: String) {
+    init(options: [Option], selection: Binding<Option>, label: @escaping (Option) -> String, idPrefix: String, dots: Set<Option> = []) {
         self.options = options
         _selection = selection
         self.label = label
         self.idPrefix = idPrefix
+        self.dots = dots
     }
 
     var body: some View {
@@ -126,8 +129,19 @@ struct NightSegments<Option: Hashable>: View {
                             }
                         }
                         .contentShape(.capsule)
+                        .overlay(alignment: .topTrailing) {
+                            if dots.contains(option) {
+                                Circle()
+                                    .fill(Color(red: 1, green: 0.4, blue: 0.4))
+                                    .frame(width: 7, height: 7)
+                                    .offset(x: -6, y: 5)
+                                    .transition(.opacity)
+                            }
+                        }
+                        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: dots.contains(option))
                 }
                 .buttonStyle(.plain)
+                .accessibilityValue(dots.contains(option) ? "new" : "")
                 .accessibilityAddTraits(isOn ? .isSelected : [])
                 .accessibilityIdentifier("\(idPrefix)-\(label(option))")
             }
