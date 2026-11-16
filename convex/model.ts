@@ -99,6 +99,7 @@ export const extraction = v.object({
   whenLabel: v.optional(v.string()),
   price: v.optional(v.number()),
   kindWords: v.array(v.string()),
+  category: v.optional(v.string()),
   vibeWords: v.array(v.string()),
   minutesThere: v.optional(v.number()),
   confidence: v.number(),

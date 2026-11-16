@@ -41,6 +41,7 @@ export type Reading = {
   due_in_minutes: number | null;
   price: number | null;
   kind_words: string[];
+  kind_of_thing: string | null;
   vibe_words: string[];
   minutes_there: number | null;
   confidence: number;
@@ -52,7 +53,7 @@ const nullableNumber = (description: string) => ({ type: ["number", "null"], des
 const READING_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["title", "place_name", "area", "starts_at", "when_text", "due_in_minutes", "price", "kind_words", "vibe_words", "minutes_there", "confidence"],
+  required: ["title", "place_name", "area", "starts_at", "when_text", "due_in_minutes", "price", "kind_words", "kind_of_thing", "vibe_words", "minutes_there", "confidence"],
   properties: {
     title: nullableString("a short lowercase name for the thing saved: the place, event, song, product or idea"),
     place_name: nullableString("the name of one specific place, venue, restaurant or shop, only if the item names one"),
@@ -62,6 +63,9 @@ const READING_SCHEMA = {
     due_in_minutes: nullableNumber("for a reminder like 'remind me in 1 hr', minutes from saved_at until it is due"),
     price: nullableNumber("price per person or per ticket in US dollars"),
     kind_words: { type: "array", items: { type: "string" }, description: "lowercase words for what kind of thing it is, like ramen, concert or thrift store" },
+    kind_of_thing: nullableString(
+      "the category friends would file it under, short, lowercase and plural. Prefer one of: sad songs, upbeat songs, chill songs, thrillers, documentaries, comedies, dramas, horror films, food spots, coffee spots, bars, cozy shops, sunny outdoors, beaches, art, concerts, nightlife, sports, fashion. If none fits, name a close new one in at most three words, like bookstores or vintage shops. Judge what the thing is, not when it happens: a thriller watched at night is still thrillers. null for a plain reminder or to-do",
+    ),
     vibe_words: { type: "array", items: { type: "string" }, description: "lowercase mood words, like cozy, loud or sunny" },
     minutes_there: nullableNumber("how long someone would spend there or doing it, in minutes"),
     confidence: { type: "number", description: "from 0 to 1, how sure you are about the fields you filled" },

@@ -36,7 +36,7 @@ import {
   whenLabelFor,
 } from "./lib/rules";
 import { goesWithLine, nameLabel, sameThing, socialLine } from "./lib/suggest";
-import { facetOf, facetValues, orderVibes, ruleVibes } from "./lib/vibes";
+import { facetOf, facetValues, kindFor, orderVibes, ruleVibes } from "./lib/vibes";
 
 const CONNECT_THRESHOLD = 0.75;
 const ZONE_THRESHOLD = 0.5;
@@ -142,6 +142,7 @@ function fromReading(r: Reading, drop: Doc<"drops">, fallback: Extraction): Extr
     whenLabel: anchor && (dueAt || !whenText) ? whenLabelFor(anchor, drop.capturedAt, offset) : whenText,
     price: num(r.price),
     kindWords: (r.kind_words ?? []).map((w) => w.toLowerCase()),
+    category: text(r.kind_of_thing)?.toLowerCase(),
     vibeWords: (r.vibe_words ?? []).map((w) => w.toLowerCase()),
     minutesThere: num(r.minutes_there),
     confidence: Math.min(1, Math.max(0, num(r.confidence) ?? 0)),
@@ -343,7 +344,7 @@ export const run = internalAction({
           if (clusters.length > 0) {
             questions.cluster = {
               type: "choice",
-              instructions: `Which group of saved things on the board does new_drop feel closest to, by mood, setting, place and sound? ${UNTRUSTED}`,
+              instructions: `Which group of saved things on the board does new_drop belong with? Match the kind of thing first, so a thriller goes with thrillers and a sad song with sad songs, then mood, setting, place and sound. ${UNTRUSTED}`,
               criteria: {
                 new: "none of them; new_drop starts a group of its own",
                 ...Object.fromEntries(clusters.map((c, i) => [`k${i}`, `the group "${c.clusterLabel}", with ${c.titles.join("; ") || "untitled things"}`])),
@@ -425,10 +426,8 @@ export const run = internalAction({
         place: (drop.kind === "image" || drop.kind === "video" || drop.hints?.placeName) && drop.latitude !== undefined && drop.longitude !== undefined ? { latitude: drop.latitude, longitude: drop.longitude } : undefined,
       });
       const picked = Object.entries(jevFacets).filter(([, value]) => value);
-      const vibes = orderVibes([
-        ...picked.flatMap(([, value]) => (value ? [value] : [])),
-        ...ruledVibes.filter((value) => !picked.some(([facet]) => facetOf(value) === facet)),
-      ]);
+      const facetVibes = [...picked.flatMap(([, value]) => (value ? [value] : [])), ...ruledVibes.filter((value) => !picked.some(([facet]) => facetOf(value) === facet))];
+      const vibes = orderVibes(facetVibes, kindFor(extraction.category, decision.type === "song", orderVibes(facetVibes)));
 
       pipeline.finishedAt = Date.now();
       await ctx.runMutation(internal.drops.applyResult, { dropId, enrichment, extraction, decision, suggestion, vibes, jevClusterId, relatedClientIds: related, searchText, pipeline });
