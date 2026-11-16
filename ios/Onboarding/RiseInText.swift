@@ -26,10 +26,7 @@ struct RiseInText: TextRenderer, Animatable {
             let settle = local >= 1 ? 1 : 1 - exp(-6 * local) * cos(9 * local)
             var glyph = context
             glyph.opacity = min(1, local * 2.2)
-            if local < 1 {
-                glyph.addFilter(.blur(radius: (1 - min(1, local * 1.8)) * 10))
-            }
-            glyph.translateBy(x: 0, y: (1 - settle) * 34)
+            glyph.translateBy(x: 0, y: (1 - settle) * 10)
             glyph.draw(slice)
         }
     }

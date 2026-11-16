@@ -54,9 +54,6 @@ private struct WordFade: TextRenderer, Animatable {
                 let local = min(max((progress - begin) / span, 0), 1)
                 var word = context
                 word.opacity = local
-                if local < 1 {
-                    word.addFilter(.blur(radius: (1 - local) * 8))
-                }
                 word.translateBy(x: 0, y: (1 - local) * 8)
                 word.draw(run)
             }
