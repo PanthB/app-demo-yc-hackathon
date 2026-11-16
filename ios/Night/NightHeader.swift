@@ -24,6 +24,8 @@ struct NightHeader: View {
     let joinBoard: () -> Void
     var seeFull: (() -> Void)? = nil
     var hasNewSuggestions = false
+    var invite: URL? = nil
+    var inviteCode: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -40,6 +42,11 @@ struct NightHeader: View {
                     }
                 }
                 Divider()
+                if isShared, let invite, let inviteCode {
+                    NightInviteLink(boardName: boardName, code: inviteCode, link: invite) {
+                        Label("invite friends", systemImage: "person.badge.plus")
+                    }
+                }
                 Button("start a shared board", systemImage: "plus") { startBoard() }
                 Button("join with a code", systemImage: "person.badge.plus") { joinBoard() }
                 if let seeFull {

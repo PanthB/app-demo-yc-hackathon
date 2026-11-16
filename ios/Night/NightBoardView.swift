@@ -23,6 +23,7 @@ struct NightBoardView: View {
     @State private var flight = NightFlightModel()
     @State private var calibration = SuggestionsModel()
     @State private var seen: Set<String> = []
+    @State private var spinning: String?
     @State private var toast: NightToastItem?
     @State private var unreadArrival: UUID?
     @State private var sectionInView: String?
@@ -36,6 +37,11 @@ struct NightBoardView: View {
     private struct Arrivals: Equatable {
         let board: String
         let ids: [UUID]
+    }
+
+    private struct SpinMark: Equatable {
+        let cluster: String?
+        let isOn: Bool
     }
 
     private struct SeenMark: Equatable {
@@ -76,6 +82,7 @@ struct NightBoardView: View {
         let calibrating = Set(calibration.groups?.filter(\.searching).map(\.clusterId) ?? [])
         let suggestionIds = Set(calibration.groups?.flatMap { $0.suggestions.map(\.id) } ?? []).subtracting(calibration.hidden)
         let hasNewSuggestions = tab != .suggestions && !suggestionIds.isSubset(of: seen)
+        let spins = spinning.map { calibrating.contains($0) } ?? false
 
         NavigationStack(path: $path) {
             ScrollViewReader { proxy in
@@ -83,6 +90,16 @@ struct NightBoardView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     if tab == .board {
                     header(name: name, choices: choices, current: current, streaks: streaks, isShared: isShared, hasNewSuggestions: hasNewSuggestions)
+                    if drops.isEmpty {
+                        Text("nothing here yet. share something from any app, or tap +.")
+                            .font(NightStyle.body)
+                            .foregroundStyle(NightStyle.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, NightStyle.margin * 2)
+                            .padding(.top, 96)
+                            .accessibilityIdentifier("nightEmpty")
+                    }
                     NightFeed(
                         sections: sections,
                         namespace: namespace,
@@ -90,7 +107,7 @@ struct NightBoardView: View {
                         select: { drop in path.append(drop.id) },
                         openGroup: { web = BoardWebStop(focus: $0) },
                         landing: landing,
-                        calibrating: calibrating,
+                        calibrating: spins ? [spinning ?? ""] : [],
                         report: { flight.target = $0 }
                     )
                     }
@@ -217,12 +234,14 @@ struct NightBoardView: View {
                 } else if drop.isArriving {
                     unreadArrival = drop.id
                 } else {
+                    spin(drop.id, in: sections)
                     withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: drop.id, text: ShellToast.words(for: drop)) }
                 }
             }
             .onChange(of: unreadArrival.flatMap { id in drops.first { $0.id == id }?.isArriving }) { _, arriving in
                 guard arriving == false, let id = unreadArrival, let drop = drops.first(where: { $0.id == id }) else { return }
                 unreadArrival = nil
+                spin(drop.id, in: sections)
                 withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: drop.id, text: ShellToast.words(for: drop)) }
             }
             .onChange(of: QueueMark(board: current, ids: queued.map(\.id))) { before, after in
@@ -235,6 +254,7 @@ struct NightBoardView: View {
             .onChange(of: settling.flatMap { Self.section(of: $0, in: sections) }) { _, after in
                 guard let id = settling, let after, after.hasPrefix("cluster-"), let section = sections.first(where: { $0.id == after }) else { return }
                 settling = nil
+                spin(id, in: sections)
                 reveal(id, in: sections, proxy: proxy)
                 withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: id, text: Self.settledWords(section, me: me)) }
             }
@@ -271,6 +291,12 @@ struct NightBoardView: View {
         .task(id: current) {
             seen = Set(UserDefaults.standard.stringArray(forKey: Self.seenKey(current)) ?? [])
             calibration.follow(boardId: current, personId: me)
+        }
+        .task(id: SpinMark(cluster: spinning, isOn: spins)) {
+            guard spinning != nil else { return }
+            try? await Task.sleep(for: .seconds(spins ? 8 : 30))
+            guard !Task.isCancelled else { return }
+            spinning = nil
         }
         .onChange(of: SeenMark(tab: tab, ids: suggestionIds)) { _, mark in
             guard mark.tab == .suggestions, !mark.ids.isSubset(of: seen) else { return }
@@ -326,7 +352,9 @@ struct NightBoardView: View {
             startBoard: { boards.entry = .create },
             joinBoard: { boards.entry = .join(code: nil) },
             seeFull: { web = BoardWebStop(focus: nil) },
-            hasNewSuggestions: hasNewSuggestions
+            hasNewSuggestions: hasNewSuggestions,
+            invite: boards.currentBoard?.inviteLink,
+            inviteCode: boards.currentBoard?.inviteCode
         )
         .matchedTransitionSource(id: "web-all", in: namespace)
     }
@@ -352,6 +380,11 @@ struct NightBoardView: View {
         }
     }
 
+    private func spin(_ id: UUID, in sections: [DropSection]) {
+        guard let section = Self.section(of: id, in: sections), section.hasPrefix("cluster-") else { return }
+        spinning = String(section.dropFirst("cluster-".count))
+    }
+
     private func land(_ drop: Drop, sections: [DropSection], proxy: ScrollViewProxy, me: String) {
         let id = drop.id
         let banner = Self.section(of: id, in: sections)
@@ -359,6 +392,7 @@ struct NightBoardView: View {
             .flatMap { $0.id.hasPrefix("cluster-") ? Self.settledWords($0, me: me) : nil }
         let finish: @MainActor () -> Void = {
             grouped += 1
+            spin(id, in: sections)
             if let banner {
                 withAnimation(reduceMotion ? nil : .snappy) { toast = NightToastItem(id: id, text: banner) }
             } else {

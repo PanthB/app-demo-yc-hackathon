@@ -104,7 +104,7 @@ struct NightStreakSheet: View {
                             .monospacedDigit()
                             .textSelection(.enabled)
                         Spacer(minLength: 0)
-                        ShareLink(item: invite, subject: Text("join \(boardName)"), message: Text("join \(boardName) with me. the code is \(inviteCode).")) {
+                        NightInviteLink(boardName: boardName, code: inviteCode, link: invite) {
                             Text("invite friends")
                         }
                         .buttonStyle(NightPrimaryButtonStyle())
