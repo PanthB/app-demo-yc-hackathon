@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: 6668fdb3-dd6b-4d4d-aca9-13481a7ce266
-    remote_version: 1
-    local_version: 1
-    last_synced_at: "2026-11-15T21:58:21Z"
-    checksum: 459925ad2a2e008322132f0c337159cca33e5d429bb1e39ebc208f1986f0304e
+    remote_version: 2
+    local_version: 2
+    last_synced_at: "2026-11-16T00:51:23Z"
+    checksum: e0e325b5c688701edab1da11fee717f152f68198bd858c56122ee4357d25c1cc
 test:
     metadata:
         name: gate-share-from-safari
@@ -71,7 +71,7 @@ test:
         - type: instructions
           step_description: In Safari, tap the page menu button (three lines, left of the address) and choose Share. If the toolbar has a Share button instead, tap that.
         - type: instructions
-          step_description: In the share sheet, tap Moments in the row of apps. If it isn't in the row, scroll the row or tap More to find it.
+          step_description: In the share sheet, tap Resona in the row of apps. If it isn't in the row, scroll the row or tap More to find it.
         - type: validation
           step_description: A small pill reads dropped it in {{board-name}}.
         - type: instructions

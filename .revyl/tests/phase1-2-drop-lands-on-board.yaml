@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: b2bc4536-e745-41e2-acb2-fc6b7982233d
-    remote_version: 2
-    local_version: 2
-    last_synced_at: "2026-11-15T21:27:04Z"
-    checksum: 3041add5d5c31df86c68ead12ff503572ac4f25e707c4e6bcbf9a60a68703b90
+    remote_version: 3
+    local_version: 3
+    last_synced_at: "2026-11-16T00:51:38Z"
+    checksum: f6ca8a42018806d7fd9f821c297b04f0d1a10531ceb8fc2deb635e636ca21b63
 test:
     metadata:
         name: phase1-2-drop-lands-on-board
@@ -16,7 +16,7 @@ test:
     build:
         name: app-demo-yc-hackathon
     variables:
-        share-target: Moments
+        share-target: Resona
         share-url: https://maps.google.com/?q=Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110
     blocks:
         - type: manual

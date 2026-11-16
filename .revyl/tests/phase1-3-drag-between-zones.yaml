@@ -1,54 +1,62 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 599197b3-5ab3-49dc-8538-e124d70b4ef9
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-16T00:51:46Z"
+    checksum: 00fd3dfe7ca8d6b8af4b8f1f6ea185c9ad31c761ee44e338ed5f7519033bd5aa
 test:
-  metadata:
-    name: phase1-3-drag-between-zones
-    platform: ios
-    tags:
-      - phase1
-      - board
-      - deferred
-  build:
-    name: app-demo-yc-hackathon
-  variables:
-    share-target: "Moments"
-    share-url: "https://www.google.com/maps/place/Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110"
-  blocks:
-    - type: manual
-      step_type: navigate
-      step_description: "{{share-url}}"
-    - type: instructions
-      step_description: Wait for the page to finish loading, then tap Safari's Share button. If the toolbar has no Share button, tap the More (…) button first and choose Share from its menu. In the share sheet, pick {{share-target}} from the row of apps, and if it isn't in the row, scroll the row or tap More to find it.
-    - type: manual
-      step_type: open_app
-    - type: if
-      condition: Is a system permission prompt (location or notifications) visible?
-      then:
+    metadata:
+        name: phase1-3-drag-between-zones
+        platform: ios
+        tags:
+            - phase1
+            - board
+            - deferred
+    build:
+        name: app-demo-yc-hackathon
+    variables:
+        share-target: Resona
+        share-url: https://www.google.com/maps/place/Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110
+    blocks:
+        - type: manual
+          step_type: navigate
+          step_description: '{{share-url}}'
         - type: instructions
-          step_description: Tap the button that allows it (Allow While Using App, or Allow).
-    - type: manual
-      step_type: wait
-      step_description: "20"
-    - type: extraction
-      step_description: Which zone (now, tonight, this weekend, someday or vibes) is the Tartine Bakery object in? Answer with just the zone name.
-      variable_name: start-zone
-    - type: instructions
-      step_description: Drag the Tartine Bakery object into a different zone than {{start-zone}}, preferably tonight.
-    - type: extraction
-      step_description: Which zone is the Tartine Bakery object in now? Answer with just the zone name.
-      variable_name: moved-zone
-    - type: validation
-      step_description: The Tartine Bakery object sits in {{moved-zone}}, which is a different zone from {{start-zone}}.
-    - type: instructions
-      step_description: Undo the move you just made, using the app's undo control.
-    - type: validation
-      step_description: The Tartine Bakery object is back in {{start-zone}}.
-    - type: instructions
-      step_description: Drag the Tartine Bakery object into {{moved-zone}} again.
-    - type: manual
-      step_type: kill_app
-    - type: manual
-      step_type: wait
-      step_description: "2"
-    - type: manual
-      step_type: open_app
-    - type: validation
-      step_description: After relaunching, the Tartine Bakery object is still in {{moved-zone}}, where it was dragged.
+          step_description: Wait for the page to finish loading, then tap Safari's Share button. If the toolbar has no Share button, tap the More (…) button first and choose Share from its menu. In the share sheet, pick {{share-target}} from the row of apps, and if it isn't in the row, scroll the row or tap More to find it.
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: manual
+          step_type: wait
+          step_description: "20"
+        - type: extraction
+          step_description: Which zone (now, tonight, this weekend, someday or vibes) is the Tartine Bakery object in? Answer with just the zone name.
+          variable_name: start-zone
+        - type: instructions
+          step_description: Drag the Tartine Bakery object into a different zone than {{start-zone}}, preferably tonight.
+        - type: extraction
+          step_description: Which zone is the Tartine Bakery object in now? Answer with just the zone name.
+          variable_name: moved-zone
+        - type: validation
+          step_description: The Tartine Bakery object sits in {{moved-zone}}, which is a different zone from {{start-zone}}.
+        - type: instructions
+          step_description: Undo the move you just made, using the app's undo control.
+        - type: validation
+          step_description: The Tartine Bakery object is back in {{start-zone}}.
+        - type: instructions
+          step_description: Drag the Tartine Bakery object into {{moved-zone}} again.
+        - type: manual
+          step_type: kill_app
+        - type: manual
+          step_type: wait
+          step_description: "2"
+        - type: manual
+          step_type: open_app
+        - type: validation
+          step_description: After relaunching, the Tartine Bakery object is still in {{moved-zone}}, where it was dragged.
