@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: 77463c1b-f779-4ee0-bcb9-df1cf67776bb
-    remote_version: 2
-    local_version: 2
-    last_synced_at: "2026-11-15T21:27:01Z"
-    checksum: 31a8d43e431af4e2bdeb7aa1f4fca0247d7b0978ca78447fbabb153d746f1bfe
+    remote_version: 4
+    local_version: 4
+    last_synced_at: "2026-11-16T00:51:34Z"
+    checksum: 9a1651ee8db28473bf88e04d9402d8721486d560c2365d8f5a9b9ed5194fa65f
 test:
     metadata:
         name: phase1-1-share-into-board
@@ -18,7 +18,7 @@ test:
     variables:
         invite-code: SFCREW
         person-name: revyl
-        share-target: Moments
+        share-target: Resona
         share-url: https://maps.google.com/?q=Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110
     blocks:
         - type: manual

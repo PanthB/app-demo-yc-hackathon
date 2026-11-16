@@ -1,0 +1,89 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: a37cb987-0076-47ca-85d4-f6fa0a180528
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-16T00:51:06Z"
+    checksum: f4fc50ad4ab69a4ef973f2749d67bd35b60ad1e5d7719c8818de6c8cb38ccaec
+test:
+    metadata:
+        name: preview-share-from-safari
+        platform: ios
+        tags:
+            - preview
+            - share
+            - qa-board
+    build:
+        name: app-demo-yc-hackathon
+    variables:
+        board-name: <qa board name>
+        page: https://en.wikipedia.org/wiki/Mission_Dolores_Park
+        person-name: revyl gate
+        qa-code: <qa board code>
+    blocks:
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: if
+          condition: Is the app showing a welcome or first-run screen instead of a board?
+          then:
+            - type: instructions
+              step_description: Choose start fresh, not the demo, and continue as a guest if it asks how to sign in. Then tap skip, or the bottom button through any remaining steps, until a board with a glass bar at the bottom shows.
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://join/{{qa-code}}
+        - type: if
+          condition: Is a dialog asking whether to open this in the app visible?
+          then:
+            - type: instructions
+              step_description: Tap Open.
+        - type: validation
+          step_description: A sheet titled join a board is showing, and the invite code field already reads {{qa-code}}.
+        - type: if
+          condition: Is the sheet asking for your name?
+          then:
+            - type: instructions
+              step_description: Type {{person-name}} in the your name field.
+        - type: instructions
+          step_description: Tap join at the top right of the sheet.
+        - type: manual
+          step_type: wait
+          step_description: "3"
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://debug/hold-share-note
+        - type: if
+          condition: Is a dialog asking whether to open this in the app visible?
+          then:
+            - type: instructions
+              step_description: Tap Open.
+        - type: manual
+          step_type: navigate
+          step_description: '{{page}}'
+        - type: manual
+          step_type: wait
+          step_description: "5"
+        - type: instructions
+          step_description: In Safari, tap the page menu button (three lines, left of the address) and choose Share. If the toolbar has a Share button instead, tap that.
+        - type: instructions
+          step_description: In the share sheet, tap Resona in the row of apps. If it isn't in the row, scroll the row or tap More to find it.
+        - type: validation
+          step_description: A small pill reads dropped it in {{board-name}}.
+        - type: instructions
+          step_description: Tap the dropped it pill to close it.
+        - type: manual
+          step_type: wait
+          step_description: "3"
+        - type: manual
+          step_type: navigate
+          step_description: appdemo://view/cards
+        - type: manual
+          step_type: wait
+          step_description: "8"
+        - type: validation
+          step_description: A card titled mission dolores park with a place pill is on the board.

@@ -1,51 +1,59 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 7cfb6c8c-c1ec-480b-8f55-ac237368d0c4
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-16T00:51:42Z"
+    checksum: 30465d5e6d3a6ca8f1286aa2329e3134196ed24f2c85d38371b4d02d12561b4c
 test:
-  metadata:
-    name: phase1-6a-nearby-suggestion
-    platform: ios
-    tags:
-      - phase1
-      - location
-  build:
-    name: app-demo-yc-hackathon
-  variables:
-    share-target: "Moments"
-    share-url: "https://maps.google.com/?q=Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110"
-    home-location: "37.7793,-122.4193"
-    near-location: "37.7627,-122.4236"
-  blocks:
-    - type: manual
-      step_type: set_location
-      step_description: "{{home-location}}"
-    - type: manual
-      step_type: navigate
-      step_description: "{{share-url}}"
-    - type: instructions
-      step_description: Wait for the page to finish loading, then tap Safari's Share button. If the toolbar has no Share button, tap the More (…) button first and choose Share from its menu. In the share sheet, pick {{share-target}} from the row of apps, and if it isn't in the row, scroll the row or tap More to find it.
-    - type: manual
-      step_type: open_app
-    - type: if
-      condition: Is a system permission prompt (location or notifications) visible?
-      then:
+    metadata:
+        name: phase1-6a-nearby-suggestion
+        platform: ios
+        tags:
+            - phase1
+            - location
+    build:
+        name: app-demo-yc-hackathon
+    variables:
+        home-location: 37.7793,-122.4193
+        near-location: 37.7627,-122.4236
+        share-target: Resona
+        share-url: https://maps.google.com/?q=Tartine+Bakery,+600+Guerrero+St,+San+Francisco,+CA+94110
+    blocks:
+        - type: manual
+          step_type: set_location
+          step_description: '{{home-location}}'
+        - type: manual
+          step_type: navigate
+          step_description: '{{share-url}}'
         - type: instructions
-          step_description: Tap the button that allows it (Allow While Using App, or Allow).
-    - type: manual
-      step_type: wait
-      step_description: "20"
-    - type: validation
-      step_description: The Tartine Bakery item is showing.
-    - type: manual
-      step_type: set_location
-      step_description: "{{near-location}}"
-    - type: manual
-      step_type: wait
-      step_description: "5"
-    - type: validation
-      step_description: The Tartine Bakery item now shows one short suggestion line saying it's only a few minutes from you, such as "3 min from you."
-    - type: extraction
-      step_description: List the section headers and the titles under each, top to bottom, in one line.
-      variable_name: layout-now
-    - type: manual
-      step_type: wait
-      step_description: "30"
-    - type: validation
-      step_description: Nothing moved without a reason. The sections and the titles under them still read "{{layout-now}}".
+          step_description: Wait for the page to finish loading, then tap Safari's Share button. If the toolbar has no Share button, tap the More (…) button first and choose Share from its menu. In the share sheet, pick {{share-target}} from the row of apps, and if it isn't in the row, scroll the row or tap More to find it.
+        - type: manual
+          step_type: open_app
+        - type: if
+          condition: Is a system permission prompt (location or notifications) visible?
+          then:
+            - type: instructions
+              step_description: Tap the button that allows it (Allow While Using App, or Allow).
+        - type: manual
+          step_type: wait
+          step_description: "20"
+        - type: validation
+          step_description: The Tartine Bakery item is showing.
+        - type: manual
+          step_type: set_location
+          step_description: '{{near-location}}'
+        - type: manual
+          step_type: wait
+          step_description: "5"
+        - type: validation
+          step_description: The Tartine Bakery item now shows one short suggestion line saying it's only a few minutes from you, such as "3 min from you."
+        - type: extraction
+          step_description: List the section headers and the titles under each, top to bottom, in one line.
+          variable_name: layout-now
+        - type: manual
+          step_type: wait
+          step_description: "30"
+        - type: validation
+          step_description: Nothing moved without a reason. The sections and the titles under them still read "{{layout-now}}".
