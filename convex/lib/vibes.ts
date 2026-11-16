@@ -1,6 +1,6 @@
 export const FACETS = {
   kind: [
-    "sad songs", "upbeat songs", "chill songs", "thrillers", "documentaries", "comedies", "dramas", "horror films",
+    "sad songs", "sunny songs", "thrillers", "documentaries", "comedies", "dramas", "horror films",
     "food spots", "coffee spots", "bars", "cozy shops", "sunny outdoors", "beaches", "art", "concerts", "nightlife", "sports", "fashion",
   ],
   mood: ["dreamy", "cozy", "upbeat", "moody", "wild", "calm"],
@@ -21,14 +21,15 @@ const FACET_OF = new Map<string, Facet>(FACET_ORDER.flatMap((f) => FACETS[f].map
 const facetFor = (value: string): Facet => FACET_OF.get(value) ?? "kind";
 const weightOf = (value: string) => WEIGHT[facetFor(value)];
 const kindOf = (vibes: string[]) => vibes.find((v) => facetFor(v) === "kind");
-const SONG_KIND: Record<string, string> = { moody: "sad songs", calm: "chill songs", dreamy: "chill songs", cozy: "chill songs", upbeat: "upbeat songs", wild: "upbeat songs" };
+const SONG_KIND: Record<string, string> = { moody: "sad songs", calm: "sad songs", dreamy: "sad songs", upbeat: "sunny songs", wild: "sunny songs", cozy: "sunny songs" };
 
 export function kindFor(named: string | undefined, isSong: boolean, vibes: string[]) {
   const kind = named?.trim().toLowerCase().replace(/[^a-z0-9&' -]/g, "");
   if (kind && kind.split(/\s+/).length <= 3 && kind.length <= 24 && facetFor(kind) === "kind") return kind;
   if (!isSong) return undefined;
   const mood = vibes.find((v) => facetFor(v) === "mood");
-  return (mood && SONG_KIND[mood]) ?? "songs";
+  if (mood) return SONG_KIND[mood];
+  return vibes.includes("late night") ? "sad songs" : "sunny songs";
 }
 
 export const JOIN = 0.3;
