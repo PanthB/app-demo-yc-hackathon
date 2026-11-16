@@ -30,7 +30,7 @@ struct SignInSheet: View {
             ZStack {
                 Text(problem ?? "with apple, your boards follow you to any phone.")
                     .id(problem)
-                    .transition(.blurReplace)
+                    .transition(.opacity)
             }
             .font(.system(size: 16))
             .foregroundStyle(.secondary)

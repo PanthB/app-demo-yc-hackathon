@@ -11,6 +11,7 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { membersOf, personById } from "./boards";
 import { nameLabel, nounFor, sameThing, sitsWithLine, socialLine } from "./lib/suggest";
+import { kindOf, normalKind, orderVibes } from "./lib/vibes";
 import {
   decision,
   dropDoc,
@@ -88,6 +89,7 @@ async function toView(
     authorColor: colors.get(d.authorId),
     suggestion: d.suggestion ?? social ?? sitsWith,
     vibes: d.vibes ?? [],
+    groupKind: kindOf(d.vibes ?? []),
     neighbors,
   };
 }
@@ -204,6 +206,31 @@ export const setZone = mutation({
   },
 });
 
+export const setKind = mutation({
+  args: { boardId: v.string(), clientId: v.string(), kind: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { boardId, clientId, kind }) => {
+    const drop = await byClientId(ctx, boardId, clientId);
+    if (!drop) throw new ConvexError("drop not found on this board");
+    const userKind = kind === null ? undefined : normalKind(kind);
+    if (kind !== null && !userKind) {
+      throw new ConvexError("a group name is 1 to 3 words and at most 24 letters, and can't be a mood, time, setting, neighborhood, genre or energy");
+    }
+    if (userKind === drop.userKind) return null;
+    const vibes = drop.vibes ?? [];
+    const autoKind = drop.userKind ? drop.autoKind : kindOf(vibes);
+    await ctx.db.patch("drops", drop._id, {
+      userKind,
+      autoKind: userKind ? autoKind : undefined,
+      vibes: orderVibes(vibes, userKind ?? autoKind),
+      jevClusterId: undefined,
+      updatedAt: Date.now(),
+    });
+    await recluster(ctx, boardId);
+    return null;
+  },
+});
+
 export const retry = mutation({
   args: { boardId: v.string(), clientId: v.string() },
   returns: v.null(),
@@ -274,8 +301,9 @@ export const applyResult = internalMutation({
       extraction: args.extraction,
       decision: args.decision,
       suggestion: args.suggestion,
-      vibes: args.vibes,
-      jevClusterId: args.jevClusterId,
+      vibes: drop.userKind ? orderVibes(args.vibes, drop.userKind) : args.vibes,
+      autoKind: drop.userKind ? kindOf(args.vibes) : undefined,
+      jevClusterId: drop.userKind ? undefined : args.jevClusterId,
       zone: drop.zoneSetByUser ? drop.zone : (args.decision?.zone ?? drop.zone),
       relatedClientIds: related,
       searchText: args.searchText,

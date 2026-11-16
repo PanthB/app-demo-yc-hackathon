@@ -101,7 +101,7 @@ struct NightCard: View {
     }
 
     private func details(face: PreviewFace, now: Date) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 4) {
             lead(face)
             if let title = drop.cardTitle(beside: face) {
                 Text(title).font(NightStyle.itemTitle).lineLimit(typeSize.isAccessibilitySize ? nil : 2)
@@ -112,7 +112,7 @@ struct NightCard: View {
             if drop.isArriving {
                 SuggestionLine(suggestion: .words("reading this one now.")).font(NightStyle.body)
             }
-            NightByline(drop: drop).padding(.top, 2)
+            NightByline(drop: drop).padding(.top, 6)
         }
         .padding(.horizontal, NightStyle.inset)
         .padding(.top, face.fillsItsFrame ? 10 : 0)

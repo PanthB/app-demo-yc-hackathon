@@ -206,7 +206,15 @@ export const run = internalAction({
         pipeline.extract = rules("a song link is read from the link and deezer, which saves a model call");
       } else {
         const { images, notes } = await loadImages(ctx, drop, enrichment?.thumbnailUrl);
-        const input = [`saved_at: ${localStamp(drop.capturedAt, drop.utcOffsetMinutes)} local time`, `shared as: ${drop.kind}`, corpus(drop.text, drop.url, drop.hints, enrichment)].join("\n");
+        const kinds: string[] = await ctx.runQuery(internal.clusters.kinds, { boardId: drop.boardId });
+        const input = [
+          `saved_at: ${localStamp(drop.capturedAt, drop.utcOffsetMinutes)} local time`,
+          `shared as: ${drop.kind}`,
+          kinds.length > 0 && `kinds of things already on this board: ${kinds.join("; ")}. For kind_of_thing, reuse one of these when the item fits it, rather than naming a near-synonym.`,
+          corpus(drop.text, drop.url, drop.hints, enrichment),
+        ]
+          .filter(Boolean)
+          .join("\n");
         const model = readerModel();
         try {
           extraction = fromReading(await openaiRead(ctx, input, images, model), drop, fallback);

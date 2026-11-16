@@ -5,8 +5,8 @@ struct NightAddButton: View {
     @Namespace private var camera
 
     var body: some View {
-        GlassEffectContainer(spacing: 16) {
-            HStack(spacing: 16) {
+        GlassEffectContainer(spacing: 0) {
+            HStack(spacing: 28) {
                 Button {
                     showsCamera = true
                 } label: {

@@ -108,7 +108,7 @@ struct OnboardingFlow: View {
             if inGuide {
                 WordsText(lead: step.title(shared: start == .demo), rest: "", size: 24)
                     .id(step)
-                    .transition(.blurReplace)
+                    .transition(.opacity)
                     .accessibilityAddTraits(.isHeader)
             } else {
                 VStack(spacing: 8) {
@@ -125,8 +125,7 @@ struct OnboardingFlow: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
                 .opacity(welcomeHidden ? 0 : 1)
-                .blur(radius: welcomeHidden ? 12 : 0)
-                .transition(.blurReplace)
+                .transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -150,8 +149,8 @@ struct OnboardingFlow: View {
                     Text(primaryLabel)
                         .id(primaryLabel)
                         .transition(.asymmetric(
-                            insertion: AnyTransition(.blurReplace).animation(motion(.smooth(duration: 0.2).delay(0.12))),
-                            removal: AnyTransition(.blurReplace).animation(motion(.smooth(duration: 0.12)))
+                            insertion: AnyTransition.opacity.animation(motion(.smooth(duration: 0.2).delay(0.12))),
+                            removal: AnyTransition.opacity.animation(motion(.smooth(duration: 0.12)))
                         ))
                 }
                 .font(.system(size: 17, weight: .semibold))
@@ -176,16 +175,14 @@ struct OnboardingFlow: View {
                 .controlSize(.large)
                 .accessibilityIdentifier("onboardingFresh")
                 .opacity(welcomeHidden ? 0 : 1)
-                .blur(radius: welcomeHidden ? 12 : 0)
-                .transition(.blurReplace)
+                .transition(.opacity)
             }
         }
         .padding(.horizontal, 24)
         .padding(.top, 24)
         .padding(.bottom, 8)
         .opacity(controlsShown ? 1 : 0)
-        .blur(radius: controlsShown || !detailsShown ? 0 : 12)
-        .offset(y: detailsShown ? 0 : 24)
+        .offset(y: detailsShown ? 0 : 12)
         .animation(motion(.smooth(duration: 0.3).delay(controlsShown ? 0.1 : 0)), value: controlsShown)
         .allowsHitTesting(controlsShown)
     }
@@ -341,13 +338,11 @@ struct OnboardingFlow: View {
     }
 }
 
-/// How the shell takes the flow away: it lifts a touch, blurs and fades, and the board underneath shows through.
+/// How the shell takes the flow away: it fades, and the board underneath shows through.
 struct OnboardingExit: Transition {
     func body(content: Content, phase: TransitionPhase) -> some View {
         content
             .opacity(phase.isIdentity ? 1 : 0)
-            .scaleEffect(phase.isIdentity ? 1 : 1.04)
-            .blur(radius: phase.isIdentity ? 0 : 10)
     }
 }
 

@@ -169,10 +169,10 @@ struct NightBoardView: View {
                     NightQueue(drops: queued, flight: flight)
                     NightAddButton()
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 40)
-                        .padding(.bottom, 4)
+                        .padding(.top, 56)
+                        .padding(.bottom, 8)
                         .background {
-                            LinearGradient(colors: [NightStyle.ink.opacity(0), NightStyle.ink.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                            LinearGradient(stops: [.init(color: NightStyle.ink.opacity(0), location: 0), .init(color: NightStyle.ink.opacity(0.9), location: 0.55), .init(color: NightStyle.ink.opacity(0.95), location: 1)], startPoint: .top, endPoint: .bottom)
                                 .ignoresSafeArea(edges: .bottom)
                                 .allowsHitTesting(false)
                         }

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
-import { clusterBoard } from "./lib/vibes";
+import { clusterBoard, kindOf } from "./lib/vibes";
 import { membersByCluster, scheduleSearches } from "./suggestions";
 
 export const recompute = internalMutation({
@@ -50,5 +50,26 @@ export const current = internalQuery({
       clusters.set(d.clusterId, c);
     }
     return [...clusters.values()].sort((a, b) => b.size - a.size).slice(0, 8);
+  },
+});
+
+export const kinds = internalQuery({
+  args: { boardId: v.string() },
+  returns: v.array(v.string()),
+  handler: async (ctx, { boardId }) => {
+    const drops = await ctx.db
+      .query("drops")
+      .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
+      .order("desc")
+      .take(300);
+    const counts = new Map<string, number>();
+    for (const d of drops) {
+      const kind = d.found?.dismissedAt ? undefined : kindOf(d.vibes ?? []);
+      if (kind) counts.set(kind, (counts.get(kind) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 24)
+      .map(([kind]) => kind);
   },
 });
